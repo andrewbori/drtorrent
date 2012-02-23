@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:paddingBottom="4dp"
+    android:paddingTop="4dp"
+    android:paddingLeft="2dp"
+    android:paddingRight="2dp" >
+
+    <ImageView
+        android:id="@+id/list_item_torrent_ivStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:contentDescription="@string/filebrowser_file"
+        android:src="@drawable/icon_pause" />
+
+    <TextView
+        android:id="@+id/list_item_torrent_tvName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="4dp"
+        android:layout_alignTop="@id/list_item_torrent_ivStatus"
+        android:layout_toRightOf="@id/list_item_torrent_ivStatus"
+        android:text="Name of the torrent"
+        android:textStyle="bold" />
+
+    <ProgressBar
+        android:id="@+id/list_item_torrent_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_centerInParent="true"
+        android:indeterminate="false"
+        android:layout_width="fill_parent"
+        android:layout_height="20dp"
+        android:layout_margin="2dp"
+        android:layout_below="@id/list_item_torrent_tvName" />
+    
+    <LinearLayout
+        android:id="@+id/list_item_torrent_tvProgress"
+        android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:orientation="horizontal"
+	    android:paddingTop="1dp"
+	    android:paddingBottom="1dp"
+	    android:layout_alignTop="@id/list_item_torrent_progress"
+	    android:layout_centerInParent="true">
+    
+	    <TextView
+	        android:id="@+id/list_item_torrent_tvStatus"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:paddingRight="2dp"
+			android:textColor="#FFFFFF"
+	        android:text="@string/downloading" />
+	    
+	    <TextView
+	        android:id="@+id/list_item_torrent_tvPercent"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:paddingLeft="2dp"
+			android:textColor="#FFFFFF"
+	        android:text="0%" />
+    </LinearLayout>
+    
+    <TableLayout
+        	android:id="@+id/list_item_torrent_layoutSpeed"
+        	android:layout_width="fill_parent"
+	      	android:layout_height="wrap_content"
+	      	android:layout_below="@id/list_item_torrent_progress"
+	      	android:layout_alignParentLeft="true"
+	      	android:paddingLeft="2dp"
+	      	android:paddingRight="2dp" >
+        <TableRow>
+            <TextView
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingRight="3dp"
+			      android:text="@string/download_speed" />
+            
+            <TextView android:id="@+id/list_item_torrent_tvDownloadSpeed"
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingLeft="2dp"
+			      android:paddingRight="2dp"
+			      android:textStyle="bold"
+			      android:text="0 kB/s" />
+            
+            <TextView
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingLeft="8dp"
+			      android:paddingRight="3dp"
+			      android:text="@string/downloaded" />
+            
+            <TextView android:id="@+id/list_item_torrent_tvDownloaded"
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingLeft="2dp"
+			      android:paddingRight="2dp"
+			      android:textStyle="bold"
+			      android:text="0 MB" />
+        </TableRow>
+        <TableRow>
+            <TextView
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingRight="3dp"
+			      android:text="@string/upload_speed" />
+            
+            <TextView android:id="@+id/list_item_torrent_tvUploadSpeed"
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingLeft="2dp"
+			      android:paddingRight="2dp"
+			      android:textStyle="bold"
+			      android:text="0 kB/s" />
+            
+            <TextView
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingLeft="8dp"
+			      android:paddingRight="3dp"
+			      android:text="@string/uploaded" />
+            
+            <TextView android:id="@+id/list_item_torrent_tvUploaded"
+				  android:layout_width="wrap_content"
+			      android:layout_height="wrap_content"
+			      android:paddingLeft="2dp"
+			      android:paddingRight="2dp"
+			      android:textStyle="bold"
+			      android:text="0 MB" />
+        </TableRow>
+    </TableLayout>
+    
+</RelativeLayout>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_height="wrap_content"
+	android:layout_width="fill_parent">
+	
+	<ImageView
+		android:src="@drawable/icon_folder"
+		android:id="@+filebrowser/icon"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:padding="3dp"
+		android:contentDescription="@string/filebrowser_folder">
+	</ImageView>
+	
+	<LinearLayout
+	  android:layout_height="wrap_content"
+	  android:layout_width="fill_parent"
+	  android:orientation="vertical"
+	  android:paddingTop="2dp"
+	  android:paddingBottom="2dp" >
+		<TextView
+			android:id="@+filebrowser/filename"
+			android:text="@string/filebrowser_current"
+			android:layout_width="wrap_content" 
+			android:layout_height="wrap_content" 
+			android:singleLine="false" 
+			android:textStyle="bold" >
+		</TextView>
+		<TextView
+			android:id="@+filebrowser/fileinfo"
+			android:text="@string/filebrowser_folder"
+			android:layout_width="wrap_content" 
+			android:layout_height="wrap_content" >
+		</TextView>
+	</LinearLayout>
+
+</LinearLayout>
