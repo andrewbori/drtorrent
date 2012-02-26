@@ -11,11 +11,12 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	private String infoHash_ = "";
 	private String name_ = "";
 	private int percent_ = 0;
-	private int status_ = R.string.stopped;
+	private int status_ = R.string.status_stopped;
 	private String downloadSpeed_ = "0 kB/s";
 	private String uploadSpeed_ = "0 kB/s";
 	private String downloaded_ = "0 kB";
 	private String uploaded_ = "0 kB";
+	private String peers_ = "0/0";
 
 	public TorrentListItem(String name) {
 		this.name_ = name;
@@ -34,9 +35,10 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public TorrentListItem(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
+		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 	}
 
-	public void set(String name, int percent, int status, String downloadSpeed, String uploadSpeed, String downloaded, String uploaded) {
+	public void set(String name, int percent, int status, String downloadSpeed, String uploadSpeed, String downloaded, String uploaded, String peers) {
 		this.name_ = name;
 		this.percent_ = percent;
 		this.status_ = status;
@@ -44,6 +46,7 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.uploadSpeed_ = uploadSpeed;
 		this.downloaded_ = downloaded;
 		this.uploaded_ = uploaded;
+		this.peers_ = peers;
 	}
 
 	public void set(TorrentListItem item) {
@@ -54,11 +57,13 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.uploadSpeed_ = item.uploadSpeed_;
 		this.downloaded_ = item.downloaded_;
 		this.uploaded_ = item.uploaded_;
+		this.peers_ = item.peers_;
 	}
 
 	public void set(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
+		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 	}
 
 	public String getInfoHash() {
@@ -119,6 +124,14 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 
 	public void setUploaded(String uploaded) {
 		this.uploaded_ = uploaded;
+	}
+	
+	public String getPeers() {
+		return peers_;
+	}
+
+	public void setPeers(String peers) {
+		this.peers_ = peers;
 	}
 
 	public int compareTo(TorrentListItem another) {

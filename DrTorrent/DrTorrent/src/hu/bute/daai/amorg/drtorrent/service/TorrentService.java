@@ -1,7 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.service;
 
 import hu.bute.daai.amorg.drtorrent.TorrentListItem;
-import hu.bute.daai.amorg.drtorrent.activity.DrTorrentActivity;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
 
@@ -32,6 +31,7 @@ public class TorrentService extends Service {
 	public final static int MSG_UNSUBSCRIBE_CLIENT = 6;
 	public final static int MSG_GET_TORRENT_ITEM   = 7;
 	public final static int MSG_GET_TORRENT_LIST   = 8;
+	public final static int MSG_TORRENT_CHANGED    = 9;
 	
 	public final static String MSG_KEY_FILEPATH         = "filepath";
 	public final static String MSG_KEY_TORRENT_INFOHASH = "torrentinfohash";
@@ -121,6 +121,11 @@ public class TorrentService extends Service {
 					sendTorrentList(msg.replyTo);
 					break;
 					
+				case MSG_TORRENT_CHANGED:
+					torrentInfoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
+					changedTorrent(torrentInfoHash);
+					break;
+					
 				default:
 					super.handleMessage(msg);
 			}
@@ -160,7 +165,7 @@ public class TorrentService extends Service {
 
 	/** Starts a torrent. */
 	private void startTorrent(String torrentInfoHash) {
-		// TODO: implement method
+		torrentManager_.startTorrent(torrentInfoHash);
 	}
 	
 	/** Stops a torrent. */
@@ -171,6 +176,50 @@ public class TorrentService extends Service {
 	/** Closes a torrent. */
 	private void closeTorrent(String torrentInfoHash) {
 		// TODO: implement method
+	}
+	
+	/** Torrent changed */
+	public void changedTorrent(String infoHash) {
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		
+		Torrent torrent = torrentManager_.getTorrent(infoHash);
+		
+		TorrentListItem item = null;
+		boolean found = false;
+		for (int i = 0; i < torrents_.size(); i++) {
+			if (torrents_.elementAt(i).getInfoHash().equals(infoHash)) {
+				item = torrents_.elementAt(i);
+				item.set(torrent);
+				i = torrents_.size();
+				found = true;
+			}
+		}
+		if (!found) {
+			item = new TorrentListItem(torrent);
+			torrents_.add(item);
+		}
+		
+		bundle.putSerializable(MSG_KEY_TORRENT_ITEM, item);
+		msg.what = MSG_GET_TORRENT_ITEM;
+		msg.setData(bundle);
+
+		for (int i=0; i < clientsAll_.size(); i++) {
+			try {
+				clientsAll_.get(i).send(msg);
+			} catch (RemoteException e) {
+				Log.v(LOG_TAG, "Error during sending message.");
+			}
+		}
+		
+		Vector<Messenger> clients = clientsSingle_.get(infoHash);
+		for (int i = 0; i < clients.size(); i++) {
+			try {
+				clients.get(i).send(msg);
+			} catch (RemoteException e) {
+				Log.v(LOG_TAG, "Error during sending message.");
+			}
+		}
 	}
 
 	/** Sends an optional torrent to the subscribed clients. */
@@ -228,7 +277,7 @@ public class TorrentService extends Service {
 			Bundle bundle = new Bundle();
 			bundle.putSerializable(MSG_KEY_TORRENT_ITEM, item);
 			Message msg = Message.obtain();
-			msg.what = DrTorrentActivity.MSG_ADD_TORRENT;
+			msg.what = MSG_GET_TORRENT_ITEM;
 			msg.setData(bundle);
 
 			for (Messenger client : clientsAll_) {

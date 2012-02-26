@@ -120,15 +120,15 @@
 			      android:layout_height="wrap_content"
 			      android:paddingLeft="8dp"
 			      android:paddingRight="3dp"
-			      android:text="@string/uploaded" />
+			      android:text="@string/peers" />
             
-            <TextView android:id="@+id/list_item_torrent_tvUploaded"
+            <TextView android:id="@+id/list_item_torrent_tvPeers"
 				  android:layout_width="wrap_content"
 			      android:layout_height="wrap_content"
 			      android:paddingLeft="2dp"
 			      android:paddingRight="2dp"
 			      android:textStyle="bold"
-			      android:text="0 MB" />
+			      android:text="0/0" />
         </TableRow>
     </TableLayout>
     

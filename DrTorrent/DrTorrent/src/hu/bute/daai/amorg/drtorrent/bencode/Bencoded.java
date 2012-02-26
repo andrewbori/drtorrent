@@ -167,8 +167,8 @@ public abstract class Bencoded {
             }            
         }
 
-	Bencoded parsedItem = null;
-	if (parseState == 2) // success
+        Bencoded parsedItem = null;
+        if (parseState == 2) // success
             parsedItem = (Bencoded)parseStack.pop();		
 			                
         return parsedItem;
