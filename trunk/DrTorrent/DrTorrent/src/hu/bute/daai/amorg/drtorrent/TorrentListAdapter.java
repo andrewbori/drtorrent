@@ -22,7 +22,7 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 	private final int tvDownloadSpeedResource = R.id.list_item_torrent_tvDownloadSpeed;
 	private final int tvUploadSpeedResource = R.id.list_item_torrent_tvUploadSpeed;
 	private final int tvDownloadedResource = R.id.list_item_torrent_tvDownloaded;
-	private final int tvUploadedResource = R.id.list_item_torrent_tvUploaded;
+	private final int tvUploadedResource = R.id.list_item_torrent_tvPeers;
 
 	private Activity context_;
 	private ArrayList<T> torrents_;
@@ -61,10 +61,10 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		tvDownSpeed.setText(item.getDownloadSpeed());
 		tvUpSpeed.setText(item.getUploadSpeed());
 		tvDownloaded.setText(item.getDownloaded());
-		tvUploaded.setText(item.getUploaded());
+		tvUploaded.setText(item.getPeers());
 
 		if (status == R.string.downloading) {
-			ivStatus.setImageResource(R.drawable.icon_download);
+			ivStatus.setImageResource(R.drawable.icon_app);
 		} else if (status == R.string.sharing) {
 			ivStatus.setImageResource(R.drawable.icon_upload);
 		} else {

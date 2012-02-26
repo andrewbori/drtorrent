@@ -28,8 +28,6 @@ public class DrTorrentActivity extends Activity {
 	private static final int MENU_ADDTORRENT = 101;
 	private static final int RESULT_FILEBROWSER_ACTIVITY = 201;
 
-	public static final int MSG_ADD_TORRENT = 301;
-
 	private Messenger serviceMessenger_ = null;
 	private final Messenger clientMessenger_ = new Messenger(new IncomingMessageHandler());
 	private boolean isBound_ = false;
@@ -167,11 +165,11 @@ public class DrTorrentActivity extends Activity {
 
 		@Override
 		public void handleMessage(Message msg) {
+			Bundle bundle = msg.getData();
+			
 			switch (msg.what) {
-				case MSG_ADD_TORRENT:
-					Bundle b = msg.getData();
-					TorrentListItem item = (TorrentListItem) b.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
-
+				case TorrentService.MSG_GET_TORRENT_ITEM:
+					TorrentListItem item = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
 					boolean found = false;
 					for (int i = 0; i < adapter_.getCount(); i++) {
 						if (adapter_.getItem(i).compareTo(item) == 0) {
@@ -188,10 +186,8 @@ public class DrTorrentActivity extends Activity {
 					break;
 
 				case TorrentService.MSG_GET_TORRENT_LIST:
-					Bundle bundle = msg.getData();
 					@SuppressWarnings("unchecked")
 					ArrayList<TorrentListItem> t = ((ArrayList<TorrentListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_LIST));
-
 					boolean foundOld = false;
 					for (int i = 0; i < adapter_.getCount(); i++) {
 						foundOld = false;
@@ -214,6 +210,7 @@ public class DrTorrentActivity extends Activity {
 
 					lvTorrent_.invalidateViews();
 					break;
+					
 				default:
 					super.handleMessage(msg);
 			}

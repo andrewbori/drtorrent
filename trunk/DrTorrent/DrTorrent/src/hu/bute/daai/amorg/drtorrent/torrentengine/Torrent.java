@@ -14,6 +14,8 @@ import android.util.Log;
 
 /** Class representing a torrent. */
 public class Torrent {
+	private final static String LOG_TAG = "Torrent";
+	
 	public final static int ERROR_NONE               =  0;
 	public final static int ERROR_WRONG_CONTENT      = -1;
 	public final static int ERROR_NO_FREE_SIZE       = -2;
@@ -48,8 +50,11 @@ public class Torrent {
 	private Vector<File> files_;
 	private Vector<Piece> pieces_;
 
+	private Tracker tracker_;
 	private Vector<Vector<Tracker>> trackerList_;
 	private Vector<String> announceList_;
+	private final int DefaultTrackerRequestInterval = 600;
+	private int trackerRequestInterval;
 
 	/** Constructor with the torrent's manager as a parameter. */
 	public Torrent(TorrentManager torrentManager) {
@@ -93,13 +98,14 @@ public class Torrent {
 			return ERROR_WRONG_CONTENT;
 
 		announce_ = ((BencodedString) tempBencoded).getStringValue();
+		tracker_ = new Tracker(announce_, this);
 		trackerList_ = new Vector<Vector<Tracker>>();
 		Vector<Tracker> tempTrackers = new Vector<Tracker>();
 		trackerList_.addElement(tempTrackers);
-		tempTrackers.addElement(new Tracker(announce_));
+		tempTrackers.addElement(new Tracker(announce_, this));
 
 		// announce-list
-		tempBencoded = torrent.entryValue("announce-list");
+		/*tempBencoded = torrent.entryValue("announce-list");
 		if (tempBencoded != null && tempBencoded.type() == Bencoded.BencodedList) {
 			announceList_ = new Vector<String>();
 			trackerList_.removeAllElements();
@@ -117,14 +123,14 @@ public class Torrent {
 							String tempAnnounceURL = ((BencodedString) tempBencoded).getStringValue();
 							if (!tempAnnounceURL.startsWith("udp")) {
 								announceList_.addElement(tempAnnounceURL);
-								tempTrackers.addElement(new Tracker(tempAnnounceURL));
+								tempTrackers.addElement(new Tracker(tempAnnounceURL, this));
 							}
 						}
 					}
 					// VectorSorter.shuffle(tmp);
 				}
 			}
-		}
+		}*/
 
 		// info
 		tempBencoded = torrent.entryValue("info");
@@ -139,7 +145,7 @@ public class Torrent {
 		infoHash_ = SHA1.resultToByteString(hashResult);
 		infoHashByteArray_ = SHA1.resultToByte(hashResult);
 		// Logger.writeLine("Infohash of the torrrent(hex): " + SHA1.resultToString(hashResult));
-		Log.v("Torrent", "Infohash of the torrrent(hex): " + SHA1.resultToString(hashResult));
+		Log.v(LOG_TAG, "Infohash of the torrrent(hex): " + SHA1.resultToString(hashResult));
 		hashResult = null;
 
 		if (!isSaved) {
@@ -241,7 +247,7 @@ public class Torrent {
 						bytesLeft_ += tempCreateFile.fileSize;
 					}
 				} else {
-					Log.v("Torrent", "Not enough free place for the torrent");
+					Log.v(LOG_TAG, "Not enough free place for the torrent");
 					return ERROR_NO_FREE_SIZE;
 				}
 			}
@@ -320,7 +326,7 @@ public class Torrent {
 		// calculateFileFragments();
 		valid_ = true;
 		// torrentManager.notifyOpenTorrentStateChanged(MTTorrentObserver.EMTOpenTorrentEventCreatingFilesFinished,this,null,0);
-
+		
 		return ERROR_NONE;
 	}
 
@@ -350,7 +356,7 @@ public class Torrent {
 			// If single file torrent then we have to check the free size
 			if (shouldCheckFreeSpace) {
 				if (FileManager.freeSize(path_) < size) {
-					Log.v("Torrent", "Not enough free space");
+					Log.v(LOG_TAG, "Not enough free space");
 					return ERROR_NO_FREE_SIZE;
 				}
 			}
@@ -366,17 +372,251 @@ public class Torrent {
 			return ERROR_WRONG_CONTENT;
 	}
 
+	public int processTrackerResponse(Bencoded aResponse)
+    { 
+        if (aResponse.type() != Bencoded.BencodedDictionary)
+        	return ERROR_WRONG_CONTENT;
+
+
+        /*if (lastTrackerEvent==Tracker.EVENT_STARTED)
+        {
+            MTLogger.writeLine("Title changed");
+            torrentManager.notifyTorrentObserverMain(getThisTorrent(), MTTorrentObserver.EMTMainEventTorrentTrackerConnected);
+        }*/
+
+        BencodedDictionary response = (BencodedDictionary)aResponse;  
+
+        Bencoded value = null;
+
+        // interval
+        value = response.entryValue("interval");
+
+        if (value != null && (value.type() == Bencoded.BencodedInteger))
+        {
+            int interval = ((BencodedInteger)value).getValue();
+
+            if ((interval > 0) && (interval < 12000))			
+                trackerRequestInterval = interval;
+            else
+                trackerRequestInterval = DefaultTrackerRequestInterval;				
+        }		
+
+        // failure reason
+        value = response.entryValue("failure reason");
+
+        if (value != null && (value.type() == Bencoded.BencodedString))
+        {
+            //MTLogger.write("[Tracker] Request failed, reason: ");
+            //MTLogger.writeLine(((BencodedString)value).getStringValue());
+            return ERROR_WRONG_CONTENT;
+        }
+
+        // complete
+
+        // incomplete
+
+        // peers
+        //MTLogger.write("[Torrent] Local peer id: ");
+        //MTLogger.writeLine(torrentManager.getPeerID());
+
+        value = response.entryValue("peers");
+
+        if (value != null && (value.type() == Bencoded.BencodedList)) // normal tracker response
+        {
+            BencodedList bencodedPeers = (BencodedList)value;
+
+           // MTLogger.write("[Tracker] Number of peers received: ");
+            //MTLogger.writeLine(bencodedPeers.count());
+
+            for (int i=0; i<bencodedPeers.count(); i++)
+            {
+                value = bencodedPeers.item(i);
+
+                if (value.type() != Bencoded.BencodedDictionary)
+                {
+                    //MTLogger.writeLine("Value has not dictionary type");
+                    return ERROR_WRONG_CONTENT;
+                }
+
+                BencodedDictionary bencodedPeer = (BencodedDictionary)value;
+
+                // peer id
+                value = bencodedPeer.entryValue("peer id");
+                if (value==null || (value.type() != Bencoded.BencodedString))
+                    continue;
+                String peerId = ((BencodedString)value).getStringValue();
+
+                //MTLogger.write("[Torrent] Processing peer id: ");
+                //MTLogger.writeLine(peerId);
+                if (peerId.length() != 20)
+                    continue;
+
+                if (peerId.equals(torrentManager_.getPeerID())) // got back our own address
+                {
+                    //MTLogger.writeLine("Got own local address from tracker (peer ID is the same), throwing it away...");
+                    continue;
+                }				
+
+                // ip
+                value = bencodedPeer.entryValue("ip");
+                if (value==null || (value.type() != Bencoded.BencodedString))
+                    continue;
+                String ip = ((BencodedString)value).getStringValue();
+
+                // port
+                value = bencodedPeer.entryValue("port");
+                if (value==null || (value.type() != Bencoded.BencodedInteger))
+                    continue;
+
+                int port = ((BencodedInteger)value).getValue();
+
+                Log.v(LOG_TAG, "Peer address: " + ip + ":" + port);                  
+
+                /*if (Preferences.LocalAddress != null)
+                {
+                    if (Preferences.LocalAddress.equals(ip))
+                    {
+                        MTLogger.writeLine("Got own local address from tracker, throwing it away...");
+                        continue;
+                    }
+                    else
+                        MTLogger.writeLine("");
+                }
+                else
+                    MTLogger.writeLine("");
+                */
+
+                //Peer peer = new Peer(ip, port, peerId, torrentPieces.size());
+                //addPeer(peer);
+            }
+        }
+        else if (value != null && (value.type() == Bencoded.BencodedString)) // likely a compact response
+        {
+            BencodedString bencodedPeers = (BencodedString)value;
+
+            if ((bencodedPeers.getValue().length % 6) == 0)
+            {
+                byte[] ips = bencodedPeers.getValue();
+                int[] peersRandomPos = new int[ips.length/6];
+                for (int j=0;j<peersRandomPos.length;j++)
+                {
+                    peersRandomPos[j]=j;
+                }
+                //NetTools.shuffle(peersRandomPos);
+
+                for (int i = 0; i < ips.length/6 /*&& peers.size()<MaxStoredPeers*/; i++)
+                {
+                    int pos = peersRandomPos[i] * 6;
+                    String addressBuffer;
+
+                    int a,b,c,d;                         
+
+                    if (ips[pos]<0)
+                        a = 256+ips[pos];
+                    else
+                        a = ips[pos];
+
+                    if (ips[pos+1]<0)
+                        b = 256+ips[pos+1];
+                    else
+                        b = ips[pos+1];
+
+                    if (ips[pos+2]<0)
+                        c = 256+ips[pos+2];
+                    else
+                        c = ips[pos+2];
+
+                    if (ips[pos+3]<0)
+                        d = 256+ips[pos+3];
+                    else
+                        d = ips[pos+3];                        
+
+                    addressBuffer = ""+a+"."+b+"."+c+"."+d;
+
+                    int p1,p2;
+                    if (ips[pos+4]<0)
+                        p1 = 256+ips[pos+4]<<8;
+                    else
+                        p1 = ips[pos+4]<<8;
+
+                    if (ips[pos+5]<0)
+                        p2 = 256+ips[pos+5];
+                    else
+                        p2 = ips[pos+5];                                           
+
+                    int port = p1+p2;
+
+                    Log.v(LOG_TAG, addressBuffer + ":" + port);
+
+                    /*if (Preferences.LocalAddress != null)
+                    {
+                        if (Preferences.LocalAddress.equals(addressBuffer) && port==Preferences.IncommingPort)
+                        {
+                            MTLogger.writeLine("Got own local address from tracker, throwing it away...");
+                            continue;
+                        }
+                    }*/
+
+                    /*Peer peer = new Peer(addressBuffer, port, null, torrentPieces.size());
+                    int result = addPeer(peer);
+                    if (result != ERROR_NONE)
+                        MTLogger.writeLine("Peer not added, error code: "+result);
+                	*/
+                }        
+            }
+            else
+                Log.v(LOG_TAG, "[Tracker] Compact response invalid (length cannot be devided by 6 without remainder)");
+        }        
+        else
+        	Log.v(LOG_TAG, "[Tracker] No peers list / peers list invalid");
+        
+        //Log.v(LOG_TAG, "Response procesed, peers: " + peers.size()); 
+
+        /*if (lastTrackerEvent == MTTrackerConnection.ETrackerEventStarted)
+        {          
+            torrentManager.notifyTorrentObserverMain(getThisTorrent(), MTTorrentObserver.EMTMainEventTorrentDownloading);
+        }
+
+        torrentManager.notifyTorrentObserver(this, MTTorrentObserver.EMTEventPeersChanged);
+        */
+        torrentManager_.changedTorrent(infoHash_);
+        
+        return ERROR_NONE;
+    }
+	
+	
+	public void start() {
+		if (valid_) {
+			tracker_.connect();
+		}
+	}
+	
 	/** Returns the size of the torrent. */
 	public int size() {
 		return bytesDownloaded_ + bytesLeft_;
 	}
 
+	public int getBytesLeft() {
+        return bytesLeft_;
+    }
+	
 	public String getInfoHash() {
 		return this.infoHash_;
 	}
 
+	public TorrentManager getTorrentManager() {
+		return this.torrentManager_;
+	}
+	
 	public String getName() {
 		return this.name_;
 	}
-
+	
+	public int getSeeds() {
+		return tracker_.getComplete();
+	}
+	
+	public int getLeechers() {
+		return tracker_.getIncomplete();
+	}
 }
