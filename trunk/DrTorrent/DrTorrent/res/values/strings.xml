@@ -4,7 +4,7 @@
     <string name="hello">Hello World, DrTorrentActivity!</string>
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">Add Torrent</string>
-    <string name="filebrowser_current">Current dir</string>
+    <string name="filebrowser_current">Directory</string>
     <string name="filebrowser_parent">Parent directory</string>
     <string name="filebrowser_folder">Folder</string>
 	<string name="filebrowser_file">Torrent file</string>
@@ -13,14 +13,12 @@
 	<string name="peers">Seeds/peers:</string>
 	<string name="download_speed">Down speed:</string>
 	<string name="upload_speed">Up speed:</string>
-	<string name="connecting">Connecting</string>
-	<string name="downloading">Downloading</string>
-	<string name="sharing">Sharing</string>
-	<string name="status_stopped">Stopped</string>
+	<string name="status_opening">Opening</string>
 	<string name="status_started">Started</string>
-	<string name="status_downloading">Downloading</string>
-	<string name="status_sharing">Sharing</string>
 	<string name="status_wrong_file">Wrong torrent file</string>
+	<string name="status_connecting">Connecting</string>
+	<string name="status_downloading">Downloading</string>
 	<string name="status_tracker_failed">Tracker failed</string>
-	
+	<string name="status_seeding">Seeding</string>
+	<string name="status_stopped">Stopped</string>
 </resources>

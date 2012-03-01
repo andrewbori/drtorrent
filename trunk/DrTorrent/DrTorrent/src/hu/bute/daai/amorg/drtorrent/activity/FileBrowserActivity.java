@@ -154,7 +154,7 @@ public class FileBrowserActivity extends ListActivity {
 		        	}
 		        	else {
 		        		tvFileType.setText(getString(R.string.filebrowser_file));
-		        		image.setImageResource(R.drawable.icon_file);
+		        		image.setImageResource(R.drawable.icon_app);
 		        	}
 		        }      
 		    }

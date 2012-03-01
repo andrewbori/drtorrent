@@ -21,8 +21,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".activity.TorrentDetailsActivity"></activity>
-        <activity android:name=".activity.FileBrowserActivity"></activity>
+        <activity android:name=".activity.TorrentDetailsActivity" />
+        <activity android:name=".activity.FileBrowserActivity"
+            	  android:theme="@android:style/Theme.Dialog" />
         
         <service android:name=".service.TorrentService"></service>
     </application>

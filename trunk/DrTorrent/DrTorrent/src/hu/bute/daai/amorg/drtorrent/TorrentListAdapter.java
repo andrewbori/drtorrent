@@ -7,14 +7,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 /** Adapter of the torrent list. */
 public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 	private final int rowResource = R.layout.list_item_torrent;
-	private final int ivStatusResource = R.id.list_item_torrent_ivStatus;
 	private final int tvNameResource = R.id.list_item_torrent_tvName;
 	private final int tvStatusResource = R.id.list_item_torrent_tvStatus;
 	private final int tvPercentResource = R.id.list_item_torrent_tvPercent;
@@ -41,7 +39,6 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 			reusableView = inflater.inflate(this.rowResource, null);
 		}
 
-		ImageView ivStatus = (ImageView) reusableView.findViewById(ivStatusResource);
 		TextView tvName = (TextView) reusableView.findViewById(tvNameResource);
 		TextView tvStatus = (TextView) reusableView.findViewById(tvStatusResource);
 		TextView tvPercent = (TextView) reusableView.findViewById(tvPercentResource);
@@ -62,14 +59,6 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		tvUpSpeed.setText(item.getUploadSpeed());
 		tvDownloaded.setText(item.getDownloaded());
 		tvUploaded.setText(item.getPeers());
-
-		if (status == R.string.downloading) {
-			ivStatus.setImageResource(R.drawable.icon_app);
-		} else if (status == R.string.sharing) {
-			ivStatus.setImageResource(R.drawable.icon_upload);
-		} else {
-			ivStatus.setImageResource(R.drawable.icon_pause);
-		}
 
 		return reusableView;
 	}

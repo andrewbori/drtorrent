@@ -11,7 +11,11 @@ public class File {
     int fileNameLength_;
     
     public File(String path, int size) {
-    	this.path_ = path;
-    	this.size_ = size;
+    	path_ = path;
+    	size_ = size;
+    }
+    
+    public int getSize() {
+    	return size_;
     }
 }
