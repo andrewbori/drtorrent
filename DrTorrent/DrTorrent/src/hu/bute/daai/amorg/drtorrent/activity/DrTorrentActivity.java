@@ -8,8 +8,11 @@ import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
@@ -22,6 +25,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 public class DrTorrentActivity extends Activity {
 
@@ -35,6 +39,9 @@ public class DrTorrentActivity extends Activity {
 	private ListView lvTorrent_;
 	private ArrayList<TorrentListItem> torrents_;
 	private ArrayAdapter<TorrentListItem> adapter_;
+	
+	private AlertDialog dialog_;
+	private ProgressDialog progressDialog_;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -44,6 +51,16 @@ public class DrTorrentActivity extends Activity {
 		Intent i = new Intent(getApplicationContext(), TorrentService.class);
 		startService(i);
 
+		AlertDialog.Builder builder = new AlertDialog.Builder(DrTorrentActivity.this);
+		builder.setCancelable(false)
+		       .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+		           public void onClick(DialogInterface dialog, int id) {
+		        	   dialog.cancel();
+		           }
+		       });
+		dialog_ = builder.create();
+
+		progressDialog_ = new ProgressDialog(DrTorrentActivity.this);
 		torrents_ = new ArrayList<TorrentListItem>();
 		lvTorrent_ = (ListView) findViewById(R.id.main_lvTorrent);
 		adapter_ = new TorrentListAdapter<TorrentListItem>(this, torrents_);
@@ -68,13 +85,12 @@ public class DrTorrentActivity extends Activity {
 		if (requestCode == RESULT_FILEBROWSER_ACTIVITY) {
 			if (resultCode == Activity.RESULT_OK) {
 				// data contains the full path of the torrent
-				String filepath = data.getStringExtra(FileBrowserActivity.RESULT_KEY_FILEPATH);
-				// Toast.makeText(this, filepath, Toast.LENGTH_LONG).show();
-
+				String filePath = data.getStringExtra(FileBrowserActivity.RESULT_KEY_FILEPATH);
+				
 				Message msg = Message.obtain();
 				Bundle b = new Bundle();
-				b.putString(TorrentService.MSG_KEY_FILEPATH, filepath);
-				msg.what = TorrentService.MSG_TORRENT_OPEN;
+				b.putString(TorrentService.MSG_KEY_FILEPATH, filePath);
+				msg.what = TorrentService.MSG_OPEN_TORRENT;
 				msg.setData(b);
 				try {
 					serviceMessenger_.send(msg);
@@ -105,7 +121,9 @@ public class DrTorrentActivity extends Activity {
 		return true;
 	}
 
+	/** Connection of the Torrent Service. */
 	private ServiceConnection serviceConnection = new ServiceConnection() {
+		
 		public void onServiceConnected(ComponentName name, IBinder service) {
 			serviceMessenger_ = new Messenger(service);
 			isBound_ = true;
@@ -135,15 +153,14 @@ public class DrTorrentActivity extends Activity {
 			serviceMessenger_ = null;
 			isBound_ = false;
 		}
-
 	};
 
-	/** Bind to the TorrentService. */
+	/** Bind to the Torrent Service. */
 	private void doBindService() {
 		bindService(new Intent(this, TorrentService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 	}
 
-	/** Unbind from the TorrentService. */
+	/** Unbind from the Torrent Service. */
 	private void doUnbindService() {
 		if (isBound_) {
 			if (serviceMessenger_ != null) {
@@ -161,18 +178,43 @@ public class DrTorrentActivity extends Activity {
 	}
 
 	/** Handler of incoming Messages. */
-	class IncomingMessageHandler extends Handler {
+	private class IncomingMessageHandler extends Handler {
 
 		@Override
 		public void handleMessage(Message msg) {
 			Bundle bundle = msg.getData();
+			String message;
 			
 			switch (msg.what) {
-				case TorrentService.MSG_GET_TORRENT_ITEM:
+				case TorrentService.MSG_SHOW_TOAST:
+					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
+					Toast.makeText(DrTorrentActivity.this, message, Toast.LENGTH_SHORT).show();
+					break;
+					
+				case TorrentService.MSG_SHOW_DIALOG:
+					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
+					dialog_.setMessage(message);
+					dialog_.show();
+					break;
+				
+				case TorrentService.MSG_SHOW_PROGRESS:
+					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
+					progressDialog_.setMessage(message);
+					progressDialog_.show();
+					break;
+					
+				case TorrentService.MSG_HIDE_PROGRESS:
+					progressDialog_.hide();
+					break;
+					
+				case TorrentService.MSG_SEND_TORRENT_ITEM:
 					TorrentListItem item = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
+					String infoHash = item.getInfoHash();
 					boolean found = false;
+					TorrentListItem tempItem;
 					for (int i = 0; i < adapter_.getCount(); i++) {
-						if (adapter_.getItem(i).compareTo(item) == 0) {
+						tempItem = adapter_.getItem(i);
+						if (tempItem.getInfoHash().equals(infoHash)) {
 							found = true;
 							adapter_.getItem(i).set(item);
 							break;
@@ -185,7 +227,7 @@ public class DrTorrentActivity extends Activity {
 					lvTorrent_.invalidateViews();
 					break;
 
-				case TorrentService.MSG_GET_TORRENT_LIST:
+				case TorrentService.MSG_SEND_TORRENT_LIST:
 					@SuppressWarnings("unchecked")
 					ArrayList<TorrentListItem> t = ((ArrayList<TorrentListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_LIST));
 					boolean foundOld = false;

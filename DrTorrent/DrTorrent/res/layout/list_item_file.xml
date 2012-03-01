@@ -9,7 +9,7 @@
 		android:id="@+filebrowser/icon"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:padding="3dp"
+		android:padding="2dp"
 		android:contentDescription="@string/filebrowser_folder">
 	</ImageView>
 	
@@ -17,8 +17,7 @@
 	  android:layout_height="wrap_content"
 	  android:layout_width="fill_parent"
 	  android:orientation="vertical"
-	  android:paddingTop="2dp"
-	  android:paddingBottom="2dp" >
+	  android:padding="2dp" >
 		<TextView
 			android:id="@+filebrowser/filename"
 			android:text="@string/filebrowser_current"

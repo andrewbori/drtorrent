@@ -3,6 +3,7 @@ package hu.bute.daai.amorg.drtorrent.file;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import android.os.StatFs;
@@ -21,7 +22,7 @@ public class FileManager {
 		}
 	}
 
-	/** Returns whether the file already exists */
+	/** Returns whether or not the file already exists. */
 	public static boolean fileExists(String filepath) {
 		return (new File(filepath)).exists();
 	}
@@ -40,11 +41,18 @@ public class FileManager {
 
 			file = new RandomAccessFile(f, "rw");
 			file.setLength(fileSize);
-			file.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 			Log.v("FileManager", e.getMessage());
 			return false;
+		} finally {
+			if (file != null) {
+				try {
+					file.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 
 		return true;
@@ -52,15 +60,23 @@ public class FileManager {
 
 	/** Returns the content of the file in a byte array. */
 	public static byte[] readFile(String filepath) {
+		BufferedInputStream bis = null;
 		try {
 			File file = new File(filepath);
-			BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
+			bis = new BufferedInputStream(new FileInputStream(file));
 			byte[] bf = new byte[(int) file.length()];
-			in.read(bf);
-			in.close();
+			bis.read(bf);
 			return bf;
 		} catch (Exception ex) {
 			return null;
+		} finally {
+			if (bis != null) {
+				try {
+					bis.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 }

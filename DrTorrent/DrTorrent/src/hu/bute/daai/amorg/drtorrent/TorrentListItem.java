@@ -23,6 +23,7 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	}
 
 	public TorrentListItem(TorrentListItem item) {
+		this.infoHash_ = item.infoHash_;
 		this.name_ = item.name_;
 		this.percent_ = item.percent_;
 		this.status_ = item.status_;
@@ -30,26 +31,18 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.uploadSpeed_ = item.uploadSpeed_;
 		this.downloaded_ = item.downloaded_;
 		this.uploaded_ = item.uploaded_;
+		this.peers_ = item.peers_;
 	}
 	
 	public TorrentListItem(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
+		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 	}
 
-	public void set(String name, int percent, int status, String downloadSpeed, String uploadSpeed, String downloaded, String uploaded, String peers) {
-		this.name_ = name;
-		this.percent_ = percent;
-		this.status_ = status;
-		this.downloadSpeed_ = downloadSpeed;
-		this.uploadSpeed_ = uploadSpeed;
-		this.downloaded_ = downloaded;
-		this.uploaded_ = uploaded;
-		this.peers_ = peers;
-	}
-
 	public void set(TorrentListItem item) {
+		this.infoHash_ = item.infoHash_;
 		this.name_ = item.name_;
 		this.percent_ = item.percent_;
 		this.status_ = item.status_;
@@ -63,11 +56,16 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public void set(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
+		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 	}
 
 	public String getInfoHash() {
 		return infoHash_;
+	}
+	
+	public void setInfoHash(String infoHash) {
+		this.infoHash_ = infoHash;
 	}
 
 	public String getName() {

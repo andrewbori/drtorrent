@@ -2,26 +2,19 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:paddingBottom="4dp"
-    android:paddingTop="4dp"
     android:paddingLeft="2dp"
-    android:paddingRight="2dp" >
-
-    <ImageView
-        android:id="@+id/list_item_torrent_ivStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:contentDescription="@string/filebrowser_file"
-        android:src="@drawable/icon_pause" />
-
+    android:paddingRight="2dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+    
     <TextView
         android:id="@+id/list_item_torrent_tvName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="4dp"
-        android:layout_alignTop="@id/list_item_torrent_ivStatus"
-        android:layout_toRightOf="@id/list_item_torrent_ivStatus"
+        android:paddingLeft="4dp"
+        android:paddingRight="4dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
         android:text="Name of the torrent"
         android:textStyle="bold" />
 
@@ -51,7 +44,7 @@
 	        android:layout_height="wrap_content"
 	        android:paddingRight="2dp"
 			android:textColor="#FFFFFF"
-	        android:text="@string/downloading" />
+	        android:text="@string/status_stopped" />
 	    
 	    <TextView
 	        android:id="@+id/list_item_torrent_tvPercent"
