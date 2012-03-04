@@ -54,46 +54,44 @@ public class TorrentManager {
 	}
 
 	/** Opens a new Torrent file with the given file path. */
-	public Torrent openTorrent(String filePath) {
-		return openTorrent(filePath, DEFAULT_DOWNLOAD_PATH);
+	public void openTorrent(String filePath) {
+		openTorrent(filePath, DEFAULT_DOWNLOAD_PATH);
 	}
 	
 	/**
-	 * Opens a new Torrent file with the given file path.
+	 * Opens and starts a new Torrent file with the given file path.
 	 * Also defines its download folder.   
 	 */
-	public Torrent openTorrent(String filePath, String downloadPath) {
+	public void openTorrent(String filePath, String downloadPath) {
 		showProgress("Reading the torrent file...");
 		Torrent newTorrent = new Torrent(this, filePath, downloadPath);
 		
+		Log.v(LOG_TAG, "Reading the file: " + filePath);
 		byte[] fileContent = FileManager.readFile(filePath);
 
 		if (fileContent == null) {
 			hideProgress();
 			showDialog("Not a torrent file!");
-			return null;
 		}
 
+		Log.v(LOG_TAG, "Bencoding the file: " + filePath);
 		Bencoded bencoded = Bencoded.parse(fileContent);
+		Log.v(LOG_TAG, "Bencoding over.");
 		if (bencoded == null) {
 			hideProgress();
 			showDialog("Not a torrent file!");
-			return null;
 		}
 		
 		int result = newTorrent.processBencodedTorrent(bencoded);
-		
-		if (result == Torrent.ERROR_NONE) {
-			return newTorrent;
-		} else if (result == Torrent.ERROR_WRONG_CONTENT) {
+		if (result == Torrent.ERROR_NONE) {									// No error.
+			newTorrent.start();
+		} else if (result == Torrent.ERROR_WRONG_CONTENT) {					// Error.
 			showDialog("Wrong file format!");
 		} else if (result == Torrent.ERROR_ALREADY_EXISTS) {
 			showDialog("The torrent is already opened!");
 		} else if (result == Torrent.ERROR_NO_FREE_SIZE) {
-			showDialog("The file is too big!\nThere is not enough free space on the SD card.");
+			showDialog("There is not enough free space on the SD card.");
 		}
-		
-		return null;
 	}
 	
 	/** Adds a new torrent to the list of the managed torrents. */
@@ -179,16 +177,17 @@ public class TorrentManager {
 		torrentService_.hideProgress();
 	}
 	
-	/** Returns the Peer ID */
+	/** Returns the ID of the peer. */
 	public String getPeerID() {
 		return "-DR0001-xlccrlbsjlse";
 	}
 	
-	/** Returns the Peer's key */
+	/** Returns the key of the peer. */
 	public int getPeerKey() {
 		return peerKey_;
 	}
 	
+	/**Generates the ID and the key of the peer. */
 	private void generatePeerId() {
 		Date d = new Date();
         long seed = d.getTime();   

@@ -59,10 +59,10 @@ public class FileManager {
 	}
 
 	/** Returns the content of the file in a byte array. */
-	public static byte[] readFile(String filepath) {
+	public static byte[] readFile(String filePath) {
 		BufferedInputStream bis = null;
 		try {
-			File file = new File(filepath);
+			File file = new File(filePath);
 			bis = new BufferedInputStream(new FileInputStream(file));
 			byte[] bf = new byte[(int) file.length()];
 			bis.read(bf);
