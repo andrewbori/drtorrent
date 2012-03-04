@@ -54,6 +54,7 @@ public class Torrent {
 	private int bytesLeft_;
 	private Vector<File> files_;
 	private Vector<Piece> pieces_;
+	private Bitfield bitfield_;
 
 	private Vector<Peer> peers_;
 	private Tracker tracker_;
@@ -90,7 +91,7 @@ public class Torrent {
 	}
 
 	/**
-	 * Sets the torrent by the bencoded content of a torrent file.
+	 * Processes the bencoded torrent.
 	 * 
 	 * @param torrentBencoded The torrent file's bencoded content.
 	 * @return Error code.
@@ -176,7 +177,8 @@ public class Torrent {
 		// file/files
 
 		tempBencoded = info.entryValue("files");
-		if (tempBencoded != null) { // multi-file torrent
+		if (tempBencoded != null) {
+		// multi-file torrent
 			if (tempBencoded.type() != Bencoded.BencodedList)
 				return ERROR_WRONG_CONTENT;
 
@@ -264,8 +266,8 @@ public class Torrent {
 					return ERROR_NO_FREE_SIZE;
 				}
 			//}
-		} else // single-file torrent
-		{
+		} else {
+		// single-file torrent
 			int length = 0;
 
 			// info/length
@@ -321,7 +323,7 @@ public class Torrent {
 			pieces_.addElement(piece);
 		}
 
-		// bitField = new MTBitfield(torrentPieces.size(), false);
+		bitfield_ = new Bitfield(pieces_.size(), false);
 
 		// comment
 		tempBencoded = torrent.entryValue("comment");
@@ -348,7 +350,7 @@ public class Torrent {
 		return ERROR_NONE;
 	}
 	
-	/** Calculates the fragments of the files. */
+	/** Calculates the fragments of the file(s). */
     private void calculateFileFragments() {
         int pieceIndex = 0;
         Piece piece = (Piece) pieces_.elementAt(pieceIndex);
@@ -403,7 +405,7 @@ public class Torrent {
         // failure reason
         value = response.entryValue("failure reason");
         if (value != null && (value.type() == Bencoded.BencodedString)) {
-            Log.v(LOG_TAG, "[Tracker] Request failed, reason: " + ((BencodedString)value).getStringValue());
+            Log.v(LOG_TAG, "[Tracker] Request failed, reason: " + ((BencodedString) value).getStringValue());
             return ERROR_WRONG_CONTENT;
         }
         
@@ -427,7 +429,7 @@ public class Torrent {
         value = response.entryValue("peers");
         // Normal tracker response
         if (value != null && (value.type() == Bencoded.BencodedList)) {
-            BencodedList bencodedPeers = (BencodedList)value;
+            BencodedList bencodedPeers = (BencodedList) value;
 
             Log.v(LOG_TAG, "Number of peers received: " + bencodedPeers.count());
 
@@ -438,13 +440,13 @@ public class Torrent {
                     return ERROR_WRONG_CONTENT;
                 }
 
-                BencodedDictionary bencodedPeer = (BencodedDictionary)value;
+                BencodedDictionary bencodedPeer = (BencodedDictionary) value;
 
                 // peer id
                 value = bencodedPeer.entryValue("peer id");
                 if (value==null || (value.type() != Bencoded.BencodedString))
                     continue;
-                String peerId = ((BencodedString)value).getStringValue();
+                String peerId = ((BencodedString) value).getStringValue();
 
                 Log.v(LOG_TAG, "Processing peer id: " + peerId);
                 if (peerId.length() != 20)
@@ -458,14 +460,14 @@ public class Torrent {
                 value = bencodedPeer.entryValue("ip");
                 if (value==null || (value.type() != Bencoded.BencodedString))
                     continue;
-                String ip = ((BencodedString)value).getStringValue();
+                String ip = ((BencodedString) value).getStringValue();
 
                 // port
                 value = bencodedPeer.entryValue("port");
                 if (value==null || (value.type() != Bencoded.BencodedInteger))
                     continue;
 
-                int port = ((BencodedInteger)value).getValue();
+                int port = ((BencodedInteger) value).getValue();
 
                 Log.v(LOG_TAG, "Peer address: " + ip + ":" + port);                  
 

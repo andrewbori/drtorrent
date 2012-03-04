@@ -167,7 +167,7 @@ public class TorrentService extends Service {
 
 	/** Starts a torrent. */
 	private void startTorrent(String infoHash) {
-		torrentManager_.startTorrent(infoHash);
+		(new StartTorrentThread(infoHash)).start();
 	}
 	
 	/** Stops a torrent. */
@@ -332,11 +332,22 @@ public class TorrentService extends Service {
 		public void run() {
 			if (filePath_ == null || filePath_ == "") return;
 			
-			Torrent newTorrent = torrentManager_.openTorrent(filePath_);
-			
-			if (newTorrent == null) return;
-			
-			startTorrent(newTorrent.getInfoHash());
+			torrentManager_.openTorrent(filePath_);
+		}
+	}
+	
+	/** Thread class for open and read a torrent file */
+	private class StartTorrentThread extends Thread {
+
+		private String infoHash_;
+		
+		public StartTorrentThread(String infoHash) {
+			infoHash_ = infoHash;
+		}
+		
+		@Override
+		public void run() {
+			startTorrent(infoHash_);
 		}
 	}
 }
