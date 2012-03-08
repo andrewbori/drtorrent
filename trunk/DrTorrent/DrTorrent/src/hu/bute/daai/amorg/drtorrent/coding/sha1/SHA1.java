@@ -1,4 +1,4 @@
-package hu.bute.daai.amorg.drtorrent.sha1;
+package hu.bute.daai.amorg.drtorrent.coding.sha1;
 
 
 import java.io.ByteArrayInputStream;
