@@ -7,7 +7,7 @@
  * and open the template in the editor.
  */
 
-package hu.bute.daai.amorg.drtorrent.bencode;
+package hu.bute.daai.amorg.drtorrent.coding.bencode;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

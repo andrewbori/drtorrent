@@ -1,13 +1,13 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.R;
-import hu.bute.daai.amorg.drtorrent.bencode.Bencoded;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedDictionary;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedInteger;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedList;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedString;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedInteger;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedList;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
+import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
-import hu.bute.daai.amorg.drtorrent.sha1.SHA1;
 
 import java.util.Vector;
 
@@ -644,6 +644,18 @@ public class Torrent {
 		return false;
 	}
 	
+	public int indexOfPiece(Piece piece) {
+        return pieces_.indexOf(piece);
+    }
+	
+	public int pieceCount() {
+        return pieces_.size();
+    }
+	
+	public Piece getPiece(int index) {
+		return pieces_.elementAt(index);
+	}
+	
 	/** Returns the size of the torrent. */
 	public int getSize() {
 		return bytesDownloaded_ + bytesLeft_;
@@ -661,6 +673,10 @@ public class Torrent {
         return infoHashByteArray_;
     }
 
+	public Bitfield getBitfield() {
+		return bitfield_;
+	}
+	
 	public TorrentManager getTorrentManager() {
 		return this.torrentManager_;
 	}

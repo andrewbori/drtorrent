@@ -1,9 +1,9 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.bencode.Bencoded;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedDictionary;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedInteger;
-import hu.bute.daai.amorg.drtorrent.bencode.BencodedString;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedInteger;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.network.HttpConnection;
 import hu.bute.daai.amorg.drtorrent.network.UrlEncoder;
 

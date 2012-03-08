@@ -10,9 +10,9 @@ public class Piece {
 	private Vector<FileFragment> fragments_;
 	
 	public Piece(Torrent torrent, byte[] hash, int length) {
-		this.torrent_ = torrent;
-		this.hash_ = hash;
-		this.length_ = length;
+		torrent_ = torrent;
+		hash_ = hash;
+		length_ = length;
 		fragments_ = new Vector<FileFragment>();
 	}
 	
@@ -20,7 +20,21 @@ public class Piece {
         fragments_.addElement(new FileFragment(file, offset, length));
     }  
 	
+	public int index() {
+        return torrent_.indexOfPiece(this);
+    } 
+	
 	public int getLength() {
 		return length_;
 	}
+	
+	public byte[] getBlock(int position, int length) {
+		// TODO
+		return null;
+	}
+	
+	public int getDownloadedSize() {
+        // TODO
+		return 0; //downloadedSize_;
+    }
 }

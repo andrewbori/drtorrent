@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.bencode.Bencoded;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
@@ -179,7 +179,8 @@ public class TorrentManager {
 	
 	/** Returns the ID of the peer. */
 	public String getPeerID() {
-		return "-DR0001-xlccrlbsjlse";
+		return peerId_;
+		//return "-DR0001-alkjfdcgjhsw";
 	}
 	
 	/** Returns the key of the peer. */
@@ -196,8 +197,7 @@ public class TorrentManager {
         
         peerKey_ = Math.abs(r.nextInt());
         peerId_ = "-DR0001-";
-        for (int i=0; i<12; i++)
-        {
+        for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }
         
