@@ -13,25 +13,34 @@ import java.util.Vector;
 import android.util.Log;
 
 public class PeerConnection {
-	private static final String LOG_TAG = "PeerConnection";
-	private final String PROTOCOL_ID = "BitTorrent protocol";
+	private final static String LOG_TAG = "PeerConnection";
 	
-	public final static int KMessageIdChoke = 0;
-    public final static int KMessageIdUnchoke = 1;
-    public final static int KMessageIdInterested = 2;
-    public final static int KMessageIdNotInterested = 3;
-    public final static int KMessageIdHave = 4;
-    public final static int KMessageIdBitfield = 5;
-    public final static int KMessageIdRequest = 6;
-    public final static int KMessageIdPiece = 7;
-    public final static int KMessageIdCancel = 8;
+	private final static String MESSAGE_PROTOCOL_ID = "BitTorrent protocol";
+	private final static int MESSAGE_ID_CHOKE 		   = 0;
+	private final static int MESSAGE_ID_UNCHOKE        = 1;
+	private final static int MESSAGE_ID_INTERESTED     = 2;
+	private final static int MESSAGE_ID_NOT_INTERESTED = 3;
+	private final static int MESSAGE_ID_HAVE           = 4;
+	private final static int MESSAGE_ID_BITFIELD       = 5;
+	private final static int MESSAGE_ID_REQUEST        = 6;
+	private final static int MESSAGE_ID_PIECE          = 7;
+	private final static int MESSAGE_ID_CANCEL         = 8;
 	
-	public final static int EPeerNotConnected = 0;
-    public final static int EPeerTcpConnecting = 1;
-    public final static int EPeerConnected = 2;
-    public final static int EPeerPwHandshaking = 3;
-    public final static int EPeerPwConnected = 4;
-    public final static int EPeerClosing = 5;
+	private final static int TIMEOUT_TCP_CONNECTION = 15;
+	private final static int TIMEOUT_HANDSHAKE      = 15;
+	private final static int TIMEOUT_PW_CONNECTION  = 2 * 60;
+	private final static int TIMEOUT_REQUEST        = 60;
+    private final static int KEEP_ALIVE_INTERVAL    = 2 * 60;	// once in every two minutes    
+    private final static int DEFALT_BLOCK_LENGTH    = 16384;	// default download block size (2^14)
+    private final static int MAX_PIECE_REQUESTS     = 1;
+	
+	public final static int STATE_NOT_CONNECTED  = 0;
+    public final static int STATE_TCP_CONNECTING = 1;
+    public final static int STATE_TCP_CONNECTED  = 2;
+    public final static int STATE_PW_HANDSHAKING = 3;
+    public final static int STATE_PW_CONNECTED   = 4;
+    public final static int STATE_CLOSING        = 5;
+    
     public final static int EDeletePeer = 0;
     public final static int EIncreaseErrorCounter = 1;
     public final static int ENotSpecified = 2;
@@ -60,6 +69,8 @@ public class PeerConnection {
 	private int lastMessageReceivedTime_;
 	private int lastMessageSentTime_;
 	private int ellapsedTime_;
+	private int reconnectAfter_;
+	public static int tcpConnectionTimeoutNum_ = 0;
 	private boolean hasPendingDownloadRequest_;
 	
 	/** Creates a new instance of PeerConnection. */
@@ -78,7 +89,7 @@ public class PeerConnection {
         //incomingRequests_ = new Vector<BlockRequest>();
 
         peerWireConnected_ = false;
-        state_ = EPeerNotConnected;
+        state_ = STATE_NOT_CONNECTED;
         readEnabled_ = true;
     }
 	
@@ -97,11 +108,6 @@ public class PeerConnection {
 	        lastRequestBegin = -1;
 	        lastRequestLength = -1;
 	    }
-	}
-	
-	public void onTimer() {
-		
-		
 	}
 	
 	public void connect() {
@@ -123,7 +129,7 @@ public class PeerConnection {
         }
 
         Log.v(LOG_TAG, "Start download from: " + peer_.getAddress());
-        state_ = EPeerPwHandshaking;
+        state_ = STATE_PW_HANDSHAKING;
         sendHandshakeMessage();
 
         ellapsedTime_ = 0;
@@ -133,6 +139,61 @@ public class PeerConnection {
                 read();
             }
         }.start();
+	}
+
+	public void onTimer() {
+		ellapsedTime_++;
+		if (reconnectAfter_ > 0) reconnectAfter_--;
+
+		switch (state_) {
+			case STATE_TCP_CONNECTING: {
+				if (ellapsedTime_ > TIMEOUT_TCP_CONNECTION) {
+					tcpConnectionTimeoutNum_++;
+					close(EIncreaseErrorCounter, "Timeout while trying to connect");
+				}
+			}
+				break;
+
+			case STATE_PW_HANDSHAKING: {
+				if (ellapsedTime_ > TIMEOUT_HANDSHAKE) {
+					close(EIncreaseErrorCounter, "Handshake timeout (no data received)");
+				}
+			}
+				break;
+
+			case STATE_PW_CONNECTED: {
+				if ((ellapsedTime_ - lastMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
+					close(EIncreaseErrorCounter, "General timeout (no data received)");
+					break;
+				}
+
+				if (lastRequestTime_ > 0 && ((ellapsedTime_ - lastRequestTime_) > TIMEOUT_REQUEST)) {
+					lastRequestTime_ = ellapsedTime_;
+					/*
+					 * if (torrent_.hasTimeoutlessPeer()) {
+					 * peer_.setHadRequestTimeout(true);
+					 * close(EIncreaseErrorCounter, "Request timeout"); break; }
+					 */
+				}
+
+				if ((ellapsedTime_ > 10) && (!isInterested()) && (!isPeerInterested())) {
+					// torrentMgr.notifyTorrentObserverMain(torrent_,
+					// MTTorrentObserver.EMTMainEventTorrentUploadEnded);
+					close("Nobody interested!");
+				}
+
+				if ((ellapsedTime_ - lastMessageSentTime_) >= KEEP_ALIVE_INTERVAL) sendKeepAliveMessage();
+
+				if (piecesToDownload_.size() == 0) {
+					// System.out.println("REREQUEST");
+					issueDownload();
+				}
+			}
+				break;
+
+			default:
+				;
+		}
 	}
 	
 	/** Reads at most data.length bytes from the inputStream_ and puts it to the data array. */
@@ -178,75 +239,12 @@ public class PeerConnection {
             try {
                 switch (state_) {
                 	
-                    case EPeerPwHandshaking: {
-                        int protLength = inputStream_.read();							// pstrlen
-                        							// -1 error from the stream: connection closed
-                        if (protLength == -1) {
-                            close(EIncreaseErrorCounter, "Peer disconnected!");
-                            continue;
-                        }
-
-                        int handshakeLength = protLength + 48;	// 49-1 because protLength has been read
-                        byte[] handshake = new byte[handshakeLength];
-                        readData(handshake);
-
-                        byte[] protocolId = new byte[protLength];						// pstr
-                        System.arraycopy(handshake, 0, protocolId, 0, protLength);
-                        
-                        if (!PROTOCOL_ID.equals(new String(protocolId))) {
-                            close(EDeletePeer, "Protocol identifier doesn't match!");
-                            continue;
-                        }
-
-                        byte[] infoHash = new byte[20];									// info_hash
-                        System.arraycopy(handshake, 27, infoHash, 0, 20);
-                        
-                        if (torrent_ != null) {
-                            if (!DrTorrentTools.byteArrayEqual(torrent_.getInfoHashByteArray(), infoHash)) {
-                            	close(EDeletePeer, "Torrent infohash doesn't match!");
-                                continue;
-                            }
-                        } else { // if torrent is null then we should attach peer to torrent (most likely it is an incoming connection)
-                            /*if((torrentManager_.attachPeerToTorrent(infoHash, getPeerConnection()) != MTErrorCodes.ErrNone) || (torrent_ == null)) // close if the attach failed
-                            {
-                                close(EDeletePeer, "Invalid infohash or peer is already connected or too many peers!");
-                                continue;
-                            }*/
-                        }
-
-                        if (incomingConnection_) {
-                            /*torrentManager_.notifyTorrentObserver(torrent_, MTTorrentObserver.EMTEventIncomingConnectionsChanged);
-                            torrent_.incIncomingConnectionsNum();
-                            sendHandshakeMessage();
-                            peer_.resetAddress();*/
-                        }
-
-                        byte[] peerId = new byte[20];									// peer_id
-                        System.arraycopy(handshake, 47, peerId, 0, 20);
-                        String tempPeerId = new String(peerId);
-                        if (peer_.getPeerId() != null) {
-                            if (!peer_.getPeerId().equals(tempPeerId)) {
-                                close(EIncreaseErrorCounter, "Peer ID doesn't match!");
-                                continue;
-                            } else if (tempPeerId.equals(torrentManager_.getPeerID())) {
-                                close(EDeletePeer, "Connected to ourselves!");
-                                continue;
-                            }
-                        }
-                        else {
-                            // peer_.setPeerId(tempPeerId);
-                        }
-
-                        Log.v(LOG_TAG, "Handshake completed! Peer wire connected!");
-                        state_ = EPeerConnected; //changeState(EPeerPwConnected);
-                        //setPeerWireConnected();
-
-                        if (!torrent_.getBitfield().isNull()) sendBitfieldMessage();
-						
+                    case STATE_PW_HANDSHAKING: {
+                        readHandshakeMessage();
                         break;
                     }
                     
-					case EPeerPwConnected: {
+					case STATE_PW_CONNECTED: {
 						byte[] initData = new byte[4];
 
 						readData(initData);
@@ -262,181 +260,42 @@ public class PeerConnection {
 							int id = inputStream_.read();
 							switch (id) {
 								
-								case KMessageIdChoke: {
-									peer_.resetErrorCounter();
-									setPeerChoking(true);
-
-									synchronized (piecesToDownload_) {
-										for (int i = 0; i < piecesToDownload_.size(); i++)
-											piecesToDownload_.elementAt(i).hasPendingRequest = false;
-
-										for (int i = 0; i < piecesToDownload_.size(); i++)
-											//torrent_.removePieceFromDownloading(piecesToDownload_.elementAt(i).piece);
-
-										piecesToDownload_.removeAllElements();
-									}
-
+								case MESSAGE_ID_CHOKE: Log.v(LOG_TAG, "Reading choke message from: " + peer_.getAddress());
+									readChokeMessage();
 									break;
-								}
 
-								case KMessageIdUnchoke: {
-									peer_.resetErrorCounter();
-									setPeerChoking(false);
-									issueDownload();
+								case MESSAGE_ID_UNCHOKE: Log.v(LOG_TAG, "Reading unchoke message from: " + peer_.getAddress());
+									readUnchokeMessage();
 									break;
-								}
 
-								case KMessageIdInterested: {
-									peer_.resetErrorCounter();
-									/*if (Preferences.UploadEnabled) {
-										setPeerInterested(true);
-										setChoking(false);
-									}*/
+								case MESSAGE_ID_INTERESTED: Log.v(LOG_TAG, "Reading interested message from: " + peer_.getAddress());
+									readInterestedMessage();
 									break;
-								}
-
-								case KMessageIdNotInterested: {
-									peer_.resetErrorCounter();
-									setPeerInterested(false);
-									issueDownload();
+								case MESSAGE_ID_NOT_INTERESTED: Log.v(LOG_TAG, "Reading not interested message from: " + peer_.getAddress());
+									readNotInterestedMessage();
 									break;
-								}
 								
-								case KMessageIdBitfield: {
-									if (messageLength - 1 != peer_.getBitfield().lengthInBytes()) {
-										close(EIncreaseErrorCounter, "Received bitfield length doesn't match!");
-									} else {
-										int bitFieldLength = messageLength - 1; // -id
-																				// length
-										byte[] bitFieldDes = new byte[bitFieldLength];
-										boolean dataReaded = readData(bitFieldDes);
-
-										if (dataReaded) {
-											peer_.havePieces(bitFieldDes, torrent_);
-											issueDownload();
-										} else {
-											close(EIncreaseErrorCounter, "Could not read bitfield!");
-										}
-									}
+								case MESSAGE_ID_BITFIELD: Log.v(LOG_TAG, "Reading bitfield message from: " + peer_.getAddress());
+									readBitfieldMessage(messageLength);
 									break;
-								}
 
-								case KMessageIdHave: {
-									int pieceIndex = readInt();
-
-									if ((pieceIndex >= 0) && (pieceIndex < torrent_.pieceCount())) {
-										peer_.havePiece(pieceIndex, torrent_);
-
-										if (!hasPendingDownloadRequest_) issueDownload();
-									}
+								case MESSAGE_ID_HAVE: Log.v(LOG_TAG, "Reading have message from: " + peer_.getAddress());
+									readHaveMessage();
 									break;
-								}
 
-								case KMessageIdPiece: {
-									peer_.resetErrorCounter();
-									lastRequestTime_ = 0;
-									//peer_.setHadRequestTimeout(false);
-									int index = readInt();								// index
-									int begin = readInt();								// begin
-									int pieceBlockSize = messageLength - 9;
-
-									Log.v(LOG_TAG, "Recieved PIECE, Index: " + index + " Begin: " + begin + " Length: " + pieceBlockSize);
-
-									PieceToDownload piece = null;
-									synchronized (piecesToDownload_) {
-										for (int i = 0; i < piecesToDownload_.size(); i++)
-											if (((PieceToDownload) piecesToDownload_.elementAt(i)).piece.index() == index) {
-												piece = (PieceToDownload) piecesToDownload_.elementAt(i);
-												break;
-											}
-									}
-
-									if (piece == null) {
-										close("Error, unexpected piece (there are no pending request for the received piece index)");
-									} else {
-										byte[] pieceBlock = new byte[pieceBlockSize];	// block
-										boolean successfullRead = readData(pieceBlock);
-
-										if (!successfullRead) {
-											close(EIncreaseErrorCounter, "Reading piece failed!");
-											return;
-										}
-
-										piece.hasPendingRequest = false;
-
-										/*
-										 * if(torrent.isEndGame())
-										 * torrent.endGamePieceReceived
-										 * (piece.piece, peer);
-										 */
-
-										/*if (piece.piece.appendBlock(pieceBlock, begin, peer_) != Torrent.ERROR_NONE) {
-											pieceBlock = null;
-											close("Writing to piece failed"); // CRITICAL FAULT
-										} else {
-											pieceBlock = null;
-											// / WHY??? (piece->Remaining() ==
-											// piece->TotalSize())
-											if ((piece.piece.remaining() == 0) || (piece.piece.remaining() == piece.piece.getTotalSize())) {
-												synchronized (piecesToDownload_) {
-													piecesToDownload_.removeElement(piece);
-												}
-											}
-
-										}*/
-									}
-									System.gc();
-									issueDownload();
-
+								case MESSAGE_ID_PIECE: Log.v(LOG_TAG, "Reading piece message from: " + peer_.getAddress());
+									readPieceMessage(messageLength);
 									break;
-								}
 
-								case KMessageIdRequest: {
-									/*peer_.resetErrorCounter();
-									if (messageLength < 13) {
-										close(EIncreaseErrorCounter, "Received request message length is smaller than 13!");
-									} else {
-										int pieceIndex = readInt();
-										int begin = readInt();
-										int length = readInt();
-
-										//log("in REQUEST Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
-
-										if (Preferences.UploadEnabled) {
-											ellapsedTime_ = 0; // ///////////////////////////////////////////
-
-											incomingRequests_.addElement(new BlockRequest(pieceIndex, begin, length));
-
-											issueUpload();
-										}
-									}*/
+								case MESSAGE_ID_REQUEST: Log.v(LOG_TAG, "Reading request message from: " + peer_.getAddress());
+									readRequestMessage(messageLength);
 									break;
-								}
 
-								case KMessageIdCancel: {
-									/*peer_.resetErrorCounter();
-									if (messageLength < 13) {
-										close(EIncreaseErrorCounter, "Received CANCEL message length is smaller than 13!");
-									} else {
-										int pieceIndex = readInt();
-										int begin = readInt();
-										int length = readInt();
-
-										for (int i = 0; i < incomingRequests_.size(); i++) {
-											if (((BlockRequest) incomingRequests_.elementAt(i)).pieceIndex == pieceIndex
-													&& ((BlockRequest) incomingRequests_.elementAt(i)).begin == begin
-													&& ((BlockRequest) incomingRequests_.elementAt(i)).length == length) {
-												incomingRequests_.removeElementAt(i);
-												break;
-											}
-										}
-									}*/
+								case MESSAGE_ID_CANCEL: Log.v(LOG_TAG, "Reading cancel message from: " + peer_.getAddress());
+									readCancelMessage(messageLength);
 									break;
-								}
-
 							}
 						}
-
 						break;
 					}
                 }
@@ -453,6 +312,249 @@ public class PeerConnection {
         }
     }
 	
+	/** Reading message: handshake. */
+	private void readHandshakeMessage() throws InterruptedIOException, IOException, Exception {
+		int protLength = inputStream_.read(); 	// pstrlen
+		if (protLength == -1) {
+			close(EIncreaseErrorCounter, "Peer disconnected!");
+			return;
+		}
+
+		int handshakeLength = protLength + 48; // 49-1 because protLength has
+												// been read
+		byte[] handshake = new byte[handshakeLength];
+		readData(handshake);
+
+		byte[] protocolId = new byte[protLength]; // pstr
+		System.arraycopy(handshake, 0, protocolId, 0, protLength);
+
+		if (!MESSAGE_PROTOCOL_ID.equals(new String(protocolId))) {
+			close(EDeletePeer, "Protocol identifier doesn't match!");
+			return;
+		}
+
+		byte[] infoHash = new byte[20]; // info_hash
+		System.arraycopy(handshake, 27, infoHash, 0, 20);
+
+		if (torrent_ != null) {
+			if (!DrTorrentTools.byteArrayEqual(torrent_.getInfoHashByteArray(), infoHash)) {
+				close(EDeletePeer, "Torrent infohash doesn't match!");
+				return;
+			}
+		} else { // if torrent is null then we should attach peer to torrent (most likely it is an incoming connection)
+		/*
+		 * if((torrentManager_.attachPeerToTorrent(infoHash,
+		 * getPeerConnection()) != MTErrorCodes.ErrNone) || (torrent_ == null))
+		 * // close if the attach failed { close(EDeletePeer,
+		 * "Invalid infohash or peer is already connected or too many peers!");
+		 * continue; }
+		 */
+		}
+
+		if (incomingConnection_) {
+			/*
+			 * torrentManager_.notifyTorrentObserver(torrent_,
+			 * MTTorrentObserver.EMTEventIncomingConnectionsChanged);
+			 * torrent_.incIncomingConnectionsNum(); sendHandshakeMessage();
+			 * peer_.resetAddress();
+			 */
+		}
+
+		byte[] peerId = new byte[20]; // peer_id
+		System.arraycopy(handshake, 47, peerId, 0, 20);
+		String tempPeerId = new String(peerId);
+		if (peer_.getPeerId() != null) {
+			if (!peer_.getPeerId().equals(tempPeerId)) {
+				close(EIncreaseErrorCounter, "Peer ID doesn't match!");
+				return;
+			} else if (tempPeerId.equals(torrentManager_.getPeerID())) {
+				close(EDeletePeer, "Connected to ourselves!");
+				return;
+			}
+		} else {
+			// peer_.setPeerId(tempPeerId);
+		}
+
+		Log.v(LOG_TAG, "Handshake completed! Peer wire connected!");
+		state_ = STATE_TCP_CONNECTED; // changeState(EPeerPwConnected);
+		// setPeerWireConnected();
+
+		if (!torrent_.getBitfield().isNull()) sendBitfieldMessage();
+		
+		issueDownload();
+	}
+	
+	/** Reading message: choke. */
+	private void readChokeMessage() {
+		peer_.resetErrorCounter();
+		setPeerChoking(true);
+
+		synchronized (piecesToDownload_) {
+			for (int i = 0; i < piecesToDownload_.size(); i++)
+				piecesToDownload_.elementAt(i).hasPendingRequest = false;
+
+			for (int i = 0; i < piecesToDownload_.size(); i++)
+				//torrent_.removePieceFromDownloading(piecesToDownload_.elementAt(i).piece);
+
+			piecesToDownload_.removeAllElements();
+		}
+	}
+
+	/** Reading message: unchoke. */
+	private void readUnchokeMessage() {
+		peer_.resetErrorCounter();
+		setPeerChoking(false);
+		issueDownload();
+	}
+
+	/** Reading message: interested. */
+	private void readInterestedMessage() {
+		peer_.resetErrorCounter();
+		/*if (Preferences.UploadEnabled) {
+			setPeerInterested(true);
+			setChoking(false);
+		}*/
+	}
+
+	/** Reading message: not interested. */
+	private void readNotInterestedMessage() {
+		peer_.resetErrorCounter();
+		setPeerInterested(false);
+		issueDownload();
+	}
+
+	/** Reading message: bitfield. */
+	private void readBitfieldMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
+		if (messageLength - 1 != peer_.getBitfield().lengthInBytes()) {
+			close(EIncreaseErrorCounter, "Received bitfield length doesn't match!");
+		} else {
+			int bitFieldLength = messageLength - 1; // -id
+													// length
+			byte[] bitFieldDes = new byte[bitFieldLength];
+			boolean dataReaded = readData(bitFieldDes);
+
+			if (dataReaded) {
+				peer_.havePieces(bitFieldDes, torrent_);
+				issueDownload();
+			} else {
+				close(EIncreaseErrorCounter, "Could not read bitfield!");
+			}
+		}
+		
+	}
+
+	/** Reading message: have. */
+	private void readHaveMessage() {
+		int pieceIndex = readInt();
+
+		if ((pieceIndex >= 0) && (pieceIndex < torrent_.pieceCount())) {
+			peer_.havePiece(pieceIndex, torrent_);
+
+			if (!hasPendingDownloadRequest_) issueDownload();
+		}
+	}
+
+	/** Reading message: piece. */
+	private void readPieceMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
+		peer_.resetErrorCounter();
+		lastRequestTime_ = 0;
+		//peer_.setHadRequestTimeout(false);
+		int index = readInt();								// index
+		int begin = readInt();								// begin
+		int pieceBlockSize = messageLength - 9;
+
+		Log.v(LOG_TAG, "Recieved PIECE, Index: " + index + " Begin: " + begin + " Length: " + pieceBlockSize);
+
+		PieceToDownload piece = null;
+		synchronized (piecesToDownload_) {
+			for (int i = 0; i < piecesToDownload_.size(); i++)
+				if (((PieceToDownload) piecesToDownload_.elementAt(i)).piece.index() == index) {
+					piece = (PieceToDownload) piecesToDownload_.elementAt(i);
+					break;
+				}
+		}
+
+		if (piece == null) {
+			close("Error, unexpected piece (there are no pending request for the received piece index)");
+		} else {
+			byte[] pieceBlock = new byte[pieceBlockSize];	// block
+			boolean successfullRead = readData(pieceBlock);
+
+			if (!successfullRead) {
+				close(EIncreaseErrorCounter, "Reading piece failed!");
+				return;
+			}
+
+			piece.hasPendingRequest = false;
+
+			/*
+			 * if(torrent.isEndGame())
+			 * torrent.endGamePieceReceived
+			 * (piece.piece, peer);
+			 */
+
+			/*if (piece.piece.appendBlock(pieceBlock, begin, peer_) != Torrent.ERROR_NONE) {
+				pieceBlock = null;
+				close("Writing to piece failed"); // CRITICAL FAULT
+			} else {
+				pieceBlock = null;
+				// / WHY??? (piece->Remaining() ==
+				// piece->TotalSize())
+				if ((piece.piece.remaining() == 0) || (piece.piece.remaining() == piece.piece.getTotalSize())) {
+					synchronized (piecesToDownload_) {
+						piecesToDownload_.removeElement(piece);
+					}
+				}
+
+			}*/
+		}
+		System.gc();
+		issueDownload();
+	}
+
+	/** Reading message: request. */
+	private void readRequestMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
+		/*peer_.resetErrorCounter();
+		if (messageLength < 13) {
+			close(EIncreaseErrorCounter, "Received request message length is smaller than 13!");
+		} else {
+			int pieceIndex = readInt();
+			int begin = readInt();
+			int length = readInt();
+
+			//log("in REQUEST Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
+
+			if (Preferences.UploadEnabled) {
+				ellapsedTime_ = 0; // ///////////////////////////////////////////
+
+				incomingRequests_.addElement(new BlockRequest(pieceIndex, begin, length));
+
+				issueUpload();
+			}
+		}*/
+	}
+
+	/** Reading message: cancel. */
+	private void readCancelMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
+		/*peer_.resetErrorCounter();
+		if (messageLength < 13) {
+			close(EIncreaseErrorCounter, "Received CANCEL message length is smaller than 13!");
+		} else {
+			int pieceIndex = readInt();
+			int begin = readInt();
+			int length = readInt();
+
+			for (int i = 0; i < incomingRequests_.size(); i++) {
+				if (((BlockRequest) incomingRequests_.elementAt(i)).pieceIndex == pieceIndex
+						&& ((BlockRequest) incomingRequests_.elementAt(i)).begin == begin
+						&& ((BlockRequest) incomingRequests_.elementAt(i)).length == length) {
+					incomingRequests_.removeElementAt(i);
+					break;
+				}
+			}
+		}*/
+	}
+
 	/** Sending message: handshake. */
 	private void sendHandshakeMessage() {
         if (torrent_ != null) {
@@ -463,8 +565,8 @@ public class PeerConnection {
                     byte[] zeros = {0, 0, 0, 0, 0, 0, 0, 0};
 
                     baos = new ByteArrayOutputStream();
-                    baos.write((byte) PROTOCOL_ID.length());				// pstrlen:   string length of <pstr>, as a single raw byte 
-                    baos.write(PROTOCOL_ID.getBytes());						// pstr:      string identifier of the protocol 
+                    baos.write((byte) MESSAGE_PROTOCOL_ID.length());				// pstrlen:   string length of <pstr>, as a single raw byte 
+                    baos.write(MESSAGE_PROTOCOL_ID.getBytes());						// pstr:      string identifier of the protocol 
                     baos.write(zeros);										// reserved:  eight (8) reserved bytes. All current implementations use all zeroes.
                     baos.write(torrent_.getInfoHashByteArray());			// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
                     baos.write(torrentManager_.getPeerID().getBytes());		// peer_id:   20-byte string used as a unique ID for the client.
@@ -516,7 +618,7 @@ public class PeerConnection {
 
                 baos = new ByteArrayOutputStream();
                 baos.write(intToByteArray(1));	// len = 1
-                baos.write(KMessageIdChoke);	// id = 0
+                baos.write(MESSAGE_ID_CHOKE);	// id = 0
                 baos.flush();
 
                 outputStream_.write(baos.toByteArray());
@@ -544,7 +646,7 @@ public class PeerConnection {
 
                 baos = new ByteArrayOutputStream();
                 baos.write(intToByteArray(1));	// len = 1
-                baos.write(KMessageIdUnchoke);	// id = 1
+                baos.write(MESSAGE_ID_UNCHOKE);	// id = 1
                 baos.flush();
 
                 outputStream_.write(baos.toByteArray());
@@ -574,7 +676,7 @@ public class PeerConnection {
 
 				baos = new ByteArrayOutputStream();
 				baos.write(intToByteArray(1));		// len = 1
-				baos.write(KMessageIdInterested);	// id = 2
+				baos.write(MESSAGE_ID_INTERESTED);	// id = 2
 				baos.flush();
 
 				outputStream_.write(baos.toByteArray());
@@ -606,7 +708,7 @@ public class PeerConnection {
 
 				baos = new ByteArrayOutputStream();
 				baos.write(intToByteArray(1));			// len = 1
-				baos.write(KMessageIdNotInterested);	// id = 3
+				baos.write(MESSAGE_ID_NOT_INTERESTED);	// id = 3
 				baos.flush();
 
 				outputStream_.write(baos.toByteArray());
@@ -636,7 +738,7 @@ public class PeerConnection {
 
 				baos = new ByteArrayOutputStream();
 				baos.write(intToByteArray(5));			// len = 5
-				baos.write(KMessageIdHave);				// id = 4
+				baos.write(MESSAGE_ID_HAVE);			// id = 4
 				baos.write(intToByteArray(pieceIndex));	// piece index
 				baos.flush();
 
@@ -666,7 +768,7 @@ public class PeerConnection {
 	
 	            baos = new ByteArrayOutputStream();
 	            baos.write(intToByteArray(1 + bitfield.length));	// len = 1 + X
-	            baos.write(KMessageIdBitfield);						// id = 5
+	            baos.write(MESSAGE_ID_BITFIELD);					// id = 5
 	            baos.write(bitfield);								// bitfield
 	            baos.flush();
 	
@@ -697,13 +799,14 @@ public class PeerConnection {
 					lastMessageSentTime_ = ellapsedTime_;
 
 					baos = new ByteArrayOutputStream();
-					baos.write(intToByteArray(13));										// len = 13
-					baos.write(KMessageIdRequest);										// id = 6
-					baos.write(intToByteArray(piece.piece.index()));					// index: zero-based piece index 
-					baos.write(intToByteArray(piece.piece.getDownloadedSize()));		// begin: zero-based byte offset within the piece 
+					baos.write(intToByteArray(13));												// len = 13
+					baos.write(MESSAGE_ID_REQUEST);												// id = 6
+					baos.write(intToByteArray(piece.piece.index()));							// index: zero-based piece index 
+					baos.write(intToByteArray(piece.piece.getDownloadedSize()));				// begin: zero-based byte offset within the piece 
 					int blockLength = piece.piece.getLength() - piece.piece.getDownloadedSize();
-					if (blockLength > 16384) blockLength = 16384; 						// 16 KB
-					baos.write(intToByteArray(blockLength));							// length: requested length
+					//if (blockLength > DEFALT_BLOCK_LENGTH)
+						blockLength = DEFALT_BLOCK_LENGTH; 	// 16 KB
+					baos.write(intToByteArray(blockLength));									// length: requested length
 					baos.flush();
 
 					outputStream_.write(baos.toByteArray());
@@ -751,7 +854,7 @@ public class PeerConnection {
 				if (outputStream_ != null) {
 					baos = new ByteArrayOutputStream();
 					baos.write(intToByteArray(9 + length));	// len = 9 + X
-					baos.write(KMessageIdPiece);			// id = 7
+					baos.write(MESSAGE_ID_PIECE);			// id = 7
 					baos.write(intToByteArray(pieceIndex));	// index
 					baos.write(intToByteArray(begin));		// begin
 					baos.write(block);						// block
@@ -788,7 +891,7 @@ public class PeerConnection {
 		try {
 			baos = new ByteArrayOutputStream();
 			baos.write(intToByteArray(13));							// len = 13
-			baos.write(KMessageIdCancel);							// id = cancel
+			baos.write(MESSAGE_ID_CANCEL);							// id = cancel
 			baos.write(intToByteArray(piece.piece.index()));		// index
 			baos.write(intToByteArray(piece.lastRequestBegin));		// begin
 			baos.write(intToByteArray(piece.lastRequestLength));	// length
@@ -811,53 +914,53 @@ public class PeerConnection {
 	
 	/** issue the download. */
 	public void issueDownload() {
-		/*int numDownload = 0;
-		synchronized (piecesToDownload) {
-			while (piecesToDownload.size() < KMaxPieceRequests) {
-				MTPiece pieceToDownload = torrent.getPieceToDownload(peer);
+		Log.v(LOG_TAG, "issue download from " + peer_.getAddress());
+		
+		int numDownload = 0;
+		synchronized (piecesToDownload_) {
+			while (piecesToDownload_.size() < MAX_PIECE_REQUESTS) {
+				Piece pieceToDownload = torrent_.getPieceToDownload(peer_);
 				if (pieceToDownload != null) {
-					piecesToDownload.addElement(new PieceToDownload(pieceToDownload, ellapsedTime));
+					piecesToDownload_.addElement(new PieceToDownload(pieceToDownload, ellapsedTime_));
 					// iLastRequestTime = iEllapsedTime;
 				} else
 					break;
 			}
-			numDownload = piecesToDownload.size();
+			numDownload = piecesToDownload_.size();
 		}
 
 		if (numDownload == 0) {
 			setInterested(false);
-
-			if (ellapsedTime > 15) {
+/*
+			if (ellapsedTime_ > 15) {
 				if (!isPeerInterested()) {
-					torrentMgr.notifyTorrentObserverMain(torrent, MTTorrentObserver.EMTMainEventTorrentUploadEnded);
+					//torrentMgr.notifyTorrentObserverMain(torrent_, MTTorrentObserver.EMTMainEventTorrentUploadEnded);
 
 					int closeOrder = ENotSpecified;
-					if (torrent.isComplete())
+					if (torrent_.isComplete())
 						closeOrder = EDeletePeer;
 
 					close("No needed piecese and peer not interested");
-				} else if (incomingRequests.size() == 0) // wait for possible
-															// incoming
-															// interested
-															// message
+				} else if (incomingRequests.size() == 0) // wait for possible incoming interested message
 				{
 					close("No pieces need and peer is not interested");
 				}
-			}
+			}*/
 		} else {
 			setInterested(true);
 
 			if (!isPeerChoking()) {
-				synchronized (piecesToDownload) {
-					for (int i = 0; i < piecesToDownload.size(); i++) {
-						if (!((PieceToDownload) piecesToDownload.elementAt(i)).hasPendingRequest) {
-							sendRequestMessage(piecesToDownload.elementAt(i));
-							piecesToDownload.elementAt(i).hasPendingRequest = true;
+				synchronized (piecesToDownload_) {
+					for (int i = 0; i < piecesToDownload_.size(); i++) {
+						if (!((PieceToDownload) piecesToDownload_.elementAt(i)).hasPendingRequest) {
+							sendRequestMessage(piecesToDownload_.elementAt(i));
+							Log.v(LOG_TAG, "request sent to " + peer_.getAddress());
+							piecesToDownload_.elementAt(i).hasPendingRequest = true;
 						}
 					}
 				}
 			}
-		}*/
+		}
 	}
 	
 	/** Closes the socket connection. */
@@ -868,13 +971,13 @@ public class PeerConnection {
     /** Closes the socket connection. */
     public void close(int order, String reason) {
         Log.v(LOG_TAG, "Closing connection. Reason: " + reason);
-        if(state_ != EPeerClosing) {
+        if(state_ != STATE_CLOSING) {
             //closeOrder = order;
 
             // stop receiving
             readEnabled_ = false;
 
-            state_ = EPeerClosing;
+            state_ = STATE_CLOSING;
             //changeState(EPeerClosing);
             if(torrent_ != null) {
                 // torrent_.peerDisconnected(peer, peerWireConnected);
@@ -932,13 +1035,13 @@ public class PeerConnection {
 		if (choking) {
 			if (!isChoking()) {
 				isChoking_ = true;
-				if (state_ == EPeerPwConnected) {
+				if (state_ == STATE_PW_CONNECTED) {
 					sendChokeMessage();
 				}
 			}
 		} else if (isChoking()) {
 			isChoking_ = false;
-			if (state_ == EPeerPwConnected) {
+			if (state_ == STATE_PW_CONNECTED) {
 				sendUnchokeMessage();
 			}
 		}
@@ -952,13 +1055,13 @@ public class PeerConnection {
 		if (interested) {
 			if (!isInterested()) {
 				isInterested_ = true;
-				if (state_ == EPeerPwConnected) {
+				if (state_ == STATE_PW_CONNECTED) {
 					sendInterestedMessage();
 				}
 			}
 		} else if (isInterested()) {
 			isInterested_ = false;
-			if (state_ == EPeerPwConnected) {
+			if (state_ == STATE_PW_CONNECTED) {
 				sendNotInterestedMessage();
 
 				if (!isPeerInterested()) {
@@ -974,12 +1077,16 @@ public class PeerConnection {
 		}
 		else {
 			isPeerInterested_ = false;
-			if ((state_ == EPeerPwConnected) && (!isInterested())) {
+			if ((state_ == STATE_PW_CONNECTED) && (!isInterested())) {
 				close("Nobody interested");
 			}
 		}
 	}
 	
+	public void changeState(int state) {
+		state_ = state;
+		ellapsedTime_ = 0;
+	}
 	
 	private boolean isChoking() {
 		return isChoking_;

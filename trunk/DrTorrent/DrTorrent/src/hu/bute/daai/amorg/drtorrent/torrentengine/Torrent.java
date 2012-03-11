@@ -578,6 +578,13 @@ public class Torrent {
 		}
 	}
 	
+	public Piece getPieceToDownload(Peer peer)
+    {        
+        Piece pieceToDownload = null;
+        pieceToDownload = pieces_.elementAt(0);
+        return pieceToDownload;
+    }    
+	
 	/**
 	 * Adds a new file to the files_ array and creates it in the file system
 	 * with reserving space for it as well.
