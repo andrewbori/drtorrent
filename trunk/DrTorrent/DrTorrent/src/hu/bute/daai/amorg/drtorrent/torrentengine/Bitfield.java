@@ -3,7 +3,6 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 /** Class determining which pieces the torrent already has. */
 public class Bitfield {
     private byte[] bitField_;
-    private int length_;
     
     /** Creates a new instance of Bitfield.
      * 
@@ -11,8 +10,6 @@ public class Bitfield {
      * setAllBits whether or not all bits are true by default. 
      */    
     public Bitfield(int length, boolean setAllBits) {
-    	length_ = length;
-    	
 		int lengthInBytes = length / 8;
 		if ((length % 8)>0) lengthInBytes++;
 		
@@ -64,7 +61,6 @@ public class Bitfield {
     }
 
     public void set(byte[] bitField) {
-        bitField_ = null;
         bitField_ = bitField;
     }
         
@@ -92,6 +88,6 @@ public class Bitfield {
     }
 
     public int getLengthInBites() {
-        return length_;
+        return bitField_.length;
     }
 }

@@ -359,11 +359,11 @@ public class Torrent {
         for (int i=0; i<files_.size(); i++) {
         	File file = (File) files_.elementAt(i);
 
-            if (piecePos + file.getSize() <= piece.getLength()) {
+            if (piecePos + file.getSize() <= piece.length()) {
                 piece.addFileFragment(file, 0, file.getSize());
                 piecePos += file.getSize();
 
-                if (piecePos + file.getSize() == piece.getLength()) {
+                if (piecePos + file.getSize() == piece.length()) {
                     piece = (Piece) pieces_.elementAt(++pieceIndex);
                     piecePos = 0;
                 }
@@ -371,9 +371,9 @@ public class Torrent {
                 int filePos = 0;
 
                 while (filePos < file.getSize()) {
-                    if ((file.getSize() - filePos + piecePos) > piece.getLength()) {
-                        piece.addFileFragment(file, filePos, piece.getLength() - piecePos);
-                        filePos += piece.getLength() - piecePos;
+                    if ((file.getSize() - filePos + piecePos) > piece.length()) {
+                        piece.addFileFragment(file, filePos, piece.length() - piecePos);
+                        filePos += piece.length() - piecePos;
 
                         piece = (Piece) pieces_.elementAt(++pieceIndex);
                         piecePos = 0;
@@ -381,7 +381,7 @@ public class Torrent {
                         piece.addFileFragment(file, filePos, file.getSize() - filePos);
                         piecePos += file.getSize() - filePos;
 
-                        if (piecePos == piece.getLength()) {
+                        if (piecePos == piece.length()) {
                             if (pieceIndex < (pieces_.size() - 1)) {
                                 piece = (Piece) pieces_.elementAt(++pieceIndex);
                                 piecePos = 0;
@@ -649,6 +649,16 @@ public class Torrent {
 				return true;
 		}
 		return false;
+	}
+	
+	/** Increments the number of peers having the given piece. */
+	public void incNumberOfPeersHavingPiece(int index) {
+		((Piece) pieces_.elementAt(index)).incNumberOfPeersHaveThis();
+	}
+
+	/** Decrements the number of peers having the given piece. */
+	public void decNumberOfPeersHavingPiece(int index) {
+		((Piece) pieces_.elementAt(index)).decNumberOfPeersHaveThis();
 	}
 	
 	public int indexOfPiece(Piece piece) {
