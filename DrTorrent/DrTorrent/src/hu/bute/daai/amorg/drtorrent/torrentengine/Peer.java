@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+/** Peer */
 public class Peer {
 
 	private String address_;
@@ -13,6 +14,7 @@ public class Peer {
 		address_ = address;
 		port_ = port;
 		peerId_ = peerId;
+		bitfield_ = new Bitfield(piecesCount, false);
 	}
 	
 	public void connect(Torrent torrent) {
@@ -26,12 +28,20 @@ public class Peer {
 		}
 	}
 	
-	public void havePieces(byte[] b, Torrent t) {
-		// TODO
+	public void havePieces(byte[] bitfield, Torrent torrent) {
+		Bitfield tempBitfield = new Bitfield(bitfield);
+
+		for (int i = 0; i < torrent.pieceCount(); i++) {
+			if (tempBitfield.isBitSet(i) && (!bitfield_.isBitSet(i))) {
+				torrent.incNumberOfPeersHavingPiece(i);
+			}
+		}
+		bitfield_.set(bitfield);
 	}
 	
-	public void havePiece(int i, Torrent t) {
-		// TODO
+	public void havePiece(int index, Torrent torrent) {
+		bitfield_.setBit(index);
+		torrent.incNumberOfPeersHavingPiece(index);
 	}
 	
 	public void resetErrorCounter() {

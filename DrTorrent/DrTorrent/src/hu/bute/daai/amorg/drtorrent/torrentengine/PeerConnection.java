@@ -254,44 +254,54 @@ public class PeerConnection {
 						lastMessageReceivedTime_ = ellapsedTime_;
 						if (messageLength == 0) {
 							// keep-alive
+							Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
 							// TODO: we have to close connection,
 							issueDownload();
 						} else {
 							int id = inputStream_.read();
 							switch (id) {
 								
-								case MESSAGE_ID_CHOKE: Log.v(LOG_TAG, "Reading choke message from: " + peer_.getAddress());
+								case MESSAGE_ID_CHOKE:
+									Log.v(LOG_TAG, "Reading choke message from: " + peer_.getAddress());
 									readChokeMessage();
 									break;
 
-								case MESSAGE_ID_UNCHOKE: Log.v(LOG_TAG, "Reading unchoke message from: " + peer_.getAddress());
+								case MESSAGE_ID_UNCHOKE:
+									Log.v(LOG_TAG, "Reading unchoke message from: " + peer_.getAddress());
 									readUnchokeMessage();
 									break;
 
-								case MESSAGE_ID_INTERESTED: Log.v(LOG_TAG, "Reading interested message from: " + peer_.getAddress());
+								case MESSAGE_ID_INTERESTED:
+									Log.v(LOG_TAG, "Reading interested message from: " + peer_.getAddress());
 									readInterestedMessage();
 									break;
-								case MESSAGE_ID_NOT_INTERESTED: Log.v(LOG_TAG, "Reading not interested message from: " + peer_.getAddress());
+								case MESSAGE_ID_NOT_INTERESTED:
+									Log.v(LOG_TAG, "Reading not interested message from: " + peer_.getAddress());
 									readNotInterestedMessage();
 									break;
 								
-								case MESSAGE_ID_BITFIELD: Log.v(LOG_TAG, "Reading bitfield message from: " + peer_.getAddress());
+								case MESSAGE_ID_BITFIELD:
+									Log.v(LOG_TAG, "Reading bitfield message from: " + peer_.getAddress());
 									readBitfieldMessage(messageLength);
 									break;
 
-								case MESSAGE_ID_HAVE: Log.v(LOG_TAG, "Reading have message from: " + peer_.getAddress());
+								case MESSAGE_ID_HAVE:
+									Log.v(LOG_TAG, "Reading have message from: " + peer_.getAddress());
 									readHaveMessage();
 									break;
 
-								case MESSAGE_ID_PIECE: Log.v(LOG_TAG, "Reading piece message from: " + peer_.getAddress());
+								case MESSAGE_ID_PIECE:
+									Log.v(LOG_TAG, "Reading piece message from: " + peer_.getAddress());
 									readPieceMessage(messageLength);
 									break;
 
-								case MESSAGE_ID_REQUEST: Log.v(LOG_TAG, "Reading request message from: " + peer_.getAddress());
+								case MESSAGE_ID_REQUEST:
+									Log.v(LOG_TAG, "Reading request message from: " + peer_.getAddress());
 									readRequestMessage(messageLength);
 									break;
 
-								case MESSAGE_ID_CANCEL: Log.v(LOG_TAG, "Reading cancel message from: " + peer_.getAddress());
+								case MESSAGE_ID_CANCEL:
+									Log.v(LOG_TAG, "Reading cancel message from: " + peer_.getAddress());
 									readCancelMessage(messageLength);
 									break;
 							}
@@ -376,12 +386,10 @@ public class PeerConnection {
 		}
 
 		Log.v(LOG_TAG, "Handshake completed! Peer wire connected!");
-		state_ = STATE_TCP_CONNECTED; // changeState(EPeerPwConnected);
+		state_ = STATE_PW_CONNECTED; // changeState(STATE_PW_CONNECTED);
 		// setPeerWireConnected();
 
 		if (!torrent_.getBitfield().isNull()) sendBitfieldMessage();
-		
-		issueDownload();
 	}
 	
 	/** Reading message: choke. */
@@ -425,22 +433,20 @@ public class PeerConnection {
 
 	/** Reading message: bitfield. */
 	private void readBitfieldMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
-		if (messageLength - 1 != peer_.getBitfield().lengthInBytes()) {
+		int bitFieldLength = messageLength - 1; // bitfield length
+		if (bitFieldLength != peer_.getBitfield().lengthInBytes()) {
 			close(EIncreaseErrorCounter, "Received bitfield length doesn't match!");
 		} else {
-			int bitFieldLength = messageLength - 1; // -id
-													// length
-			byte[] bitFieldDes = new byte[bitFieldLength];
-			boolean dataReaded = readData(bitFieldDes);
-
+			byte[] bitfield = new byte[bitFieldLength];
+			boolean dataReaded = readData(bitfield);
 			if (dataReaded) {
-				peer_.havePieces(bitFieldDes, torrent_);
+				peer_.havePieces(bitfield, torrent_);
+				Log.v(LOG_TAG, "Bitfield has been read from " + peer_.getAddress());
 				issueDownload();
 			} else {
 				close(EIncreaseErrorCounter, "Could not read bitfield!");
 			}
-		}
-		
+		}	
 	}
 
 	/** Reading message: have. */
@@ -475,7 +481,7 @@ public class PeerConnection {
 		}
 
 		if (piece == null) {
-			close("Error, unexpected piece (there are no pending request for the received piece index)");
+			close("Error, unexpected piece (there is no pending request for the received piece index)");
 		} else {
 			byte[] pieceBlock = new byte[pieceBlockSize];	// block
 			boolean successfullRead = readData(pieceBlock);
@@ -487,26 +493,20 @@ public class PeerConnection {
 
 			piece.hasPendingRequest = false;
 
-			/*
-			 * if(torrent.isEndGame())
-			 * torrent.endGamePieceReceived
-			 * (piece.piece, peer);
-			 */
+			// //if(torrent_.isEndGame()) torrent_.endGamePieceReceived(piece.piece, peer);
 
-			/*if (piece.piece.appendBlock(pieceBlock, begin, peer_) != Torrent.ERROR_NONE) {
+			int appendResult = piece.piece.appendBlock(pieceBlock, begin, peer_);
+			if (appendResult != Torrent.ERROR_NONE) {
 				pieceBlock = null;
 				close("Writing to piece failed"); // CRITICAL FAULT
 			} else {
 				pieceBlock = null;
-				// / WHY??? (piece->Remaining() ==
-				// piece->TotalSize())
-				if ((piece.piece.remaining() == 0) || (piece.piece.remaining() == piece.piece.getTotalSize())) {
+				if (piece.piece.remaining() == 0) {
 					synchronized (piecesToDownload_) {
 						piecesToDownload_.removeElement(piece);
 					}
 				}
-
-			}*/
+			}
 		}
 		System.gc();
 		issueDownload();
@@ -565,11 +565,11 @@ public class PeerConnection {
                     byte[] zeros = {0, 0, 0, 0, 0, 0, 0, 0};
 
                     baos = new ByteArrayOutputStream();
-                    baos.write((byte) MESSAGE_PROTOCOL_ID.length());				// pstrlen:   string length of <pstr>, as a single raw byte 
-                    baos.write(MESSAGE_PROTOCOL_ID.getBytes());						// pstr:      string identifier of the protocol 
-                    baos.write(zeros);										// reserved:  eight (8) reserved bytes. All current implementations use all zeroes.
-                    baos.write(torrent_.getInfoHashByteArray());			// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
-                    baos.write(torrentManager_.getPeerID().getBytes());		// peer_id:   20-byte string used as a unique ID for the client.
+                    baos.write((byte) MESSAGE_PROTOCOL_ID.length());	// pstrlen:   string length of <pstr>, as a single raw byte 
+                    baos.write(MESSAGE_PROTOCOL_ID.getBytes());			// pstr:      string identifier of the protocol 
+                    baos.write(zeros);									// reserved:  eight (8) reserved bytes. All current implementations use all zeroes.
+                    baos.write(torrent_.getInfoHashByteArray());		// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
+                    baos.write(torrentManager_.getPeerID().getBytes());	// peer_id:   20-byte string used as a unique ID for the client.
                     outputStream_.write(baos.toByteArray());
                     outputStream_.flush();
 
@@ -764,6 +764,7 @@ public class PeerConnection {
 	    ByteArrayOutputStream baos = null;
 	    try {
 	        if (outputStream_ != null) {
+	        	Log.v(LOG_TAG, "Sending bitfield to: " + peer_.getAddress());
 	            lastMessageSentTime_ = ellapsedTime_;
 	
 	            baos = new ByteArrayOutputStream();
@@ -802,8 +803,8 @@ public class PeerConnection {
 					baos.write(intToByteArray(13));												// len = 13
 					baos.write(MESSAGE_ID_REQUEST);												// id = 6
 					baos.write(intToByteArray(piece.piece.index()));							// index: zero-based piece index 
-					baos.write(intToByteArray(piece.piece.getDownloadedSize()));				// begin: zero-based byte offset within the piece 
-					int blockLength = piece.piece.getLength() - piece.piece.getDownloadedSize();
+					baos.write(intToByteArray(piece.piece.downloaded()));				// begin: zero-based byte offset within the piece 
+					int blockLength = piece.piece.length() - piece.piece.downloaded();
 					//if (blockLength > DEFALT_BLOCK_LENGTH)
 						blockLength = DEFALT_BLOCK_LENGTH; 	// 16 KB
 					baos.write(intToByteArray(blockLength));									// length: requested length
@@ -813,9 +814,9 @@ public class PeerConnection {
 					outputStream_.flush();
 
 					piece.lastRequestLength = blockLength;
-					piece.lastRequestBegin = piece.piece.getDownloadedSize();
+					piece.lastRequestBegin = piece.piece.downloaded();
 
-					Log.v(LOG_TAG, "REQUEST sent: " + piece.piece.index() + "from: " + piece.piece.getDownloadedSize() + " (block length: " + blockLength + ")");
+					Log.v(LOG_TAG, "REQUEST sent: " + piece.piece.index() + "from: " + piece.piece.downloaded() + " (block length: " + blockLength + ")");
 				} else {
 					close("ERROR, while send request, outputstream is NULL");
 				}
@@ -838,7 +839,7 @@ public class PeerConnection {
 		if (piece != null) {
 			//Log.v(LOG_TAG, "Processing piece request " + pieceIndex + " Begin: " + begin + " Length: " + length + " while piece totalsize: " + piece.getTotalSize());
 
-			if (begin + length > piece.getLength()) {
+			if (begin + length > piece.length()) {
 				close("Bad PIECE request (index is out of bounds)");
 				return;
 			}
