@@ -38,7 +38,6 @@ public class TorrentManager {
 				}
 			}
 		}
-		
 	}
 
 	/** Constructor of the Torrent Manager with its Torrent Service as a parameter. */
@@ -121,7 +120,8 @@ public class TorrentManager {
 	
 	/** Stops a torrent. */
 	public void stopTorrent(String infoHash) {
-		
+		Torrent torrent = getTorrent(infoHash);
+		torrent.stop();
 	}
 	
 	/** Closes a torrent. */

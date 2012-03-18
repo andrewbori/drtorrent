@@ -23,6 +23,10 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -65,6 +69,22 @@ public class DrTorrentActivity extends Activity {
 		lvTorrent_ = (ListView) findViewById(R.id.main_lvTorrent);
 		adapter_ = new TorrentListAdapter<TorrentListItem>(this, torrents_);
 		lvTorrent_.setAdapter(adapter_);
+		
+		lvTorrent_.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> arg0, View arg1, int position, long arg3) {
+				TorrentListItem item = adapter_.getItem(position);
+				String infoHash = item.getInfoHash();
+				
+				Message msg = Message.obtain();
+				Bundle bundle = new Bundle();
+				bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash);
+				msg.setData(bundle);
+				msg.what = TorrentService.MSG_STOP_TORRENT;
+				try {
+					serviceMessenger_.send(msg);
+				} catch (RemoteException e) {}
+			}
+		});
 	}
 
 	@Override

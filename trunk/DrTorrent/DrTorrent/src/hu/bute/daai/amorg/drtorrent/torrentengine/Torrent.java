@@ -25,6 +25,7 @@ public class Torrent {
 	public final static int ERROR_OVERFLOW           = -5;
 	public final static int ERROR_TORRENT_NOT_PARSED = -6;
 	public final static int ERROR_NOT_ATTACHED       = -7;
+	public final static int ERROR_GENERAL            = -8;
 
 	private final int MAX_STORED_PEERS = 50;
 	
@@ -65,12 +66,12 @@ public class Torrent {
 	
 	/** Constructor with the manager and the torrent file as a parameter. */
 	public Torrent(TorrentManager torrentManager, String filePath, String downloadPath) {
-		this.torrentManager_ = torrentManager;
-		this.fileManager_ = new FileManager();
-		this.downloadFolder_ = downloadPath;
+		torrentManager_ = torrentManager;
+		fileManager_ = new FileManager();
+		downloadFolder_ = downloadPath;
 		
-		this.torrentFilePath_ = filePath;
-		this.torrentFileName_ = filePath.substring(filePath.lastIndexOf('/') + 1, filePath.length());
+		torrentFilePath_ = filePath;
+		torrentFileName_ = filePath.substring(filePath.lastIndexOf('/') + 1, filePath.length());
 		
 
 		files_ = new Vector<File>();
@@ -350,49 +351,58 @@ public class Torrent {
 		return ERROR_NONE;
 	}
 	
-	/** Calculates the fragments of the file(s). */
-    private void calculateFileFragments() {
-        int pieceIndex = 0;
-        Piece piece = (Piece) pieces_.elementAt(pieceIndex);
-        int piecePos = 0;
+	/** 
+	 * Calculates the file fragments of pieces.
+	 * This is important because a torrent can contain multiple files,
+	 * so when saving the received blocks of pieces we have to know the file boundaries.
+	 * If a torrent contains only one file then "piece" ~ "file fragment".
+	 */
+	private void calculateFileFragments() {
+		int pieceIndex = 0;
+		Piece piece = (Piece) pieces_.elementAt(pieceIndex);
+		int piecePos = 0;
 
-        for (int i=0; i<files_.size(); i++) {
-        	File file = (File) files_.elementAt(i);
+		for (int i = 0; i < files_.size(); i++) {
+			File file = (File) files_.elementAt(i);
+			// If the file is NOT BIGGER than the remaining part of the piece...
+			if (piecePos + file.getSize() <= piece.size()) {
+				piece.addFileFragment(file, 0, file.getSize());
+				piecePos += file.getSize();
+				
+				// If EQUALS than iterates to the next piece
+				if (piecePos == piece.size()) {
+					piece = (Piece) pieces_.elementAt(++pieceIndex);
+					piecePos = 0;
+				}
+			// ...if the file is BIGGER
+			} else {
+				int filePos = 0;
+				while (filePos < file.getSize()) {
+					// If the remaining part of the file is BIGGER than the remaining part of the piece...
+					if ((file.getSize() - filePos + piecePos) > piece.size()) {
+						piece.addFileFragment(file, filePos, piece.size() - piecePos);
+						filePos += piece.size() - piecePos;
 
-            if (piecePos + file.getSize() <= piece.length()) {
-                piece.addFileFragment(file, 0, file.getSize());
-                piecePos += file.getSize();
-
-                if (piecePos + file.getSize() == piece.length()) {
-                    piece = (Piece) pieces_.elementAt(++pieceIndex);
-                    piecePos = 0;
-                }
-            } else {
-                int filePos = 0;
-
-                while (filePos < file.getSize()) {
-                    if ((file.getSize() - filePos + piecePos) > piece.length()) {
-                        piece.addFileFragment(file, filePos, piece.length() - piecePos);
-                        filePos += piece.length() - piecePos;
-
-                        piece = (Piece) pieces_.elementAt(++pieceIndex);
-                        piecePos = 0;
-                    } else {
-                        piece.addFileFragment(file, filePos, file.getSize() - filePos);
-                        piecePos += file.getSize() - filePos;
-
-                        if (piecePos == piece.length()) {
-                            if (pieceIndex < (pieces_.size() - 1)) {
-                                piece = (Piece) pieces_.elementAt(++pieceIndex);
-                                piecePos = 0;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-    }
+						piece = (Piece) pieces_.elementAt(++pieceIndex);
+						piecePos = 0;
+					// ...if SMALLER or EQUALS
+					} else {
+						piece.addFileFragment(file, filePos, file.getSize() - filePos);
+						piecePos += file.getSize() - filePos;
+						
+						// If EQUALS than get the iterates to the next piece
+						if (piecePos == piece.size()) {
+							if (pieceIndex < (pieces_.size() - 1)) {
+								piece = (Piece) pieces_.elementAt(++pieceIndex);
+								piecePos = 0;
+							}
+						}
+						break;	// Iterates to the next file
+					}
+				}
+			}
+		}
+	}
 
 	/** Processes the response of the tracker */
 	public int processTrackerResponse(Bencoded responseBencoded) { 
@@ -561,6 +571,14 @@ public class Torrent {
 		}
 	}
 	
+	public void stop() {
+		for (int i = 0; i < peers_.size(); i++) {
+			peers_.get(i).disconnect();
+		}
+		status_ = R.string.status_stopped;
+		torrentManager_.updateTorrent(this);
+	}
+	
 	public void connectToPeers() {
 		status_ = R.string.status_downloading;
 		torrentManager_.updateTorrent(this);
@@ -623,6 +641,14 @@ public class Torrent {
 				return ERROR_FILE_HANDLING;
 		} else
 			return ERROR_WRONG_CONTENT;
+	}
+	
+	/** 
+	 * Writes a block into the file in the given position.
+	 * The offset and the length within the block is also given. 
+	 */
+	public synchronized int writeFile(File file, int filePosition, byte[] block, int offset, int length) {
+		return fileManager_.writeFile(file.getPath(), filePosition, block, offset, length);
 	}
 	
 	/** Adds a new peer to the list of the peers of the torrent. */
