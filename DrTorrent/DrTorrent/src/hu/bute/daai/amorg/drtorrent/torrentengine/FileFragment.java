@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-
+/** This class represents a fragment of a file. */
 public class FileFragment {
 
 	private File file_;
@@ -11,5 +11,17 @@ public class FileFragment {
 		file_ = file;
 		offset_ = offset;
 		length_ = length;
+	}
+	
+	public File getFile() {
+		return  file_;
+	}
+	
+	public int getOffset() {
+		return  offset_;
+	}
+	
+	public int getLength() {
+		return  length_;
 	}
 }

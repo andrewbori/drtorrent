@@ -804,7 +804,7 @@ public class PeerConnection {
 					baos.write(MESSAGE_ID_REQUEST);												// id = 6
 					baos.write(intToByteArray(piece.piece.index()));							// index: zero-based piece index 
 					baos.write(intToByteArray(piece.piece.downloaded()));				// begin: zero-based byte offset within the piece 
-					int blockLength = piece.piece.length() - piece.piece.downloaded();
+					int blockLength = piece.piece.size() - piece.piece.downloaded();
 					//if (blockLength > DEFALT_BLOCK_LENGTH)
 						blockLength = DEFALT_BLOCK_LENGTH; 	// 16 KB
 					baos.write(intToByteArray(blockLength));									// length: requested length
@@ -839,7 +839,7 @@ public class PeerConnection {
 		if (piece != null) {
 			//Log.v(LOG_TAG, "Processing piece request " + pieceIndex + " Begin: " + begin + " Length: " + length + " while piece totalsize: " + piece.getTotalSize());
 
-			if (begin + length > piece.length()) {
+			if (begin + length > piece.size()) {
 				close("Bad PIECE request (index is out of bounds)");
 				return;
 			}
@@ -978,8 +978,7 @@ public class PeerConnection {
             // stop receiving
             readEnabled_ = false;
 
-            state_ = STATE_CLOSING;
-            //changeState(EPeerClosing);
+            changeState(STATE_CLOSING);
             if(torrent_ != null) {
                 // torrent_.peerDisconnected(peer, peerWireConnected);
             }

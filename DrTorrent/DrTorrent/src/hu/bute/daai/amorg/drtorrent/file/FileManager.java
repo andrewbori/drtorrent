@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.file;
 
+import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -57,7 +59,7 @@ public class FileManager {
 
 		return true;
 	}
-
+	
 	/** Returns the content of the file in a byte array. */
 	public static byte[] readFile(String filePath) {
 		BufferedInputStream bis = null;
@@ -79,4 +81,31 @@ public class FileManager {
 			}
 		}
 	}
+	
+	/** Writes a block to the file in the given position. */
+	public int writeFile(String filePath, int filePosition, byte[] block) {
+		return writeFile(filePath, filePosition, block, 0, block.length);
+	}
+
+	/** 
+	 * Writes a block to the file in the given position.
+	 * The offset and length within the block is also given. 
+	 */
+	public synchronized int writeFile(String filePath, int filePosition, byte[] block, int offset, int length) {
+		RandomAccessFile file = null;
+		try {
+			file = new RandomAccessFile(filePath, "rw");
+			file.seek(filePosition);
+			file.write(block, offset, length);
+			return Torrent.ERROR_NONE;
+		} catch (IOException e) {
+			// Log.v(LOG_TAG, "[File] " + e.getMessage());
+			return Torrent.ERROR_GENERAL;
+		} finally {
+			try {
+				file.close();
+			} catch (Exception e) {}
+		}
+	}
+
 }

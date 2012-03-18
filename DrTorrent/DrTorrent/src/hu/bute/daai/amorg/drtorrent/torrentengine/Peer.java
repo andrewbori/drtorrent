@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+
 /** Peer */
 public class Peer {
 
@@ -21,6 +22,14 @@ public class Peer {
 		if (connection_ == null) connection_ = new PeerConnection(this, torrent, torrent.getTorrentManager());
 		connection_.connect();
 	}
+	
+	public void disconnect() {
+		if (connection_ != null) connection_.close("Peer has been disconnected...");
+	}
+	
+	public void terminate() {
+		if (connection_ != null) connection_.close(PeerConnection.EDeletePeer, "Invalid hash! Terminating connection.");
+    }
 	
 	public void onTimer() {
 		if (connection_ != null) {
