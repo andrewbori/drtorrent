@@ -51,10 +51,15 @@ public class Torrent {
 	private int creationDate_;
 	private boolean valid_ = false;
 
-	private int bytesDownloaded_;
-	private int bytesLeft_;
+	private int bytesTotal_           = 0;
+	private int bytesDownloaded_      = 0;
+	private int bytesLeft_            = 0;
+	private double downloadPercent_   = 0;
+	private int downloadedPieceCount_ = 0;
+	private boolean complete_ = false;
 	private Vector<File> files_;
 	private Vector<Piece> pieces_;
+	private Vector<Piece> downloadingPieces_;
 	private Bitfield bitfield_;
 
 	private Vector<Peer> peers_;
@@ -76,6 +81,7 @@ public class Torrent {
 
 		files_ = new Vector<File>();
 		pieces_ = new Vector<Piece>();
+		downloadingPieces_ = new Vector<Piece>();
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
 	}
@@ -293,6 +299,7 @@ public class Torrent {
 			if (result != ERROR_NONE)
 				return result;
 		}
+		bytesTotal_ = bytesLeft_;
 
 		// info/pieces
 
@@ -586,6 +593,7 @@ public class Torrent {
 		for (int i = 0; i < peers_.size(); i++) {
 			peers_.get(i).connect(this);
 		}
+//peers_.get(0).connect(this);
 	}
 	
 	public void onTimer() {
@@ -593,15 +601,20 @@ public class Torrent {
 			for(int i = 0; i < peers_.size(); i++) {
 				peers_.elementAt(i).onTimer();
             }
+			
+//peers_.get(0).onTimer();
 		}
 	}
 	
-	public Piece getPieceToDownload(Peer peer)
-    {        
-        Piece pieceToDownload = null;
-        pieceToDownload = pieces_.elementAt(0);
-        return pieceToDownload;
-    }    
+	private int nextPiece_ = 0;
+	public synchronized Piece getPieceToDownload(Peer peer) {
+		Piece pieceToDownload = null;
+		if (nextPiece_ < pieces_.size()) {
+			pieceToDownload = pieces_.elementAt(nextPiece_);
+			nextPiece_++;
+		}
+		return pieceToDownload;
+	}
 	
 	/**
 	 * Adds a new file to the files_ array and creates it in the file system
@@ -687,6 +700,91 @@ public class Torrent {
 		((Piece) pieces_.elementAt(index)).decNumberOfPeersHaveThis();
 	}
 	
+	/** Updates the downloaded bytes with the given amount of bytes. */
+	public void updateBytesDownloaded(int bytes) {
+		bytesDownloaded_ += bytes;
+		bytesLeft_ -= bytes;
+		downloadPercent_ = bytesDownloaded_ / (bytesTotal_ / 100.0);
+		
+		torrentManager_.updateTorrent(this);
+		// TODO: Record the downloaded bytes for download speed calculation!
+	}
+	
+	/** Called after a piece has been downloaded. */
+	public void pieceDownloaded(Piece piece, boolean calledBySavedTorrent) {
+		synchronized (downloadingPieces_) {
+			downloadingPieces_.removeElement(piece);
+		}
+
+		bitfield_.setBit(piece.index());
+		downloadedPieceCount_++;
+		// TODO: notify the service that a new piece has been downloaded
+
+		if (!calledBySavedTorrent) {
+			autosave(false);
+		}
+
+		if (downloadedPieceCount_ == pieces_.size()) {
+			complete_ = true;
+
+			downloadPercent_ = 100;
+			status_ = R.string.status_seeding;
+			torrentManager_.updateTorrent(this);
+			Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
+
+			/*TODO: Connect to tracker to tell the download is complete!
+			trackerConnection_ = null;
+			lastTrackerEvent_ = TrackerConnection.ETrackerEventCompleted;
+			trackerConnection_ = new TrackerConnection(getThisTorrent(), lastTrackerEvent);
+			trackerConnection_.connectToTracker();
+			*/
+
+			if (!calledBySavedTorrent) {
+				// Disconnect from peers if not incomming connection
+				synchronized (peers_) {
+					for (int i = 0; i < peers_.size(); i++) {
+						//if (!peers_.elementAt(i).isIncommingPeer())
+							peers_.elementAt(i).disconnect();
+					}
+				}
+			}
+
+			//avarageBytesPerSecond_ = 0;
+			//bytesPerSecond_ = 0;
+			//torrentManager.notifyTorrentObserverMain(this, MTTorrentObserver.EMTMainEventTorrentComplete);
+			autosave(true);
+			// Check and start end game if neccesary
+			//endGameCheck();
+		}
+/*
+		synchronized (peers_) {
+			for (int i = 0; i < peers_.size(); i++) {
+				peers_.elementAt(i).notifyThatClientHavePiece(piece.index());
+			}
+		}
+		*/
+	}
+	
+	private void autosave(boolean forced) {
+		/* TODO
+		final long curTime = (new Date()).getTime();
+		final long deltaTime = curTime - lastAutosaveTime_;
+		downloadedSinceLastSave_ = downloadedPieceCount_ * pieceLength_;
+
+		if (forced || deltaTime >= autosavePeriod_ || downloadedSinceLastSave_ >= autosaveSize_) {
+			lastAutosaveTime_ = curTime;
+			downloadedSinceLastSave_ = 0L;
+		}*/
+	}
+
+	/** Called when the downloaded piece is wrong. */
+	public void pieceHashFailed(Piece piece) {
+		synchronized (downloadingPieces_) {
+			downloadingPieces_.removeElement(piece);
+		}
+		updateBytesDownloaded(-piece.size());
+	} 
+	
 	public int indexOfPiece(Piece piece) {
         return pieces_.indexOf(piece);
     }
@@ -701,12 +799,20 @@ public class Torrent {
 	
 	/** Returns the size of the torrent. */
 	public int getSize() {
-		return bytesDownloaded_ + bytesLeft_;
+		return bytesTotal_;
 	}
 
 	public int getBytesLeft() {
         return bytesLeft_;
     }
+	
+	public int getBytesDownloaded() {
+		return bytesDownloaded_;
+	}
+	
+	public double getDownloadPercent() {
+		return downloadPercent_;
+	}
 	
 	public String getInfoHash() {
 		return this.infoHash_;

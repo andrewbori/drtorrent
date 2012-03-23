@@ -3,6 +3,7 @@ package hu.bute.daai.amorg.drtorrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
 import java.io.Serializable;
+import java.text.DecimalFormat;
 
 /** Item of the torrent list adapter */
 public class TorrentListItem implements Serializable, Comparable<TorrentListItem> {
@@ -23,22 +24,11 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	}
 
 	public TorrentListItem(TorrentListItem item) {
-		this.infoHash_ = item.infoHash_;
-		this.name_ = item.name_;
-		this.percent_ = item.percent_;
-		this.status_ = item.status_;
-		this.downloadSpeed_ = item.downloadSpeed_;
-		this.uploadSpeed_ = item.uploadSpeed_;
-		this.downloaded_ = item.downloaded_;
-		this.uploaded_ = item.uploaded_;
-		this.peers_ = item.peers_;
+		set(item);
 	}
 	
 	public TorrentListItem(Torrent torrent) {
-		this.infoHash_ = torrent.getInfoHash();
-		this.name_ = torrent.getName();
-		this.status_ = torrent.getStatus();
-		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
+		set(torrent);
 	}
 
 	public void set(TorrentListItem item) {
@@ -56,8 +46,27 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public void set(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
+		this.percent_ = (int) torrent.getDownloadPercent();
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
+		
+		double bytes = torrent.getBytesDownloaded();
+		if (bytes > 1024.0) {
+			bytes = bytes / 1024.0;
+			String metric = "kB";
+		
+			if (bytes > 1024.0) {
+					bytes = bytes / 1024.0;
+					metric = "MB";
+					
+				if (bytes > 1024.0) {
+					bytes = bytes / 1024.0;
+					metric = "GB";
+				}
+			}
+			DecimalFormat dec = new DecimalFormat("###.#");
+			this.downloaded_ = dec.format(bytes) + " " + metric;
+		} else this.downloaded_ = (int) bytes + " byte";
 	}
 
 	public String getInfoHash() {
