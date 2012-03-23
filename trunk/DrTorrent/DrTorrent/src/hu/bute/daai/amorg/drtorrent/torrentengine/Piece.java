@@ -104,20 +104,13 @@ public class Piece {
 					int res = Torrent.ERROR_NONE;
 					int fileBlockLength = file.getSize() - filePosition; // Remaining length from the position
 
-					//Log.v(LOG_TAG, "Appending block to " + file.getPath());
+					Log.v(LOG_TAG, "Appending block to " + file.getPath());
 
-					 // If we reached the end of a file..
+					 // If the end of a file was reached...
 					if (fileBlockLength <= (block.length - blockPosition)) {
 						//Log.v(LOG_TAG, "File complete: " + file.getPath());
 
-						//Removed redundant memory copying.
-                        /*byte[] temp = new byte[fileBlockLength];
-                        System.arraycopy(aBlock,blockPosition,temp,0,fileBlockLength);*/
-
 						res = torrent_.writeFile(file, filePosition, block, blockPosition, fileBlockLength);
-
-						// temp = null;
-
 						if (res != Torrent.ERROR_NONE) return res;
 
 						blockPosition += fileBlockLength;
@@ -126,28 +119,20 @@ public class Piece {
 					// ...if the file isn't finished yet
 					} else {
 						int rightSize = block.length - blockPosition;
-						// Removed redundant memory copy
-						// byte[] temp = new byte[rightSize];
-						// System.arraycopy(aBlock,aBlock.length-rightSize,temp,0,rightSize);
-
-						res = torrent_.writeFile(file, filePosition, block, block.length - rightSize, rightSize);
 
 						//Log.v(LOG_TAG, "---PIECE BLOCK SAVE FROM---: " + peer.getAddress() + ":" + peer.getPort());
-
-						// temp = null;
-
+						res = torrent_.writeFile(file, filePosition, block, block.length - rightSize, rightSize);
 						if (res != Torrent.ERROR_NONE) return res;
 
 						downloadedSize_ += rightSize;
 						break;
 					}
-				} else
+				} else {
 					return Torrent.ERROR_GENERAL;
+				}
 			}
-/** TODO Uncomment and implement missing parts!!!!!!!!!!!!!!!!!!!!!
- * 
-			torrent_.updateBytesDownloaded(block.length, true);
-
+			
+			torrent_.updateBytesDownloaded(block.length);
 			incommingHash_.update(block);
 
 			if (remaining() == 0) {
@@ -170,7 +155,7 @@ public class Piece {
 				// we no longer need the hash
 				incommingHash_ = null;
 			} else if (remaining() < 0) return Torrent.ERROR_GENERAL;
-*/
+
 			return Torrent.ERROR_NONE;
 		}
 	}
@@ -178,6 +163,10 @@ public class Piece {
 	public boolean checkHash() {
 		// TODO
 		return true;
+	}
+	
+	public void setFilesDownloaded() {
+		// TODO
 	}
 	
 	public void incNumberOfPeersHaveThis() {
@@ -191,7 +180,6 @@ public class Piece {
 	public int getNumberOfPeersHaveThis() {
 		return numberOfPeersHaveThis_;
 	}
-	
 	
 	public byte[] getBlock(int position, int length) {
 		// TODO
@@ -210,13 +198,11 @@ public class Piece {
 	
 	/** The downloaded fragments in bytes. */
 	public int downloaded() {
-        // TODO
-		return 0; //downloadedSize_;
+		return downloadedSize_;
     }
 	
 	/** The remaining fragments in bytes. */
 	public int remaining() {
-		// TODO
-		return size_; // size_ - downloadedSize_
+		return size_ - downloadedSize_;
 	}
 }
