@@ -32,7 +32,7 @@ public class TorrentManager {
 		@Override
 		public void run() {
 			if (schedulerEnabled_) {
-				Log.v(LOG_TAG, "Scheduling...");
+				// Log.v(LOG_TAG, "Scheduling...");
 				for (int i = 0; i < torrents_.size(); i++) {
 					torrents_.elementAt(i).onTimer();
 				}
@@ -49,7 +49,7 @@ public class TorrentManager {
 		schedulerEnabled_ = true;
 		torrentSchedulerTask_ = new TorrentSchedulerTask();
 		Timer timer = new Timer();
-		timer.schedule(torrentSchedulerTask_, 100, 5000);
+		timer.schedule(torrentSchedulerTask_, 100, 1000);
 	}
 
 	/** Opens a new Torrent file with the given file path. */

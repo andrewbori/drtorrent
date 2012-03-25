@@ -16,6 +16,7 @@ public class Piece {
 	private int downloadedSize_;
 	private Vector<FileFragment> fragments_;
 	private int numberOfPeersHaveThis_;
+	private boolean hasPendingIntent_ = false;
 	
 	private SHA1 incommingHash_ = null;
 	
@@ -177,6 +178,10 @@ public class Piece {
 		numberOfPeersHaveThis_--;
 	}
 	
+	public void setHasPendingIntent(boolean has) {
+		hasPendingIntent_ = has;
+	}
+	
 	public int getNumberOfPeersHaveThis() {
 		return numberOfPeersHaveThis_;
 	}
@@ -204,5 +209,13 @@ public class Piece {
 	/** The remaining fragments in bytes. */
 	public int remaining() {
 		return size_ - downloadedSize_;
+	}
+	
+	public boolean isComplete() {
+		return (size_ == downloadedSize_); 
+	}
+	
+	public boolean hasPendingIntent() {
+		return hasPendingIntent_;
 	}
 }

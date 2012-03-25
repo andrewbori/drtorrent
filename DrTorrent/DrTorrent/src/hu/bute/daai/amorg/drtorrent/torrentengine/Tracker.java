@@ -36,7 +36,7 @@ public class Tracker {
 	private int incomplete_;
 	private Vector<Peer> peers_;
 	private long lastRequest_;
-	private int event_ = 1;
+	private int event_ = EVENT_STARTED;
 	
 	private int failCount_;
 
@@ -89,8 +89,8 @@ public class Tracker {
 	        else
 	           uriBuf = uriBuf + Preferences.IncommingPort;*/                    
 
-        	.append("&uploaded=0")
-        	.append("&downloaded=0")
+        	.append("&uploaded=").append(torrent_.getBytesUploaded())
+        	.append("&downloaded=").append(torrent_.getBytesDownloaded())
         	.append("&left=").append(torrent_.getBytesLeft())            
         	.append("&compact=1");	// it seems that some trackers support only compact responses
 
@@ -123,6 +123,11 @@ public class Tracker {
 		(new TrackerConnectionThread()).start();
 	}
 	
+	public void changeEvent(int event) {
+		event_ = event;
+		connect();
+	}
+	
 	/** Async task to connect to the tracker. */ 
 	private class TrackerConnectionThread extends Thread {
 
@@ -142,7 +147,7 @@ public class Tracker {
 			status_ = STATUS_WORKING;
 			Log.v(LOG_TAG, "Bencoded response processing...");
 			set(bencoded);
-			torrent_.processTrackerResponse(bencoded);
+			if (event_ != EVENT_STOPPED) torrent_.processTrackerResponse(bencoded);
 		}
 	}
 	
