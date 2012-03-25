@@ -37,7 +37,8 @@ public class Peer {
 		}
 	}
 	
-	public void havePieces(byte[] bitfield, Torrent torrent) {
+	/** Sets the bitfield of the peer. */
+	public void peerHasPieces(byte[] bitfield, Torrent torrent) {
 		Bitfield tempBitfield = new Bitfield(bitfield);
 
 		for (int i = 0; i < torrent.pieceCount(); i++) {
@@ -48,9 +49,19 @@ public class Peer {
 		bitfield_.set(bitfield);
 	}
 	
-	public void havePiece(int index, Torrent torrent) {
+	/** Sets the bitfield of the peer. */
+	public void peerHasPiece(int index, Torrent torrent) {
 		bitfield_.setBit(index);
 		torrent.incNumberOfPeersHavingPiece(index);
+	}
+	
+	public boolean hasPiece(int index) {
+		return bitfield_.isBitSet(index);
+	}
+	
+	/** Notify the peer that the client have the given piece. */
+	public void notifyThatClientHavePiece(int pieceIndex) {
+		connection_.sendHaveMessage(pieceIndex);
 	}
 	
 	public void resetErrorCounter() {

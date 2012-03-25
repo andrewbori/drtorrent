@@ -65,10 +65,10 @@ public class PeerConnection {
 	private OutputStream outputStream_;
 	private boolean isPeerWireConnected_;
 	
-	private int lastRequestTime_;
-	private int lastMessageReceivedTime_;
-	private int lastMessageSentTime_;
-	private int ellapsedTime_;
+	private int ellapsedTime_ = 0;
+	private int lastRequestTime_ = 0;
+	private int lastMessageReceivedTime_ = 0;
+	private int lastMessageSentTime_ = 0;
 	private int reconnectAfter_;
 	public static int tcpConnectionTimeoutNum_ = 0;
 	private boolean hasPendingDownloadRequest_;
@@ -118,8 +118,7 @@ public class PeerConnection {
 	}
 
 	public void onTimer() {
-		//ellapsedTime_++;
-		ellapsedTime_+=5;
+		ellapsedTime_++;
 		if (reconnectAfter_ > 0) reconnectAfter_--;
 
 		switch (state_) {
@@ -145,7 +144,7 @@ public class PeerConnection {
 				}
 
 				if (lastRequestTime_ > 0 && ((ellapsedTime_ - lastRequestTime_) > TIMEOUT_REQUEST)) {
-					lastRequestTime_ = ellapsedTime_;
+					lastRequestTime_ = 0;
 					/*if (torrent_.hasTimeoutlessPeer()) {
 					 peer_.setHadRequestTimeout(true);
 					 close(EIncreaseErrorCounter, "Request timeout"); break; }
@@ -411,7 +410,7 @@ public class PeerConnection {
 			byte[] bitfield = new byte[bitFieldLength];
 			boolean dataReaded = readData(bitfield);
 			if (dataReaded) {
-				peer_.havePieces(bitfield, torrent_);
+				peer_.peerHasPieces(bitfield, torrent_);
 				Log.v(LOG_TAG, "Bitfield has been read from " + peer_.getAddress());
 				issueDownload();
 			} else {
@@ -425,7 +424,7 @@ public class PeerConnection {
 		int pieceIndex = readInt();
 
 		if ((pieceIndex >= 0) && (pieceIndex < torrent_.pieceCount())) {
-			peer_.havePiece(pieceIndex, torrent_);
+			peer_.peerHasPiece(pieceIndex, torrent_);
 
 			if (!hasPendingDownloadRequest_) issueDownload();
 		}
@@ -771,7 +770,7 @@ public class PeerConnection {
 			ByteArrayOutputStream baos = null;
 			try {
 				if (outputStream_ != null) {
-					lastMessageSentTime_ = ellapsedTime_;
+					lastMessageSentTime_ = lastRequestTime_ = ellapsedTime_;
 
 					baos = new ByteArrayOutputStream();
 					baos.write(intToByteArray(13));										// len = 13

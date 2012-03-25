@@ -52,6 +52,7 @@ public class Torrent {
 	private boolean valid_ = false;
 
 	private int bytesTotal_           = 0;
+	private int bytesUploaded_        = 0;
 	private int bytesDownloaded_      = 0;
 	private int bytesLeft_            = 0;
 	private double downloadPercent_   = 0;
@@ -59,6 +60,7 @@ public class Torrent {
 	private boolean complete_ = false;
 	private Vector<File> files_;
 	private Vector<Piece> pieces_;
+	private Vector<Piece> downloadablePieces_;
 	private Vector<Piece> downloadingPieces_;
 	private Bitfield bitfield_;
 
@@ -81,6 +83,7 @@ public class Torrent {
 
 		files_ = new Vector<File>();
 		pieces_ = new Vector<Piece>();
+		downloadablePieces_ = new Vector<Piece>();
 		downloadingPieces_ = new Vector<Piece>();
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
@@ -329,6 +332,7 @@ public class Torrent {
 			}
 
 			pieces_.addElement(piece);
+			downloadablePieces_.addElement(piece);
 		}
 
 		bitfield_ = new Bitfield(pieces_.size(), false);
@@ -579,6 +583,8 @@ public class Torrent {
 	}
 	
 	public void stop() {
+		tracker_.changeEvent(Tracker.EVENT_STOPPED);
+		
 		for (int i = 0; i < peers_.size(); i++) {
 			peers_.get(i).disconnect();
 		}
@@ -606,13 +612,38 @@ public class Torrent {
 		}
 	}
 	
-	private int nextPiece_ = 0;
 	public synchronized Piece getPieceToDownload(Peer peer) {
 		Piece pieceToDownload = null;
-		if (nextPiece_ < pieces_.size()) {
-			pieceToDownload = pieces_.elementAt(nextPiece_);
-			nextPiece_++;
+		for (int i = 0; i < pieces_.size(); i++) {
+			if (peer.hasPiece(i)) {
+				pieceToDownload = pieces_.elementAt(i);
+				if (!pieceToDownload.isComplete() && !downloadingPieces_.contains(pieceToDownload)) {
+					downloadingPieces_.addElement(pieceToDownload);
+					i = pieces_.size();
+				}
+				else {
+					pieceToDownload = null;
+				}
+			}
 		}
+		
+		/*if (pieceToDownload == null) {
+			for (int i = 0; i < pieces_.size(); i++) {
+				if (peer.hasPiece(i)) {
+					pieceToDownload = pieces_.elementAt(i);
+					if (!pieceToDownload.isComplete() && downloadingPieces_.contains(pieceToDownload)) {
+						if (pieceToDownload.)
+						
+						downloadingPieces_.addElement(pieceToDownload);
+						break;
+					}
+					else {
+						pieceToDownload = null;
+					}
+				}
+			}
+		}*/
+		
 		return pieceToDownload;
 	}
 	
@@ -692,12 +723,12 @@ public class Torrent {
 	
 	/** Increments the number of peers having the given piece. */
 	public void incNumberOfPeersHavingPiece(int index) {
-		((Piece) pieces_.elementAt(index)).incNumberOfPeersHaveThis();
+		pieces_.elementAt(index).incNumberOfPeersHaveThis();
 	}
 
 	/** Decrements the number of peers having the given piece. */
 	public void decNumberOfPeersHavingPiece(int index) {
-		((Piece) pieces_.elementAt(index)).decNumberOfPeersHaveThis();
+		pieces_.elementAt(index).decNumberOfPeersHaveThis();
 	}
 	
 	/** Updates the downloaded bytes with the given amount of bytes. */
@@ -712,9 +743,7 @@ public class Torrent {
 	
 	/** Called after a piece has been downloaded. */
 	public void pieceDownloaded(Piece piece, boolean calledBySavedTorrent) {
-		synchronized (downloadingPieces_) {
-			downloadingPieces_.removeElement(piece);
-		}
+		downloadingPieces_.removeElement(piece);
 
 		bitfield_.setBit(piece.index());
 		downloadedPieceCount_++;
@@ -726,18 +755,12 @@ public class Torrent {
 
 		if (downloadedPieceCount_ == pieces_.size()) {
 			complete_ = true;
-
 			downloadPercent_ = 100;
 			status_ = R.string.status_seeding;
 			torrentManager_.updateTorrent(this);
 			Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
 
-			/*TODO: Connect to tracker to tell the download is complete!
-			trackerConnection_ = null;
-			lastTrackerEvent_ = TrackerConnection.ETrackerEventCompleted;
-			trackerConnection_ = new TrackerConnection(getThisTorrent(), lastTrackerEvent);
-			trackerConnection_.connectToTracker();
-			*/
+			tracker_.changeEvent(Tracker.EVENT_COMPLETED);
 
 			if (!calledBySavedTorrent) {
 				// Disconnect from peers if not incomming connection
@@ -756,13 +779,13 @@ public class Torrent {
 			// Check and start end game if neccesary
 			//endGameCheck();
 		}
-/*
+
 		synchronized (peers_) {
 			for (int i = 0; i < peers_.size(); i++) {
 				peers_.elementAt(i).notifyThatClientHavePiece(piece.index());
 			}
 		}
-		*/
+		
 	}
 	
 	private void autosave(boolean forced) {
@@ -808,6 +831,10 @@ public class Torrent {
 	
 	public int getBytesDownloaded() {
 		return bytesDownloaded_;
+	}
+	
+	public int getBytesUploaded() {
+		return bytesUploaded_;
 	}
 	
 	public double getDownloadPercent() {
