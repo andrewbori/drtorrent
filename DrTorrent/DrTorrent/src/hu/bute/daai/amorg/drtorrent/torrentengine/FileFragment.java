@@ -13,15 +13,15 @@ public class FileFragment {
 		length_ = length;
 	}
 	
-	public File getFile() {
+	public File file() {
 		return  file_;
 	}
 	
-	public int getOffset() {
+	public int offset() {
 		return  offset_;
 	}
 	
-	public int getLength() {
+	public int length() {
 		return  length_;
 	}
 }

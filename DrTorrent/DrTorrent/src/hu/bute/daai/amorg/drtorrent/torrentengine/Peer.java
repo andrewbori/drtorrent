@@ -1,7 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 
-/** Peer */
+/** Class representing the Peer. */
 public class Peer {
 
 	private String address_;
@@ -18,19 +18,23 @@ public class Peer {
 		bitfield_ = new Bitfield(piecesCount, false);
 	}
 	
+	/** Connects to the peer. */
 	public void connect(Torrent torrent) {
 		if (connection_ == null) connection_ = new PeerConnection(this, torrent, torrent.getTorrentManager());
 		connection_.connect();
 	}
 	
+	/** Disconnects the peer. */
 	public void disconnect() {
 		if (connection_ != null) connection_.close("Peer has been disconnected...");
 	}
 	
+	/** Terminates the connection. */
 	public void terminate() {
-		if (connection_ != null) connection_.close(PeerConnection.EDeletePeer, "Invalid hash! Terminating connection.");
+		if (connection_ != null) connection_.close(PeerConnection.ERROR_DELETE_PEER, "Terminating connection.");
     }
 	
+	/** Schedules the connection. */
 	public void onTimer() {
 		if (connection_ != null) {
 			connection_.onTimer();
@@ -47,14 +51,19 @@ public class Peer {
 			}
 		}
 		bitfield_.set(bitfield);
+		
+		torrent.calculateRarestPieces();
 	}
 	
-	/** Sets the bitfield of the peer. */
+	/** Sets the given bit of the bitfield of the peer. */
 	public void peerHasPiece(int index, Torrent torrent) {
 		bitfield_.setBit(index);
 		torrent.incNumberOfPeersHavingPiece(index);
+		
+		torrent.calculateRarestPieces();
 	}
 	
+	/** Returns whether the peer has the given piece or not. */
 	public boolean hasPiece(int index) {
 		return bitfield_.isBitSet(index);
 	}
@@ -64,22 +73,27 @@ public class Peer {
 		connection_.sendHaveMessage(pieceIndex);
 	}
 	
+	/** Resets the error counter. */
 	public void resetErrorCounter() {
 		// TODO
 	}
 	
+	/** Returns the address of the peer. */
 	public String getAddress() {
 		return address_;
 	}
 	
+	/** Returns the port of the peer. */
 	public int getPort() {
 		return port_;
 	}
 	
+	/** Returns the ID of the peer. */
 	public String getPeerId() {
 		return peerId_;
 	}
 	
+	/** Returns the bitfield. */
 	public Bitfield getBitfield() {
 		return bitfield_;
 	}

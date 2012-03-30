@@ -49,7 +49,7 @@ public class TorrentManager {
 		schedulerEnabled_ = true;
 		torrentSchedulerTask_ = new TorrentSchedulerTask();
 		Timer timer = new Timer();
-		timer.schedule(torrentSchedulerTask_, 100, 1000);
+		timer.schedule(torrentSchedulerTask_, 0, 1000);
 	}
 
 	/** Opens a new Torrent file with the given file path. */
