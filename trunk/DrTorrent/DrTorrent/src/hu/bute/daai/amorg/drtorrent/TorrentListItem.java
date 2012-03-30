@@ -50,23 +50,8 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
-		double bytes = torrent.getBytesDownloaded();
-		if (bytes > 1024.0) {
-			bytes = bytes / 1024.0;
-			String metric = "kB";
-		
-			if (bytes > 1024.0) {
-					bytes = bytes / 1024.0;
-					metric = "MB";
-					
-				if (bytes > 1024.0) {
-					bytes = bytes / 1024.0;
-					metric = "GB";
-				}
-			}
-			DecimalFormat dec = new DecimalFormat("###.#");
-			this.downloaded_ = dec.format(bytes) + " " + metric;
-		} else this.downloaded_ = (int) bytes + " byte";
+		this.downloaded_ = bytesToString(torrent.getBytesDownloaded());
+		this.downloadSpeed_ = bytesToString(torrent.getDownloadSpeed()) + "/s";
 	}
 
 	public String getInfoHash() {
@@ -146,5 +131,28 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 			return this.infoHash_.toLowerCase().compareTo(another.getInfoHash().toLowerCase());
 		else
 			throw new IllegalArgumentException();
+	}
+	
+	private String bytesToString(int bytesInt) {
+		double bytes = bytesInt;
+		String bytesStr = "";
+		if (bytes > 1024.0) {
+			bytes = bytes / 1024.0;
+			String metric = "kB";
+		
+			if (bytes > 1024.0) {
+					bytes = bytes / 1024.0;
+					metric = "MB";
+					
+				if (bytes > 1024.0) {
+					bytes = bytes / 1024.0;
+					metric = "GB";
+				}
+			}
+			DecimalFormat dec = new DecimalFormat("###.#");
+			bytesStr = dec.format(bytes) + " " + metric;
+		} else bytesStr = (int) bytes + " byte";
+		
+		return bytesStr;
 	}
 }

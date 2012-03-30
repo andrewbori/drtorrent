@@ -54,6 +54,8 @@ public class Torrent {
 	private int bytesTotal_           = 0;
 	private int bytesUploaded_        = 0;
 	private int bytesDownloaded_      = 0;
+	private int downloadSpeed_;
+	private int uploadSpeed_;
 	private int bytesLeft_            = 0;
 	private double downloadPercent_   = 0;
 	private int downloadedPieceCount_ = 0;
@@ -61,10 +63,12 @@ public class Torrent {
 	private Vector<File> files_;
 	private Vector<Piece> pieces_;
 	private Vector<Piece> downloadablePieces_;
+	private Vector<Piece> rarestPieces_;
 	private Vector<Piece> downloadingPieces_;
 	private Bitfield bitfield_;
 
 	private Vector<Peer> peers_;
+	private Vector<Peer> connectedPeers_;
 	private Tracker tracker_;
 	private Vector<Vector<Tracker>> trackerList_;
 	private Vector<String> announceList_;
@@ -84,9 +88,11 @@ public class Torrent {
 		files_ = new Vector<File>();
 		pieces_ = new Vector<Piece>();
 		downloadablePieces_ = new Vector<Piece>();
+		rarestPieces_ = new Vector<Piece>();
 		downloadingPieces_ = new Vector<Piece>();
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
+		connectedPeers_ = new Vector<Peer>();
 	}
 
 	/** Class containing the path and the size of a file to be created. */
@@ -94,9 +100,9 @@ public class Torrent {
 		String filePath;
 		int fileSize;
 
-		CreateFile(String aFilePath, int aFileSize) {
-			filePath = aFilePath;
-			fileSize = aFileSize;
+		CreateFile(String filePath, int fileSize) {
+			this.filePath = filePath;
+			this.fileSize = fileSize;
 		}
 	}
 
@@ -326,9 +332,9 @@ public class Torrent {
 
 			if (i != pieceCount - 1) {
 				processedLength += pieceLength_;
-				piece = new Piece(this, hash, pieceLength_);
+				piece = new Piece(this, hash, i, pieceLength_);
 			} else {
-				piece = new Piece(this, hash, getSize() - processedLength);
+				piece = new Piece(this, hash, i, getSize() - processedLength);
 			}
 
 			pieces_.addElement(piece);
@@ -370,7 +376,7 @@ public class Torrent {
 	 */
 	private void calculateFileFragments() {
 		int pieceIndex = 0;
-		Piece piece = (Piece) pieces_.elementAt(pieceIndex);
+		Piece piece = pieces_.elementAt(pieceIndex);
 		int piecePos = 0;
 
 		for (int i = 0; i < files_.size(); i++) {
@@ -380,10 +386,12 @@ public class Torrent {
 				piece.addFileFragment(file, 0, file.getSize());
 				piecePos += file.getSize();
 				
-				// If EQUALS than iterates to the next piece
+				// If EQUALS then iterates to the next piece
 				if (piecePos == piece.size()) {
-					piece = (Piece) pieces_.elementAt(++pieceIndex);
-					piecePos = 0;
+					if (pieces_.size() > pieceIndex + 1) {
+						piece = pieces_.elementAt(++pieceIndex);
+						piecePos = 0;
+					}
 				}
 			// ...if the file is BIGGER
 			} else {
@@ -394,8 +402,10 @@ public class Torrent {
 						piece.addFileFragment(file, filePos, piece.size() - piecePos);
 						filePos += piece.size() - piecePos;
 
-						piece = (Piece) pieces_.elementAt(++pieceIndex);
-						piecePos = 0;
+						if (pieces_.size() > pieceIndex + 1) {
+							piece = pieces_.elementAt(++pieceIndex);
+							piecePos = 0;
+						}
 					// ...if SMALLER or EQUALS
 					} else {
 						piece.addFileFragment(file, filePos, file.getSize() - filePos);
@@ -403,8 +413,8 @@ public class Torrent {
 						
 						// If EQUALS than get the iterates to the next piece
 						if (piecePos == piece.size()) {
-							if (pieceIndex < (pieces_.size() - 1)) {
-								piece = (Piece) pieces_.elementAt(++pieceIndex);
+							if (pieces_.size() > pieceIndex + 1) {
+								piece = pieces_.elementAt(++pieceIndex);
 								piecePos = 0;
 							}
 						}
@@ -582,47 +592,92 @@ public class Torrent {
 		}
 	}
 	
+	/** Stops the torrent. */
 	public void stop() {
 		tracker_.changeEvent(Tracker.EVENT_STOPPED);
 		
-		for (int i = 0; i < peers_.size(); i++) {
-			peers_.get(i).disconnect();
+		for (int i = 0; i < connectedPeers_.size(); i++) {
+			connectedPeers_.get(i).disconnect();
 		}
 		status_ = R.string.status_stopped;
 		torrentManager_.updateTorrent(this);
 	}
 	
+	/** Connects to peers. */
 	public void connectToPeers() {
 		status_ = R.string.status_downloading;
 		torrentManager_.updateTorrent(this);
 		
-		for (int i = 0; i < peers_.size(); i++) {
-			peers_.get(i).connect(this);
+		for (int i = 0; i < peers_.size() && i < MAX_STORED_PEERS; i++) {
+			Peer peer = peers_.get(i);
+			connectedPeers_.addElement(peer);
+			peer.connect(this);
 		}
-//peers_.get(0).connect(this);
 	}
 	
+	/** Removes a disconnected peer from the array of connected peers. */
+	public void peerDisconnected(Peer peer) {
+		connectedPeers_.removeElement(peer);
+	}
+	
+	private int latestBytesDownloaded_ = 0;
+	/** Scheduler method. Schedules the peers and the trackers. */
 	public void onTimer() {
 		if (valid_) {
-			for(int i = 0; i < peers_.size(); i++) {
-				peers_.elementAt(i).onTimer();
+			for(int i = 0; i < connectedPeers_.size(); i++) {
+				connectedPeers_.elementAt(i).onTimer();
             }
-			
-//peers_.get(0).onTimer();
 		}
+		
+		if (downloadSpeed_ != bytesDownloaded_ - latestBytesDownloaded_) {
+			downloadSpeed_ = bytesDownloaded_ - latestBytesDownloaded_;
+			torrentManager_.updateTorrent(this);
+		}
+		latestBytesDownloaded_ = bytesDownloaded_;
 	}
 	
-	public synchronized Piece getPieceToDownload(Peer peer) {
-		Piece pieceToDownload = null;
+	/** Returns a downloadable block for the given peer. */
+	public synchronized Block getBlockToDownload(Peer peer) {
+		Block block = null;
+		Piece piece = null;
+		
+		/* *** EASY algoritmus, block-ok letöltése sorban
 		for (int i = 0; i < pieces_.size(); i++) {
 			if (peer.hasPiece(i)) {
-				pieceToDownload = pieces_.elementAt(i);
-				if (!pieceToDownload.isComplete() && !downloadingPieces_.contains(pieceToDownload)) {
-					downloadingPieces_.addElement(pieceToDownload);
-					i = pieces_.size();
+				Piece piece = pieces_.elementAt(i);
+				if (piece.hasUnrequestedBlock()) {
+					blockToDownload = piece.getUnrequestedBlock();
+					if (blockToDownload != null) return blockToDownload;
 				}
-				else {
-					pieceToDownload = null;
+			}
+		}
+		 * ***/
+		
+		// Get a block from the downloading pieces
+		for (int i = 0; i < downloadingPieces_.size(); i++) {
+			piece = downloadingPieces_.elementAt(i);
+			if (peer.hasPiece(piece.index())) {
+				if (piece.hasUnrequestedBlock()) {
+					block = piece.getUnrequestedBlock();
+					if (block != null) return block;
+				}
+			}
+		}
+		
+		block = null;
+		piece = null;
+		
+		// Get a block from the rarest pieces
+		for (int i = 0; i < rarestPieces_.size(); i++) {
+			piece = rarestPieces_.elementAt(i);
+			if (peer.hasPiece(piece.index())) {
+				if (piece.hasUnrequestedBlock()) {
+					block = piece.getUnrequestedBlock();
+					if (block != null) {
+						rarestPieces_.removeElement(piece);
+						downloadingPieces_.add(piece);
+						return block;
+					}
 				}
 			}
 		}
@@ -644,7 +699,14 @@ public class Torrent {
 			}
 		}*/
 		
-		return pieceToDownload;
+		return block;
+	}
+	
+	/** Cancels the downloading of a block. */
+	public void cancelBlock(Block block) {
+		block.setNotRequested();
+		Piece piece = getPiece(block.pieceIndex());
+		piece.addBlockToRequest(block);
 	}
 	
 	/**
@@ -696,16 +758,12 @@ public class Torrent {
 	}
 	
 	/** Adds a new peer to the list of the peers of the torrent. */
-	public int addPeer(Peer peer)
-    {
-        if (peers_.size() >= MAX_STORED_PEERS)
-            return ERROR_OVERFLOW;
-        if (hasPeer(peer.getAddress(), peer.getPort()))
-            return ERROR_ALREADY_EXISTS;
+	public int addPeer(Peer peer) {
+        //if (peers_.size() >= MAX_STORED_PEERS) return ERROR_OVERFLOW;
+        if (hasPeer(peer.getAddress(), peer.getPort())) return ERROR_ALREADY_EXISTS;
 
         peers_.addElement(peer);
-        
-        Log.v(LOG_TAG, "Number of peers: " + peers_.size());
+        //Log.v(LOG_TAG, "Number of peers: " + peers_.size());
 
         return ERROR_NONE;
     }
@@ -729,6 +787,23 @@ public class Torrent {
 	/** Decrements the number of peers having the given piece. */
 	public void decNumberOfPeersHavingPiece(int index) {
 		pieces_.elementAt(index).decNumberOfPeersHaveThis();
+	}
+	
+	/** Calculates the rarest pieces. */
+	public void calculateRarestPieces() {
+		Piece piece = null;
+		int n = Integer.MAX_VALUE;
+		for (int i = 0; i < downloadablePieces_.size(); i++) {
+			piece = downloadablePieces_.elementAt(i);
+			int k = piece.getNumberOfPeersHaveThis();
+			if (k < n) n = k;
+		}
+		
+		for (int i = 0; i < downloadablePieces_.size(); i++) {
+			piece = downloadablePieces_.elementAt(i);
+			int k = piece.getNumberOfPeersHaveThis();
+			if (k == n) rarestPieces_.add(piece);
+		}
 	}
 	
 	/** Updates the downloaded bytes with the given amount of bytes. */
@@ -764,10 +839,10 @@ public class Torrent {
 
 			if (!calledBySavedTorrent) {
 				// Disconnect from peers if not incomming connection
-				synchronized (peers_) {
-					for (int i = 0; i < peers_.size(); i++) {
-						//if (!peers_.elementAt(i).isIncommingPeer())
-							peers_.elementAt(i).disconnect();
+				synchronized (connectedPeers_) {
+					for (int i = 0; i < connectedPeers_.size(); i++) {
+						//if (!connectedPeers_.elementAt(i).isIncommingPeer())
+							connectedPeers_.elementAt(i).disconnect();
 					}
 				}
 			}
@@ -780,9 +855,9 @@ public class Torrent {
 			//endGameCheck();
 		}
 
-		synchronized (peers_) {
-			for (int i = 0; i < peers_.size(); i++) {
-				peers_.elementAt(i).notifyThatClientHavePiece(piece.index());
+		synchronized (connectedPeers_) {
+			for (int i = 0; i < connectedPeers_.size(); i++) {
+				connectedPeers_.elementAt(i).notifyThatClientHavePiece(piece.index());
 			}
 		}
 		
@@ -808,14 +883,17 @@ public class Torrent {
 		updateBytesDownloaded(-piece.size());
 	} 
 	
+	/** Returns the index of the given piece. */
 	public int indexOfPiece(Piece piece) {
         return pieces_.indexOf(piece);
     }
 	
+	/** Returns the number of pieces. */
 	public int pieceCount() {
         return pieces_.size();
     }
 	
+	/** Returns the piece with the given index. */
 	public Piece getPiece(int index) {
 		return pieces_.elementAt(index);
 	}
@@ -825,50 +903,72 @@ public class Torrent {
 		return bytesTotal_;
 	}
 
+	/** Returns the number of bytes have to be downloaded. */
 	public int getBytesLeft() {
         return bytesLeft_;
     }
 	
+	/** Returns the number of downloaded bytes. */
 	public int getBytesDownloaded() {
 		return bytesDownloaded_;
 	}
 	
+	/** Returns the number of uploaded bytes. */
 	public int getBytesUploaded() {
 		return bytesUploaded_;
 	}
 	
+	/** Returns the download speed. */
+	public int getDownloadSpeed() {
+		return downloadSpeed_;
+	}
+	
+	/** Returns the upload speed. */
+	public int getUploadSpeed() {
+		return uploadSpeed_;
+	}
+	
+	/** Returns the percent of the downloaded data. */
 	public double getDownloadPercent() {
 		return downloadPercent_;
 	}
 	
+	/** Returns the info hash as a string. */
 	public String getInfoHash() {
 		return this.infoHash_;
 	}
 	
+	/** Returns the info hash. */
 	public byte[] getInfoHashByteArray() {
         return infoHashByteArray_;
     }
 
+	/** Returns the bitfield of the torrent. */
 	public Bitfield getBitfield() {
 		return bitfield_;
 	}
 	
+	/** Returns the manager of the torrent. */
 	public TorrentManager getTorrentManager() {
 		return this.torrentManager_;
 	}
 	
+	/** Returns the name of the torrent. */
 	public String getName() {
-		return this.name_;
+		return name_;
 	}
 	
+	/** Returns the status of the torrent. */
 	public int getStatus() {
-		return this.status_;
+		return status_;
 	}
 	
+	/** Returns the number of seeds. */
 	public int getSeeds() {
 		return tracker_.getComplete();
 	}
 	
+	/** Returns the number of leechers. */
 	public int getLeechers() {
 		return tracker_.getIncomplete();
 	}
