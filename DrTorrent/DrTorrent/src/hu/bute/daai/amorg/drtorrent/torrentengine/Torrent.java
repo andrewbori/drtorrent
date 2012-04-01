@@ -653,33 +653,80 @@ public class Torrent {
 		}
 		 * ***/
 		
-		// Get a block from the downloading pieces
-		for (int i = 0; i < downloadingPieces_.size(); i++) {
-			piece = downloadingPieces_.elementAt(i);
-			if (peer.hasPiece(piece.index())) {
-				if (piece.hasUnrequestedBlock()) {
-					block = piece.getUnrequestedBlock();
-					if (block != null) return block;
-				}
-			}
-		}
-		
-		block = null;
-		piece = null;
-		
-		// Get a block from the rarest pieces
-		for (int i = 0; i < rarestPieces_.size(); i++) {
-			piece = rarestPieces_.elementAt(i);
-			if (peer.hasPiece(piece.index())) {
-				if (piece.hasUnrequestedBlock()) {
-					block = piece.getUnrequestedBlock();
-					if (block != null) {
-						rarestPieces_.removeElement(piece);
-						downloadingPieces_.add(piece);
-						return block;
+		if (downloadablePieces_.size() > 0) {
+			// NORMAL MODE
+			
+			// Get a block from the downloading pieces
+			for (int i = 0; i < downloadingPieces_.size(); i++) {
+				piece = downloadingPieces_.elementAt(i);
+				if (peer.hasPiece(piece.index())) {
+					if (piece.hasUnrequestedBlock()) {
+						block = piece.getUnrequestedBlock();
+						if (block != null) return block;
 					}
 				}
 			}
+			
+			block = null;
+			piece = null;
+			
+			if (rarestPieces_.size() == 0 && downloadablePieces_.size() != 0) calculateRarestPieces();
+			// Get a block from the rarest pieces
+			for (int i = 0; i < rarestPieces_.size(); i++) {
+				piece = rarestPieces_.elementAt(i);
+				if (peer.hasPiece(piece.index())) {
+					if (piece.hasUnrequestedBlock()) {
+						block = piece.getUnrequestedBlock();
+						if (block != null) {
+							rarestPieces_.removeElement(piece);
+							downloadingPieces_.add(piece);
+							return block;
+						}
+					}
+				}
+			}
+			
+			block = null;
+			piece = null;
+			
+			// Get a block from the downloadable pieces
+			for (int i = 0; i < downloadablePieces_.size(); i++) {
+				piece = downloadablePieces_.elementAt(i);
+				if (peer.hasPiece(piece.index())) {
+					if (piece.hasUnrequestedBlock()) {
+						block = piece.getUnrequestedBlock();
+						if (block != null) {
+							downloadablePieces_.removeElement(piece);
+							downloadingPieces_.add(piece);
+							return block;
+						}
+					}
+				}
+			}
+		
+		} else {
+			// END GAME MODE
+			
+			// Get a block from the downloading pieces
+			for (int i = 0; i < downloadingPieces_.size(); i++) {
+				piece = downloadingPieces_.elementAt(i);
+				if (peer.hasPiece(piece.index())) {
+					if (piece.hasUnrequestedBlock()) {
+						block = piece.getUnrequestedBlock();
+						if (block != null) return block;
+					} else {
+						Vector<Block> blocksToDownload = piece.getRequestedBlocks();
+						for (int j = 0; j < blocksToDownload.size(); j++) {
+							block = blocksToDownload.elementAt(j);
+							if (!peer.hasBlock(block)) {
+								return block;
+							}
+						}
+					}
+				}
+			}
+			
+			
 		}
 		
 		/*if (pieceToDownload == null) {
@@ -699,7 +746,7 @@ public class Torrent {
 			}
 		}*/
 		
-		return block;
+		return null;
 	}
 	
 	/** Cancels the downloading of a block. */

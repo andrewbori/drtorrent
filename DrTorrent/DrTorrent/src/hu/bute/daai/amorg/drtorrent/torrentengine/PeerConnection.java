@@ -48,6 +48,9 @@ public class PeerConnection {
 	private Torrent torrent_;
 	private TorrentManager torrentManager_;
 	private Vector<Block> blocksToDownload_;
+	private Vector<Block> blocksDownloading_;
+	
+	private int downloaded_ = 0;
 	
 	private boolean isIncomingConnection_;
 	private boolean isReadEnabled_;
@@ -84,7 +87,8 @@ public class PeerConnection {
         isPeerChoking_ = true;
 
         blocksToDownload_ = new Vector<Block>();
-
+        blocksDownloading_ = new Vector<Block>();
+        
         state_ = STATE_NOT_CONNECTED;
         isReadEnabled_ = true;
     }
@@ -169,6 +173,60 @@ public class PeerConnection {
 
 			default:
 				break;
+		}
+	}
+	
+	/** Issue the download. */
+	public void issueDownload() {
+		
+		int numDownload = 0;
+		synchronized (blocksDownloading_) {
+			while (blocksToDownload_.size() + blocksDownloading_.size() < MAX_PIECE_REQUESTS) {
+				Block blockToDownload = torrent_.getBlockToDownload(peer_);
+				if (blockToDownload != null) {
+					blocksToDownload_.addElement(blockToDownload);
+					Log.v(LOG_TAG, "BLOCK TO DOWNLOAD: " + blockToDownload.pieceIndex() + " - " + blockToDownload.begin());
+					// /iLastRequestTime = iEllapsedTime;
+				} else
+					break;
+			}
+			numDownload = blocksToDownload_.size();
+			//Log.v(LOG_TAG, blocksToDownload_.size() + " issue download from " + peer_.getAddress());
+		}
+
+		if (numDownload == 0) {
+			//setInterested(false);
+/*
+			if (ellapsedTime_ > 15) {
+				if (!isPeerInterested()) {
+					//torrentMgr.notifyTorrentObserverMain(torrent_, MTTorrentObserver.EMTMainEventTorrentUploadEnded);
+
+					int closeOrder = ENotSpecified;
+					if (torrent_.isComplete())
+						closeOrder = EDeletePeer;
+
+					close("No needed piecese and peer not interested");
+				} else if (incomingRequests.size() == 0) // wait for possible incoming interested message
+				{
+					close("No pieces need and peer is not interested");
+				}
+			}*/
+		} else {
+			setInterested(true);
+
+			if (!isPeerChoking()) {
+				synchronized (blocksToDownload_) {
+					Block block = null;
+					for (int i = 0; i < blocksToDownload_.size(); i++) {
+						block = blocksToDownload_.elementAt(i);
+						blocksDownloading_.addElement(block);
+						blocksToDownload_.removeElement(block);
+						sendRequestMessage(block);
+						block.setRequested();
+						Log.v(LOG_TAG, "Request sent to " + peer_.getAddress());
+					}
+				}
+			}
 		}
 	}
 	
@@ -362,6 +420,7 @@ public class PeerConnection {
 		Log.v(LOG_TAG, "Handshake completed! Peer wire connected!");
 		changeState(STATE_PW_CONNECTED);
 
+		setInterested(true);
 		if (!torrent_.getBitfield().isNull()) sendBitfieldMessage();
 	}
 	
@@ -448,9 +507,9 @@ public class PeerConnection {
 
 		Block block = null;
 		Piece piece = null;
-		synchronized (blocksToDownload_) {
-			for (int i = 0; i < blocksToDownload_.size(); i++) {
-				block = blocksToDownload_.elementAt(i);
+		synchronized (blocksDownloading_) {
+			for (int i = 0; i < blocksDownloading_.size(); i++) {
+				block = blocksDownloading_.elementAt(i);
 				if (block.pieceIndex() == index && block.begin() == begin) {
 					piece = torrent_.getPiece(block.pieceIndex());
 					break;
@@ -480,13 +539,12 @@ public class PeerConnection {
 			
 			if (appendResult != Torrent.ERROR_NONE) {
 				close("Writing to piece failed"); // CRITICAL FAULT
-			} else {	
-				Log.v(LOG_TAG, "Check remaining: " + piece.remaining());
-				if (piece.remaining() == 0) {
-					
-				}
+				return;
 			}
+			
+			downloaded_ += pieceBlockSize;
 		}
+		
 		System.gc();
 		issueDownload();
 	}
@@ -885,58 +943,6 @@ public class PeerConnection {
         }
 	}
 	
-	/** Issue the download. */
-	public void issueDownload() {
-		
-		int numDownload = 0;
-		synchronized (blocksToDownload_) {
-			while (blocksToDownload_.size() < MAX_PIECE_REQUESTS) {
-				Block blockToDownload = torrent_.getBlockToDownload(peer_);
-				if (blockToDownload != null) {
-					blocksToDownload_.addElement(blockToDownload);
-					Log.v(LOG_TAG, "BLOCK TO DOWNLOAD: " + blockToDownload.pieceIndex() + " - " + blockToDownload.begin());
-					// /iLastRequestTime = iEllapsedTime;
-				} else
-					break;
-			}
-			numDownload = blocksToDownload_.size();
-			//Log.v(LOG_TAG, blocksToDownload_.size() + " issue download from " + peer_.getAddress());
-		}
-
-		if (numDownload == 0) {
-			//setInterested(false);
-/*
-			if (ellapsedTime_ > 15) {
-				if (!isPeerInterested()) {
-					//torrentMgr.notifyTorrentObserverMain(torrent_, MTTorrentObserver.EMTMainEventTorrentUploadEnded);
-
-					int closeOrder = ENotSpecified;
-					if (torrent_.isComplete())
-						closeOrder = EDeletePeer;
-
-					close("No needed piecese and peer not interested");
-				} else if (incomingRequests.size() == 0) // wait for possible incoming interested message
-				{
-					close("No pieces need and peer is not interested");
-				}
-			}*/
-		} else {
-			setInterested(true);
-
-			if (!isPeerChoking()) {
-				synchronized (blocksToDownload_) {
-					for (int i = 0; i < blocksToDownload_.size(); i++) {
-						if (!blocksToDownload_.elementAt(i).isRequested()) {
-							sendRequestMessage(blocksToDownload_.elementAt(i));
-							blocksToDownload_.elementAt(i).setRequested();
-							Log.v(LOG_TAG, "request sent to " + peer_.getAddress());
-						}
-					}
-				}
-			}
-		}
-	}
-	
 	/** Closes the socket connection. */
 	public void close(String reason) {
         close(ERROR_NOT_SPECIFIED, reason);
@@ -976,7 +982,7 @@ public class PeerConnection {
 
 			changeState(STATE_NOT_CONNECTED);
 			
-			// Cancel the downloading blocks
+			// Notify the torrent about the downloading blocks
 			if (blocksToDownload_ != null && !blocksToDownload_.isEmpty()) {
 				for (int i = 0; i < blocksToDownload_.size(); i++) {
 					torrent_.cancelBlock(blocksToDownload_.elementAt(i));
@@ -1090,6 +1096,10 @@ public class PeerConnection {
 	/** Returns whether the peer is interested in us or not. */
 	private boolean isPeerInterested() {
 		return isPeerInterested_;
+	}
+	
+	public boolean hasBlock(Block block) {
+		return blocksDownloading_.contains(block) || blocksToDownload_.contains(block);
 	}
     
 	/** Thread that connects to the peer. */
