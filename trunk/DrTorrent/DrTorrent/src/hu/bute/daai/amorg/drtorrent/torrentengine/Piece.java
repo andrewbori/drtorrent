@@ -246,6 +246,11 @@ public class Piece {
 		return null;
 	}
 	
+	/** Returns the requested blocks not downloaded yet. */
+	public Vector<Block> getRequestedBlocks() {
+		return blocksToDownload_;
+	}
+	
 	/** Adds a block to the the array of blocks to be requested. */
 	public void addBlockToRequest(Block block) {
 		blocksToRequest_.addElement(block);

@@ -68,6 +68,10 @@ public class Peer {
 		return bitfield_.isBitSet(index);
 	}
 	
+	public boolean hasBlock(Block block) {
+		return connection_.hasBlock(block);
+	}
+	
 	/** Notify the peer that the client have the given piece. */
 	public void notifyThatClientHavePiece(int pieceIndex) {
 		connection_.sendHaveMessage(pieceIndex);

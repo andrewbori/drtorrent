@@ -32,7 +32,7 @@ public class TorrentManager {
 		@Override
 		public void run() {
 			if (schedulerEnabled_) {
-				// Log.v(LOG_TAG, "Scheduling...");
+				Log.v(LOG_TAG, "Scheduling: " + System.currentTimeMillis());
 				for (int i = 0; i < torrents_.size(); i++) {
 					torrents_.elementAt(i).onTimer();
 				}
