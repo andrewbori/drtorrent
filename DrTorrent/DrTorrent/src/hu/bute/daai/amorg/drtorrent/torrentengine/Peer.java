@@ -68,8 +68,14 @@ public class Peer {
 		return bitfield_.isBitSet(index);
 	}
 	
+	/** Returns whether the peer has requested the block or not. */
 	public boolean hasBlock(Block block) {
 		return connection_.hasBlock(block);
+	}
+	
+	/** Cancels the request of the given block. */
+	public void cancelBlock(Block block) {
+		if (connection_ != null) connection_.cancelBlock(block);
 	}
 	
 	/** Notify the peer that the client have the given piece. */
@@ -80,6 +86,21 @@ public class Peer {
 	/** Resets the error counter. */
 	public void resetErrorCounter() {
 		// TODO
+	}
+	
+	/** Returns the number of requests have been sent to the peer. */
+	public int getRequestsCount() {
+		return ((connection_ != null) ? connection_.getRequestsCount() : 0);
+	}
+	
+	/** Returns the number of requests have not been sent to the peer yet. */
+	public int getRequestsToSendCount() {
+		return ((connection_ != null) ? connection_.getRequestsToSendCount() : 0);
+	}
+	
+	/** Returns the address and the port of the peer. Format: "address:port". */
+	public String getAddressPort() {
+		return address_ + ":" + port_;
 	}
 	
 	/** Returns the address of the peer. */

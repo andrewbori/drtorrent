@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="horizontal"
+    android:padding="5dp" >
+
+    <TextView
+        android:id="@+id/list_item_peer_tvAddress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="192.168.0.1:9876" 
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true" />
+    
+    <TextView
+        android:id="@+id/list_item_peer_tvRequests"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:text="12/4"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true" />
+    
+</RelativeLayout>

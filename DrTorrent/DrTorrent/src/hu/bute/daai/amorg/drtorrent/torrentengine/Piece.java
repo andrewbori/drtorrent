@@ -55,9 +55,9 @@ public class Piece {
 		for (int i = 0; i < blockCount; i++) {
 			Block block = null;
 			if (i + 1 < blockCount) {
-				block = new Block(index_, i * DEFALT_BLOCK_LENGTH, DEFALT_BLOCK_LENGTH);
+				block = new Block(this, i * DEFALT_BLOCK_LENGTH, DEFALT_BLOCK_LENGTH);
 			} else {
-				block = new Block(index_, i * DEFALT_BLOCK_LENGTH, size_ - (i * DEFALT_BLOCK_LENGTH));
+				block = new Block(this, i * DEFALT_BLOCK_LENGTH, size_ - (i * DEFALT_BLOCK_LENGTH));
 			}
 			blocksToDownload_.addElement(block);
 			blocksToRequest_.addElement(block);
@@ -258,7 +258,7 @@ public class Piece {
 	
 	/** The index of piece in the torrent. */
 	public int index() {
-        return torrent_.indexOfPiece(this);
+        return index_;
     } 
 	
 	/** The length of piece in bytes. */

@@ -138,16 +138,19 @@ public class Tracker {
 			HttpConnection conn = new HttpConnection(fullUrl);
 			byte[] response = conn.execute();
 			
-			Bencoded bencoded = Bencoded.parse(response);
-			if (bencoded == null) {
-				status_ = STATUS_FAILED;
-				Log.v(LOG_TAG, "Faild to bencode the response of the tracker.");
-				return;
+			if (response != null) {
+				Bencoded bencoded = Bencoded.parse(response);
+			
+				if (bencoded == null) {
+					status_ = STATUS_FAILED;
+					Log.v(LOG_TAG, "Faild to bencode the response of the tracker.");
+					return;
+				}
+				status_ = STATUS_WORKING;
+				Log.v(LOG_TAG, "Bencoded response processing...");
+				set(bencoded);
+				if (event_ != EVENT_STOPPED) torrent_.processTrackerResponse(bencoded);
 			}
-			status_ = STATUS_WORKING;
-			Log.v(LOG_TAG, "Bencoded response processing...");
-			set(bencoded);
-			if (event_ != EVENT_STOPPED) torrent_.processTrackerResponse(bencoded);
 		}
 	}
 	

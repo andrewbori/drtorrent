@@ -1,6 +1,8 @@
 package hu.bute.daai.amorg.drtorrent.service;
 
+import hu.bute.daai.amorg.drtorrent.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
 
@@ -36,13 +38,18 @@ public class TorrentService extends Service {
 	public final static int MSG_SHOW_DIALOG         = 11;
 	public final static int MSG_SHOW_PROGRESS       = 12;
 	public final static int MSG_HIDE_PROGRESS       = 13;
+	public final static int MSG_SEND_PEER_ITEM   	= 14;
+	public final static int MSG_SEND_PEER_LIST   	= 15;
 	
 	public final static String MSG_KEY_FILEPATH         	= "filepath";
 	public final static String MSG_KEY_TORRENT_INFOHASH	    = "infohash";
 	public final static String MSG_KEY_TORRENT_OLD_INFOHASH = "oldinfohash";
 	public final static String MSG_KEY_TORRENT_ITEM     	= "torrentitem";
 	public final static String MSG_KEY_TORRENT_LIST     	= "torrentlist";
+	public final static String MSG_KEY_PEER_ITEM     		= "peeritem";
+	public final static String MSG_KEY_PEER_LIST     		= "peerlist";
 	public final static String MSG_KEY_MESSAGE 				= "message";
+	public final static String MSG_KEY_IS_DISCONNECTED		= "isdisconnected";
 	
 	private final Messenger serviceMessenger_ = new Messenger(new IncomingMessageHandler());
 
@@ -126,6 +133,7 @@ public class TorrentService extends Service {
 				case MSG_SEND_TORRENT_ITEM:
 					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
 					sendTorrentItem(msg.replyTo, infoHash);
+					sendPeerList(msg.replyTo, infoHash);
 					break;
 					
 				default:
@@ -138,12 +146,12 @@ public class TorrentService extends Service {
 	private void subscribeClient(Messenger messenger, String infoHash) {
 		if (infoHash != null) {
 			Vector<Messenger> clients = clientsSingle_.get(infoHash);
-			clients.add(messenger);
-			Log.v(LOG_TAG, "Client subscried to the following torrent: " + infoHash);
+			if (!clients.contains(messenger)) clients.add(messenger);
+			Log.v(LOG_TAG, clients.size() + " Client subscried to the following torrent: " + infoHash);
 			sendTorrentItem(messenger, infoHash);
 		} else {
-			clientsAll_.add(messenger);
-			Log.v(LOG_TAG, "Client subscribed to the Torrent Service.");
+			if (!clientsAll_.contains(messenger)) clientsAll_.add(messenger);
+			Log.v(LOG_TAG, clientsAll_.size() + " Client subscribed to the Torrent Service.");
 			sendTorrentList(messenger);
 		}
 	}
@@ -153,10 +161,10 @@ public class TorrentService extends Service {
 		if (infoHash != null) {
 			Vector<Messenger> clients = clientsSingle_.get(infoHash);
 			clients.remove(messenger);
-			Log.v(LOG_TAG, "Client unsubscribed from the following torrent: " + infoHash);
+			Log.v(LOG_TAG, clients.size() + " Client unsubscribed from the following torrent: " + infoHash);
 		} else {
 			clientsAll_.remove(messenger);
-			Log.v(LOG_TAG, "Client unsubscribed from the Torrent Service.");
+			Log.v(LOG_TAG, clientsAll_.size() + " Client unsubscribed from the Torrent Service.");
 		}
 	}
 
@@ -217,6 +225,38 @@ public class TorrentService extends Service {
 		sendMessageToSingle(msg, infoHash);
 	}
 	
+	/** Peer changed. */
+	public void updatePeerItem(Torrent torrent, Peer peer, boolean isDisconnected) {
+		PeerListItem peerListItem = new PeerListItem(peer);
+		
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		bundle.putSerializable(MSG_KEY_PEER_ITEM, peerListItem);
+		bundle.putBoolean(MSG_KEY_IS_DISCONNECTED, isDisconnected);
+		msg.what = MSG_SEND_PEER_ITEM;
+		msg.setData(bundle);
+
+		sendMessageToSingle(msg, torrent.getInfoHash());
+	}
+	
+	/** Peer list changed. */
+	public void updatePeerList(Torrent torrent) {
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		
+		Vector<Peer> peers = torrent.getConnectedPeers();
+		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
+		for (int i = 0; i < peers.size(); i++) {
+			peerListItems.add(new PeerListItem(peers.elementAt(i)));
+		}
+		bundle.putSerializable(MSG_KEY_PEER_LIST, peerListItems);
+		
+		msg.what = MSG_SEND_PEER_LIST;
+		msg.setData(bundle);
+
+		sendMessageToSingle(msg, torrent.getInfoHash());
+	}
+	
 	/** Shows a toast with a message. */
 	public void showToast(String s) {
 		Message msg = Message.obtain();
@@ -270,8 +310,32 @@ public class TorrentService extends Service {
 				i = torrents_.size();
 			}
 		}
+		
 		bundle.putSerializable(MSG_KEY_TORRENT_ITEM, item);
 		msg.what = MSG_SEND_TORRENT_ITEM;
+		msg.setData(bundle);
+
+		try {
+			messenger.send(msg);
+		} catch (RemoteException e) {
+			Log.v(LOG_TAG, LOG_ERROR_SENDING);
+		}
+	}
+	
+	/** Sends an optional torrent's peer list to a client. */
+	private void sendPeerList(Messenger messenger, String infoHash) {
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		
+		Torrent torrent = torrentManager_.getTorrent(infoHash);
+		Vector<Peer> peers = torrent.getConnectedPeers();
+		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
+		for (int i = 0; i < peers.size(); i++) {
+			peerListItems.add(new PeerListItem(peers.elementAt(i)));
+		}
+		bundle.putSerializable(MSG_KEY_PEER_LIST, peerListItems);
+		
+		msg.what = MSG_SEND_PEER_LIST;
 		msg.setData(bundle);
 
 		try {

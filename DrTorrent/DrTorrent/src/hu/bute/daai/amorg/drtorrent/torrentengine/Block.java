@@ -2,17 +2,19 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 public class Block {
 
-	private int pieceIndex_;
+	private Piece piece_;
 	private int begin_;
 	private int length_;
 	
 	private boolean isRequested_;
+	private boolean isDownloaded_;
 	private long requestTime_;
 	
-	public Block(int pieceIndex, int blockBegin, int blockLength) {
-		pieceIndex_ = pieceIndex;
+	public Block(Piece piece, int blockBegin, int blockLength) {
+		piece_ = piece;
 		begin_ = blockBegin;
 		length_ = blockLength;
+		isDownloaded_ = false;
 		isRequested_ = false;
 		requestTime_ = -1;
 	}
@@ -31,6 +33,14 @@ public class Block {
 		return isRequested_;
 	}
 	
+	public void setDownloaded() {
+		isDownloaded_ = true;
+	}
+	
+	public boolean isDownloaded() {
+		return isDownloaded_;
+	}
+	
 	public void setRequestTime(long requestTime) {
 		requestTime_ = requestTime;
 	}
@@ -44,7 +54,7 @@ public class Block {
 	}
 	
 	public int pieceIndex() {
-		return pieceIndex_;
+		return piece_.index();
 	}
 	
 	public int begin() {

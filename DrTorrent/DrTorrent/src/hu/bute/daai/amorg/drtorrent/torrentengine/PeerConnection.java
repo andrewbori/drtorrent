@@ -31,7 +31,7 @@ public class PeerConnection {
 	private final static int TIMEOUT_PW_CONNECTION  = 2 * 60;
 	private final static int TIMEOUT_REQUEST        = 60;
     private final static int KEEP_ALIVE_INTERVAL    = 2 * 60;	// once in every two minutes
-    private final static int MAX_PIECE_REQUESTS     = 5;
+    private final static int MAX_PIECE_REQUESTS     = 1;
 	
 	public final static int STATE_NOT_CONNECTED  = 0;
     public final static int STATE_TCP_CONNECTING = 1;
@@ -176,9 +176,17 @@ public class PeerConnection {
 		}
 	}
 	
+	public void issueDownload2() {
+		new Thread() {
+			@Override
+			public void run() {
+				issueDownload();
+			}
+		}.start();
+	}
+	
 	/** Issue the download. */
 	public void issueDownload() {
-		
 		int numDownload = 0;
 		synchronized (blocksDownloading_) {
 			while (blocksToDownload_.size() + blocksDownloading_.size() < MAX_PIECE_REQUESTS) {
@@ -193,6 +201,8 @@ public class PeerConnection {
 			numDownload = blocksToDownload_.size();
 			//Log.v(LOG_TAG, blocksToDownload_.size() + " issue download from " + peer_.getAddress());
 		}
+		
+		torrentManager_.updatePeer(torrent_, peer_);
 
 		if (numDownload == 0) {
 			//setInterested(false);
@@ -212,6 +222,7 @@ public class PeerConnection {
 				}
 			}*/
 		} else {
+			
 			setInterested(true);
 
 			if (!isPeerChoking()) {
@@ -224,6 +235,8 @@ public class PeerConnection {
 						sendRequestMessage(block);
 						block.setRequested();
 						Log.v(LOG_TAG, "Request sent to " + peer_.getAddress());
+						
+						torrentManager_.updatePeer(torrent_, peer_);
 					}
 				}
 			}
@@ -510,6 +523,12 @@ public class PeerConnection {
 		synchronized (blocksDownloading_) {
 			for (int i = 0; i < blocksDownloading_.size(); i++) {
 				block = blocksDownloading_.elementAt(i);
+				if (block.isDownloaded()) {
+					blocksDownloading_.remove(block);
+					block = null;
+					return;
+				}
+				block.setDownloaded();
 				if (block.pieceIndex() == index && block.begin() == begin) {
 					piece = torrent_.getPiece(block.pieceIndex());
 					break;
@@ -535,10 +554,12 @@ public class PeerConnection {
 			int appendResult = piece.appendBlock(pieceBlock, block, peer_);
 			
 			blocksToDownload_.removeElement(block);
+			torrentManager_.updatePeer(torrent_, peer_);
+			torrent_.blockDownloaded(block);
 			pieceBlock = null;
 			
 			if (appendResult != Torrent.ERROR_NONE) {
-				close("Writing to piece failed"); // CRITICAL FAULT
+				// close("Writing to piece failed"); // CRITICAL FAULT
 				return;
 			}
 			
@@ -931,7 +952,7 @@ public class PeerConnection {
 			outputStream_.write(baos.toByteArray());
 			outputStream_.flush();
 
-			//Log.v(LOG_TAG, "out CANCEL[" + piece.piece.index() + "] (block length: " + piece.lastRequestTime + ")");
+			Log.v(LOG_TAG, "Cancel block index: " + block.pieceIndex() + " begin: " + block.begin() + " length: " + block.length());
 		} catch (IOException e) {
 			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing cancel message");
 		} catch (Exception e) {
@@ -941,6 +962,8 @@ public class PeerConnection {
 				if (baos != null) baos.close();
 			} catch (IOException e) {}
         }
+		blocksDownloading_.remove(block);
+		torrentManager_.updatePeer(torrent_, peer_);
 	}
 	
 	/** Closes the socket connection. */
@@ -1098,8 +1121,28 @@ public class PeerConnection {
 		return isPeerInterested_;
 	}
 	
+	/** Returns whether the peer requested the block or not. */
 	public boolean hasBlock(Block block) {
 		return blocksDownloading_.contains(block) || blocksToDownload_.contains(block);
+	}
+	
+	/** Cancels the request of the given block. */
+	public void cancelBlock(Block block) {
+		if (blocksToDownload_.contains(block)) {
+			blocksToDownload_.remove(block);
+		} else if (blocksDownloading_.contains(block)) {
+			sendCancelMessage(block);
+		}
+	}
+	
+	/** Returns the number of requests have been sent to the peer. */
+	public int getRequestsCount() {
+		return blocksDownloading_.size();
+	}
+	
+	/** Returns the number of requests have not been sent to the peer yet. */
+	public int getRequestsToSendCount() {
+		return blocksToDownload_.size();
 	}
     
 	/** Thread that connects to the peer. */
