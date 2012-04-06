@@ -65,6 +65,7 @@ public class Torrent {
 	private Vector<Piece> downloadablePieces_;
 	private Vector<Piece> rarestPieces_;
 	private Vector<Piece> downloadingPieces_;
+	private Vector<Block> requestedBlocks_;
 	private Bitfield bitfield_;
 
 	private Vector<Peer> peers_;
@@ -74,6 +75,8 @@ public class Torrent {
 	private Vector<String> announceList_;
 	private final int DefaultTrackerRequestInterval = 600;
 	private int trackerRequestInterval;
+	
+	private boolean isEndGame_ = false;
 	
 	/** Constructor with the manager and the torrent file as a parameter. */
 	public Torrent(TorrentManager torrentManager, String filePath, String downloadPath) {
@@ -90,6 +93,7 @@ public class Torrent {
 		downloadablePieces_ = new Vector<Piece>();
 		rarestPieces_ = new Vector<Piece>();
 		downloadingPieces_ = new Vector<Piece>();
+		requestedBlocks_ = new Vector<Block>();
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
 		connectedPeers_ = new Vector<Peer>();
@@ -618,12 +622,14 @@ public class Torrent {
 	/** Removes a disconnected peer from the array of connected peers. */
 	public void peerDisconnected(Peer peer) {
 		connectedPeers_.removeElement(peer);
+		torrentManager_.updatePeer(this, peer, true);
 	}
 	
 	private int latestBytesDownloaded_ = 0;
 	/** Scheduler method. Schedules the peers and the trackers. */
 	public void onTimer() {
 		if (valid_) {
+			Log.v(LOG_TAG, "peers: " + connectedPeers_.size() + " Blocks: " + requestedBlocks_.size() + " Downloadable: " + downloadablePieces_.size() + " Downloading: " + downloadingPieces_.size());
 			for(int i = 0; i < connectedPeers_.size(); i++) {
 				connectedPeers_.elementAt(i).onTimer();
             }
@@ -662,7 +668,10 @@ public class Torrent {
 				if (peer.hasPiece(piece.index())) {
 					if (piece.hasUnrequestedBlock()) {
 						block = piece.getUnrequestedBlock();
-						if (block != null) return block;
+						if (block != null) {
+							requestedBlocks_.addElement(block);
+							return block;
+						}
 					}
 				}
 			}
@@ -678,8 +687,10 @@ public class Torrent {
 					if (piece.hasUnrequestedBlock()) {
 						block = piece.getUnrequestedBlock();
 						if (block != null) {
+							downloadablePieces_.removeElement(piece);
 							rarestPieces_.removeElement(piece);
 							downloadingPieces_.add(piece);
+							requestedBlocks_.addElement(block);
 							return block;
 						}
 					}
@@ -698,6 +709,7 @@ public class Torrent {
 						if (block != null) {
 							downloadablePieces_.removeElement(piece);
 							downloadingPieces_.add(piece);
+							requestedBlocks_.addElement(block);
 							return block;
 						}
 					}
@@ -706,14 +718,17 @@ public class Torrent {
 		
 		} else {
 			// END GAME MODE
-			
+			isEndGame_ = true;
 			// Get a block from the downloading pieces
 			for (int i = 0; i < downloadingPieces_.size(); i++) {
 				piece = downloadingPieces_.elementAt(i);
 				if (peer.hasPiece(piece.index())) {
 					if (piece.hasUnrequestedBlock()) {
 						block = piece.getUnrequestedBlock();
-						if (block != null) return block;
+						if (block != null) {
+							requestedBlocks_.addElement(block);
+							return block;
+						}
 					} else {
 						Vector<Block> blocksToDownload = piece.getRequestedBlocks();
 						for (int j = 0; j < blocksToDownload.size(); j++) {
@@ -863,6 +878,25 @@ public class Torrent {
 		// TODO: Record the downloaded bytes for download speed calculation!
 	}
 	
+	/** Called after a block has been refused to download (disconnected, choked etc.). */
+	public void blockNotRequested(Block block) {
+		requestedBlocks_.removeElement(block);
+	}
+	
+	/** Called after a block has been downloaded. */
+	public void blockDownloaded(Block block) {
+		requestedBlocks_.removeElement(block);
+		if (isEndGame_) {
+			Peer peer = null;
+			for (int i = 0; i < connectedPeers_.size(); i++) {
+				peer = connectedPeers_.elementAt(i);
+				if (peer.hasBlock(block)) {
+					peer.cancelBlock(block);
+				}
+			}
+		}
+	}
+	
 	/** Called after a piece has been downloaded. */
 	public void pieceDownloaded(Piece piece, boolean calledBySavedTorrent) {
 		downloadingPieces_.removeElement(piece);
@@ -1010,6 +1044,11 @@ public class Torrent {
 		return status_;
 	}
 	
+	/** Returns whether the torrent is working or not. */ 
+	public boolean isWorking() {
+		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || status_ == R.string.status_connecting;
+	}
+	
 	/** Returns the number of seeds. */
 	public int getSeeds() {
 		return tracker_.getComplete();
@@ -1018,5 +1057,10 @@ public class Torrent {
 	/** Returns the number of leechers. */
 	public int getLeechers() {
 		return tracker_.getIncomplete();
+	}
+	
+	/** Returns the array of the connected peers. */
+	public Vector<Peer> getConnectedPeers() {
+		return connectedPeers_;
 	}
 }

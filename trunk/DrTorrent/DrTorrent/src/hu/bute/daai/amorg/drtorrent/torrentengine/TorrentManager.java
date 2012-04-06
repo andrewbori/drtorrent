@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
@@ -32,9 +33,14 @@ public class TorrentManager {
 		@Override
 		public void run() {
 			if (schedulerEnabled_) {
-				Log.v(LOG_TAG, "Scheduling: " + System.currentTimeMillis());
+				//Log.v(LOG_TAG, "Scheduling: " + System.currentTimeMillis());
+				Torrent torrent = null;
 				for (int i = 0; i < torrents_.size(); i++) {
-					torrents_.elementAt(i).onTimer();
+					torrent = torrents_.elementAt(i);
+					if (torrent.isWorking()) {
+						//torrentService_.updatePeerList(torrent);
+						torrent.onTimer();
+					}
 				}
 			}
 		}
@@ -155,6 +161,16 @@ public class TorrentManager {
 	/** Updates the torrent item. */
 	public void updateTorrent(Torrent torrent) {
 		torrentService_.updateTorrentItem(torrent);
+	}
+	
+	/** Updates the peer item. */
+	public void updatePeer(Torrent torrent, Peer peer) {
+		updatePeer(torrent, peer, false);
+	}
+	
+	/** Updates the peer item. */
+	public void updatePeer(Torrent torrent, Peer peer, boolean isDisconnected) {
+		torrentService_.updatePeerItem(torrent, peer, isDisconnected);
 	}
 	
 	/** Shows a toast with a message. */
