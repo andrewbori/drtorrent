@@ -659,18 +659,20 @@ public class Torrent {
 		}
 		 * ***/
 		
-		if (downloadablePieces_.size() > 0) {
+		//if (downloadablePieces_.size() > 0) {
 			// NORMAL MODE
 			
-			// Get a block from the downloading pieces
-			for (int i = 0; i < downloadingPieces_.size(); i++) {
-				piece = downloadingPieces_.elementAt(i);
-				if (peer.hasPiece(piece.index())) {
-					if (piece.hasUnrequestedBlock()) {
-						block = piece.getUnrequestedBlock();
-						if (block != null) {
-							requestedBlocks_.addElement(block);
-							return block;
+			synchronized (downloadingPieces_) {
+				// Get a block from the downloading pieces
+				for (int i = 0; i < downloadingPieces_.size(); i++) {
+					piece = downloadingPieces_.elementAt(i);
+					if (peer.hasPiece(piece.index())) {
+						if (piece.hasUnrequestedBlock()) {
+							block = piece.getUnrequestedBlock();
+							if (block != null) {
+								requestedBlocks_.addElement(block);
+								return block;
+							}
 						}
 					}
 				}
@@ -680,18 +682,20 @@ public class Torrent {
 			piece = null;
 			
 			if (rarestPieces_.size() == 0 && downloadablePieces_.size() != 0) calculateRarestPieces();
-			// Get a block from the rarest pieces
-			for (int i = 0; i < rarestPieces_.size(); i++) {
-				piece = rarestPieces_.elementAt(i);
-				if (peer.hasPiece(piece.index())) {
-					if (piece.hasUnrequestedBlock()) {
-						block = piece.getUnrequestedBlock();
-						if (block != null) {
-							downloadablePieces_.removeElement(piece);
-							rarestPieces_.removeElement(piece);
-							downloadingPieces_.add(piece);
-							requestedBlocks_.addElement(block);
-							return block;
+			synchronized (rarestPieces_) {
+				// Get a block from the rarest pieces
+				for (int i = 0; i < rarestPieces_.size(); i++) {
+					piece = rarestPieces_.elementAt(i);
+					if (peer.hasPiece(piece.index())) {
+						if (piece.hasUnrequestedBlock()) {
+							block = piece.getUnrequestedBlock();
+							if (block != null) {
+								downloadablePieces_.removeElement(piece);
+								rarestPieces_.removeElement(piece);
+								downloadingPieces_.add(piece);
+								requestedBlocks_.addElement(block);
+								return block;
+							}
 						}
 					}
 				}
@@ -700,23 +704,25 @@ public class Torrent {
 			block = null;
 			piece = null;
 			
-			// Get a block from the downloadable pieces
-			for (int i = 0; i < downloadablePieces_.size(); i++) {
-				piece = downloadablePieces_.elementAt(i);
-				if (peer.hasPiece(piece.index())) {
-					if (piece.hasUnrequestedBlock()) {
-						block = piece.getUnrequestedBlock();
-						if (block != null) {
-							downloadablePieces_.removeElement(piece);
-							downloadingPieces_.add(piece);
-							requestedBlocks_.addElement(block);
-							return block;
+			synchronized (downloadablePieces_) {
+				// Get a block from the downloadable pieces
+				for (int i = 0; i < downloadablePieces_.size(); i++) {
+					piece = downloadablePieces_.elementAt(i);
+					if (peer.hasPiece(piece.index())) {
+						if (piece.hasUnrequestedBlock()) {
+							block = piece.getUnrequestedBlock();
+							if (block != null) {
+								downloadablePieces_.removeElement(piece);
+								downloadingPieces_.add(piece);
+								requestedBlocks_.addElement(block);
+								return block;
+							}
 						}
 					}
 				}
 			}
 		
-		} else {
+		/*} else {
 			// END GAME MODE
 			isEndGame_ = true;
 			// Get a block from the downloading pieces
@@ -742,7 +748,7 @@ public class Torrent {
 			}
 			
 			
-		}
+		}*/
 		
 		/*if (pieceToDownload == null) {
 			for (int i = 0; i < pieces_.size(); i++) {
@@ -769,6 +775,7 @@ public class Torrent {
 		block.setNotRequested();
 		Piece piece = getPiece(block.pieceIndex());
 		piece.addBlockToRequest(block);
+		requestedBlocks_.removeElement(block);
 	}
 	
 	/**
@@ -855,16 +862,22 @@ public class Torrent {
 	public void calculateRarestPieces() {
 		Piece piece = null;
 		int n = Integer.MAX_VALUE;
-		for (int i = 0; i < downloadablePieces_.size(); i++) {
-			piece = downloadablePieces_.elementAt(i);
-			int k = piece.getNumberOfPeersHaveThis();
-			if (k < n) n = k;
-		}
 		
-		for (int i = 0; i < downloadablePieces_.size(); i++) {
-			piece = downloadablePieces_.elementAt(i);
-			int k = piece.getNumberOfPeersHaveThis();
-			if (k == n) rarestPieces_.add(piece);
+		synchronized (downloadablePieces_) {
+			for (int i = 0; i < downloadablePieces_.size(); i++) {
+				piece = downloadablePieces_.elementAt(i);
+				int k = piece.getNumberOfPeersHaveThis();
+				if (k < n) n = k;
+			}
+				
+			synchronized (rarestPieces_) {
+				rarestPieces_.removeAllElements();
+				for (int i = 0; i < downloadablePieces_.size(); i++) {
+					piece = downloadablePieces_.elementAt(i);
+					int k = piece.getNumberOfPeersHaveThis();
+					if (k == n) rarestPieces_.add(piece);
+				}
+			}
 		}
 	}
 	
