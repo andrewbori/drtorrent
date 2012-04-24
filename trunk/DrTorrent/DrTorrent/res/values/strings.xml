@@ -4,7 +4,9 @@
     <string name="hello">Hello World, DrTorrentActivity!</string>
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">Add Torrent</string>
+    <string name="menu_start">Start</string>
     <string name="menu_stop">Stop</string>
+    <string name="menu_delete">Delete</string>
     <string name="filebrowser_current">Directory</string>
     <string name="filebrowser_parent">Parent directory</string>
     <string name="filebrowser_folder">Folder</string>

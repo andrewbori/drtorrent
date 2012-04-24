@@ -1,6 +1,5 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
@@ -40,6 +39,7 @@ public class TorrentManager {
 					if (torrent.isWorking()) {
 						//torrentService_.updatePeerList(torrent);
 						torrent.onTimer();
+						torrentService_.updatePeerList(torrent);
 					}
 				}
 			}
@@ -121,18 +121,23 @@ public class TorrentManager {
 	/** Starts a torrent. */
 	public void startTorrent(String infoHash) {
 		Torrent torrent = getTorrent(infoHash);
-		torrent.start();
+		if (torrent != null) torrent.start();
 	}
 	
 	/** Stops a torrent. */
 	public void stopTorrent(String infoHash) {
 		Torrent torrent = getTorrent(infoHash);
-		torrent.stop();
+		if (torrent != null) torrent.stop();
 	}
 	
 	/** Closes a torrent. */
 	public void closeTorrent(String infoHash) {
-		
+		Torrent torrent = getTorrent(infoHash);
+		if (torrent != null) {
+			torrents_.removeElement(torrent);
+			torrentService_.removeTorrentItem(torrent);
+			torrent.stop();
+		}
 	}
 
 	/** Returns whether the manager the given torrent already has. */
@@ -160,7 +165,7 @@ public class TorrentManager {
 	
 	/** Updates the torrent item. */
 	public void updateTorrent(Torrent torrent) {
-		torrentService_.updateTorrentItem(torrent);
+		if (torrents_.contains(torrent)) torrentService_.updateTorrentItem(torrent);
 	}
 	
 	/** Updates the peer item. */

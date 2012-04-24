@@ -54,6 +54,7 @@ public class Torrent {
 	private int bytesTotal_           = 0;
 	private int bytesUploaded_        = 0;
 	private int bytesDownloaded_      = 0;
+	private Vector<Integer> lastBytesDownloaded_;
 	private int downloadSpeed_;
 	private int uploadSpeed_;
 	private int bytesLeft_            = 0;
@@ -87,7 +88,6 @@ public class Torrent {
 		torrentFilePath_ = filePath;
 		torrentFileName_ = filePath.substring(filePath.lastIndexOf('/') + 1, filePath.length());
 		
-
 		files_ = new Vector<File>();
 		pieces_ = new Vector<Piece>();
 		downloadablePieces_ = new Vector<Piece>();
@@ -97,6 +97,7 @@ public class Torrent {
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
 		connectedPeers_ = new Vector<Peer>();
+		lastBytesDownloaded_ = new Vector<Integer>();
 	}
 
 	/** Class containing the path and the size of a file to be created. */
@@ -592,19 +593,24 @@ public class Torrent {
 			status_ = R.string.status_connecting;
 			torrentManager_.updateTorrent(this);
 			
-			tracker_.connect();
+			tracker_.changeEvent(Tracker.EVENT_STARTED);
 		}
 	}
 	
 	/** Stops the torrent. */
 	public void stop() {
-		tracker_.changeEvent(Tracker.EVENT_STOPPED);
-		
-		for (int i = 0; i < connectedPeers_.size(); i++) {
-			connectedPeers_.get(i).disconnect();
+		if (status_ != R.string.status_stopped) {
+			tracker_.changeEvent(Tracker.EVENT_STOPPED);
+			
+			for (int i = 0; i < connectedPeers_.size(); i++) {
+				connectedPeers_.get(i).disconnect();
+			}
+			peers_ = new Vector<Peer>();
+			connectedPeers_ = new Vector<Peer>();
+			
+			status_ = R.string.status_stopped;
+			torrentManager_.updateTorrent(this);
 		}
-		status_ = R.string.status_stopped;
-		torrentManager_.updateTorrent(this);
 	}
 	
 	/** Connects to peers. */
@@ -622,7 +628,7 @@ public class Torrent {
 	/** Removes a disconnected peer from the array of connected peers. */
 	public void peerDisconnected(Peer peer) {
 		connectedPeers_.removeElement(peer);
-		torrentManager_.updatePeer(this, peer, true);
+//		torrentManager_.updatePeer(this, peer, true);
 	}
 	
 	private int latestBytesDownloaded_ = 0;
@@ -635,10 +641,12 @@ public class Torrent {
             }
 		}
 		
-		if (downloadSpeed_ != bytesDownloaded_ - latestBytesDownloaded_) {
-			downloadSpeed_ = bytesDownloaded_ - latestBytesDownloaded_;
-			torrentManager_.updateTorrent(this);
-		}
+		downloadSpeed_ = bytesDownloaded_ - latestBytesDownloaded_;
+		if (lastBytesDownloaded_.size() >= 10) lastBytesDownloaded_.removeElementAt(0);
+		lastBytesDownloaded_.add(downloadSpeed_);
+		
+		torrentManager_.updateTorrent(this);
+
 		latestBytesDownloaded_ = bytesDownloaded_;
 	}
 	
@@ -650,14 +658,14 @@ public class Torrent {
 		/* *** EASY algoritmus, block-ok letöltése sorban
 		for (int i = 0; i < pieces_.size(); i++) {
 			if (peer.hasPiece(i)) {
-				Piece piece = pieces_.elementAt(i);
+				piece = pieces_.elementAt(i);
 				if (piece.hasUnrequestedBlock()) {
-					blockToDownload = piece.getUnrequestedBlock();
-					if (blockToDownload != null) return blockToDownload;
+					block = piece.getUnrequestedBlock();
+					if (block != null) return block;
 				}
 			}
 		}
-		 * ***/
+		// * ***/
 		
 		//if (downloadablePieces_.size() > 0) {
 			// NORMAL MODE
@@ -887,7 +895,9 @@ public class Torrent {
 		bytesLeft_ -= bytes;
 		downloadPercent_ = bytesDownloaded_ / (bytesTotal_ / 100.0);
 		
-		torrentManager_.updateTorrent(this);
+		// lastBytesDownloaded_.setElementAt(lastBytesDownloaded_.lastElement() + bytes, lastBytesDownloaded_.size() - 1);
+		
+//		torrentManager_.updateTorrent(this);
 		// TODO: Record the downloaded bytes for download speed calculation!
 	}
 	
@@ -926,7 +936,7 @@ public class Torrent {
 			complete_ = true;
 			downloadPercent_ = 100;
 			status_ = R.string.status_seeding;
-			torrentManager_.updateTorrent(this);
+//			torrentManager_.updateTorrent(this);
 			Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
 
 			tracker_.changeEvent(Tracker.EVENT_COMPLETED);
@@ -1014,7 +1024,14 @@ public class Torrent {
 	
 	/** Returns the download speed. */
 	public int getDownloadSpeed() {
-		return downloadSpeed_;
+		int sum = 0;
+		if (lastBytesDownloaded_.size() > 0) {
+			for (int i = 0; i < lastBytesDownloaded_.size(); i++) {
+				sum += lastBytesDownloaded_.elementAt(i);
+			}
+			sum /= lastBytesDownloaded_.size();
+		}
+		return sum;
 	}
 	
 	/** Returns the upload speed. */

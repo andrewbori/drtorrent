@@ -97,7 +97,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	}
 
 	@Override
-	protected void refreshTorrentItem(TorrentListItem item) {
+	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
 		String infoHash = item.getInfoHash();
 		boolean found = false;
 		TorrentListItem tempItem;
@@ -105,11 +105,15 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			tempItem = adapter_.getItem(i);
 			if (tempItem.getInfoHash().equals(infoHash)) {
 				found = true;
-				adapter_.getItem(i).set(item);
+				if (!isRemoved) {
+					adapter_.getItem(i).set(item);
+				} else {
+					adapter_.remove(tempItem);
+				}
 				break;
 			}
 		}
-		if (!found) {
+		if (!found && !isRemoved) {
 			adapter_.add(item);
 		}
 
