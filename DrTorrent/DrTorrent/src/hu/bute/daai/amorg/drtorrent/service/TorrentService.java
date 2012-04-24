@@ -25,27 +25,28 @@ public class TorrentService extends Service {
 	private final static String LOG_TAG           = "TorrentService";
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 
-	public final static int MSG_OPEN_TORRENT        = 1;
-	public final static int MSG_START_TORRENT       = 2;
-	public final static int MSG_STOP_TORRENT        = 3;
-	public final static int MSG_CLOSE_TORRENT       = 4;
-	public final static int MSG_SUBSCRIBE_CLIENT    = 5;
-	public final static int MSG_UNSUBSCRIBE_CLIENT  = 6;
-	public final static int MSG_SEND_TORRENT_ITEM   = 7;
-	public final static int MSG_SEND_TORRENT_LIST   = 8;
-	public final static int MSG_TORRENT_CHANGED     = 9;
-	public final static int MSG_SHOW_TOAST          = 10;
-	public final static int MSG_SHOW_DIALOG         = 11;
-	public final static int MSG_SHOW_PROGRESS       = 12;
-	public final static int MSG_HIDE_PROGRESS       = 13;
-	public final static int MSG_SEND_PEER_ITEM   	= 14;
-	public final static int MSG_SEND_PEER_LIST   	= 15;
+	public final static int MSG_OPEN_TORRENT        = 101;
+	public final static int MSG_START_TORRENT       = 102;
+	public final static int MSG_STOP_TORRENT        = 103;
+	public final static int MSG_CLOSE_TORRENT       = 104;
+	public final static int MSG_SUBSCRIBE_CLIENT    = 201;
+	public final static int MSG_UNSUBSCRIBE_CLIENT  = 202;
+	public final static int MSG_SEND_TORRENT_ITEM   = 301;
+	public final static int MSG_SEND_TORRENT_LIST   = 302;
+	public final static int MSG_TORRENT_CHANGED     = 303;
+	public final static int MSG_SHOW_TOAST          = 304;
+	public final static int MSG_SHOW_DIALOG         = 305;
+	public final static int MSG_SHOW_PROGRESS       = 306;
+	public final static int MSG_HIDE_PROGRESS       = 307;
+	public final static int MSG_SEND_PEER_ITEM   	= 308;
+	public final static int MSG_SEND_PEER_LIST   	= 309;
 	
 	public final static String MSG_KEY_FILEPATH         	= "filepath";
 	public final static String MSG_KEY_TORRENT_INFOHASH	    = "infohash";
 	public final static String MSG_KEY_TORRENT_OLD_INFOHASH = "oldinfohash";
 	public final static String MSG_KEY_TORRENT_ITEM     	= "torrentitem";
 	public final static String MSG_KEY_TORRENT_LIST     	= "torrentlist";
+	public final static String MSG_KEY_IS_REMOVED           = "isremoved";
 	public final static String MSG_KEY_PEER_ITEM     		= "peeritem";
 	public final static String MSG_KEY_PEER_LIST     		= "peerlist";
 	public final static String MSG_KEY_MESSAGE 				= "message";
@@ -203,6 +204,7 @@ public class TorrentService extends Service {
 				item.set(torrent);
 				i = torrents_.size();
 				found = true;
+				break;
 			}
 		}
 
@@ -225,6 +227,29 @@ public class TorrentService extends Service {
 		sendMessageToSingle(msg, infoHash);
 	}
 	
+	/** Torrent deleted */
+	public void removeTorrentItem(Torrent torrent) {
+		String infoHash = torrent.getInfoHash();	
+
+		// Searching the torrent item
+		TorrentListItem item = null;
+		for (int i = 0; i < torrents_.size(); i++) {
+			item = torrents_.elementAt(i);
+			if (item.getInfoHash().equals(infoHash)) {
+				torrents_.remove(i);
+				break;
+			}
+		}
+		
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		bundle.putSerializable(MSG_KEY_TORRENT_ITEM, item);
+		bundle.putBoolean(MSG_KEY_IS_REMOVED, true);
+		msg.what = MSG_SEND_TORRENT_ITEM;
+		msg.setData(bundle);
+		sendMessageToAll(msg);
+	}
+	
 	/** Peer changed. */
 	public void updatePeerItem(Torrent torrent, Peer peer, boolean isDisconnected) {
 		PeerListItem peerListItem = new PeerListItem(peer);
@@ -241,6 +266,8 @@ public class TorrentService extends Service {
 	
 	/** Peer list changed. */
 	public void updatePeerList(Torrent torrent) {
+		if (clientsSingle_.get(torrent.getInfoHash()).size() == 0) return;
+		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
@@ -411,7 +438,7 @@ public class TorrentService extends Service {
 		
 		@Override
 		public void run() {
-			startTorrent(infoHash_);
+			torrentManager_.startTorrent(infoHash_);
 		}
 	}
 }

@@ -25,8 +25,10 @@ import android.widget.Toast;
 public abstract class TorrentHostActivity extends Activity {
 	public static final String KEY_INFO_HASH = "infoHash";
 	
-	protected static final int MENU_ADD_TORRENT = 101;
-	protected static final int MENU_STOP_TORRENT = 102;
+	protected static final int MENU_ADD_TORRENT    = 101;
+	protected static final int MENU_START_TORRENT  = 102;
+	protected static final int MENU_STOP_TORRENT   = 103;
+	protected static final int MENU_DELETE_TORRENT = 104;
 	protected static final int RESULT_FILEBROWSER_ACTIVITY = 201;
 	
 	protected Activity activity_ = this;
@@ -159,7 +161,8 @@ public abstract class TorrentHostActivity extends Activity {
 					
 				case TorrentService.MSG_SEND_TORRENT_ITEM:
 					TorrentListItem torrent = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
-					refreshTorrentItem(torrent);
+					boolean isRemoved = bundle.getBoolean(TorrentService.MSG_KEY_IS_REMOVED, false); 
+					refreshTorrentItem(torrent, isRemoved);
 					break;
 
 				case TorrentService.MSG_SEND_TORRENT_LIST:
@@ -186,7 +189,7 @@ public abstract class TorrentHostActivity extends Activity {
 		}
 	}
 	
-	protected void refreshTorrentItem(TorrentListItem item) {}
+	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {}
 	
 	protected void refreshTorrentList(ArrayList<TorrentListItem> list) {}
 

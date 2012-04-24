@@ -41,7 +41,7 @@ public class HttpConnection {
             return baos.toByteArray();
 
 		} catch (IOException e) {
-			Log.v(LOG_TAG, e.getMessage());
+			Log.v(LOG_TAG, "Exception:" + e.getMessage());
 			return null;
 		} finally {
 			try {

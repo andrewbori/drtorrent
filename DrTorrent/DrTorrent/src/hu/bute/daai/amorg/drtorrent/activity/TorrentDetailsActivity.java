@@ -13,7 +13,6 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TabHost;
@@ -34,6 +33,8 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	private TextView tvDownloaded_;
 	private TextView tvPeers_;
 	private ListView lvPeers_;
+	
+	private boolean isStateChanged_ = false;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -82,30 +83,73 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		super.onCreateOptionsMenu(menu);
-		menu.add(Menu.NONE, MENU_STOP_TORRENT, Menu.NONE, R.string.menu_stop);
+		if (torrent_ != null) {
+			if (torrent_.getStatus() != R.string.status_stopped) {
+				menu.add(Menu.NONE, MENU_STOP_TORRENT, Menu.NONE, R.string.menu_stop);
+			} else {
+				menu.add(Menu.NONE, MENU_START_TORRENT, Menu.NONE, R.string.menu_start);
+			}
+			menu.add(Menu.NONE, MENU_DELETE_TORRENT, Menu.NONE, R.string.menu_delete);
+		}
+		return true;
+	}
+	
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		super.onPrepareOptionsMenu(menu);
+		if (isStateChanged_ && torrent_ != null) {
+			menu.clear();
+			if (torrent_.getStatus() != R.string.status_stopped) {
+				menu.add(Menu.NONE, MENU_STOP_TORRENT, Menu.NONE, R.string.menu_stop);
+			} else {
+				menu.add(Menu.NONE, MENU_START_TORRENT, Menu.NONE, R.string.menu_start);
+			}
+			menu.add(Menu.NONE, MENU_DELETE_TORRENT, Menu.NONE, R.string.menu_delete);
+		}
 		return true;
 	}
 
 	@Override
 	public boolean onMenuItemSelected(int featureId, MenuItem item) {
 		super.onMenuItemSelected(featureId, item);
+		
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
+		msg.setData(bundle);
+		
 		switch (item.getItemId()) {
+			case MENU_START_TORRENT:
+				isStateChanged_ = true;
+				msg.what = TorrentService.MSG_START_TORRENT;
+				try {
+					serviceMessenger_.send(msg);
+				} catch (RemoteException e) {}
+				break;
+			
 			case MENU_STOP_TORRENT:
-				Message msg = Message.obtain();
-				Bundle bundle = new Bundle();
-				bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
-				msg.setData(bundle);
+				isStateChanged_ = true;
 				msg.what = TorrentService.MSG_STOP_TORRENT;
 				try {
 					serviceMessenger_.send(msg);
 				} catch (RemoteException e) {}
+				break;
+				
+			case MENU_DELETE_TORRENT:
+				torrent_ = null;
+				msg.what = TorrentService.MSG_CLOSE_TORRENT;
+				try {
+					serviceMessenger_.send(msg);
+				} catch (RemoteException e) {}
+				finish();
 				break;
 		}
 		return true;
 	}
 
 	@Override
-	protected void refreshTorrentItem(TorrentListItem item) {
+	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
+		torrent_ = item;
 		tvName_.setText(item.getName());
 		tvStatus_.setText(activity_.getString(item.getStatus()));
 		tvPercent_.setText(item.getPercent() + " %");
