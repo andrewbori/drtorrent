@@ -39,6 +39,7 @@ public class TorrentService extends Service {
 	public final static int MSG_HIDE_PROGRESS       = 307;
 	public final static int MSG_SEND_PEER_ITEM   	= 308;
 	public final static int MSG_SEND_PEER_LIST   	= 309;
+	public final static int MSG_SEND_BITFIELD		= 310;
 	
 	public final static String MSG_KEY_FILEPATH         	= "filepath";
 	public final static String MSG_KEY_TORRENT_INFOHASH	    = "infohash";
@@ -48,6 +49,7 @@ public class TorrentService extends Service {
 	public final static String MSG_KEY_IS_REMOVED           = "isremoved";
 	public final static String MSG_KEY_PEER_ITEM     		= "peeritem";
 	public final static String MSG_KEY_PEER_LIST     		= "peerlist";
+	public final static String MSG_KEY_BITFIELD				= "bitfield";
 	public final static String MSG_KEY_MESSAGE 				= "message";
 	public final static String MSG_KEY_IS_DISCONNECTED		= "isdisconnected";
 	
@@ -156,6 +158,8 @@ public class TorrentService extends Service {
 			clientSingleInfoHash_ = infoHash;
 			clientSingle_ = messenger;
 			sendTorrentItem(messenger, infoHash);
+			//sendPeerList(messenger, infoHash);
+			updateBitfield(torrentManager_.getTorrent(infoHash));
 		} else {
 			//if (!clientsAll_.contains(messenger)) clientsAll_.add(messenger);
 			//Log.v(LOG_TAG, clientsAll_.size() + " Client subscribed to the Torrent Service.");
@@ -305,6 +309,22 @@ public class TorrentService extends Service {
 		bundle.putSerializable(MSG_KEY_PEER_LIST, peerListItems);
 		
 		msg.what = MSG_SEND_PEER_LIST;
+		msg.setData(bundle);
+
+		//sendMessageToSingle(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getInfoHash());
+	}
+	
+	/** Bitfield changed. */
+	public void updateBitfield(Torrent torrent) {
+		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		
+		bundle.putSerializable(MSG_KEY_BITFIELD, torrent.getBitfield());
+		
+		msg.what = MSG_SEND_BITFIELD;
 		msg.setData(bundle);
 
 		//sendMessageToSingle(msg, torrent.getInfoHash());

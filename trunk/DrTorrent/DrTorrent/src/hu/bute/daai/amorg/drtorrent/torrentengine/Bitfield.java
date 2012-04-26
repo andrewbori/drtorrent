@@ -1,9 +1,16 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import java.io.Serializable;
+
 /** Class determining which pieces the torrent already has. */
-public class Bitfield {
-    private byte[] bitfield_;
+public class Bitfield implements Serializable {
+
+	private static final long serialVersionUID = 1L;
+	
+	private byte[] bitfield_;
     private int lengthInBits_;
+    
+    private boolean isChanged_ = false;
     
     /** Creates a new instance of Bitfield.
      * 
@@ -31,12 +38,14 @@ public class Bitfield {
     
     /** Sets the bit. */
     public void setBit(int index) {
-        bitfield_[index / 8] |= (128 >> (index % 8));	
+        bitfield_[index / 8] |= (128 >> (index % 8));
+        isChanged_ = true;
     }
 
 	/** Unsets the bit. */
     public void unsetBit(int index) {
-        bitfield_[index / 8] &= (~(128 >> (index % 8)));	
+        bitfield_[index / 8] &= (~(128 >> (index % 8)));
+        isChanged_ = true;
     }
     
     /** Returns whether all bits are unsetted or not. */
@@ -69,13 +78,13 @@ public class Bitfield {
     
     /** Inverts all bits. */
     public void bitwiseNot() {
-        for (int i=0; i<bitfield_.length; i++)
-            bitfield_[i] = (byte)(~(bitfield_[i]));
+        for (int i=0; i<bitfield_.length; i++) bitfield_[i] = (byte)(~(bitfield_[i]));
+        isChanged_ = true;
     }
 
     public void bitwiseAnd(Bitfield bitField) {
-        for (int i = 0; i < bitfield_.length; i++)
-            bitfield_[i] = (byte)(bitfield_[i] & bitField.data()[i]);
+        for (int i = 0; i < bitfield_.length; i++) bitfield_[i] = (byte)(bitfield_[i] & bitField.data()[i]);
+        isChanged_ = true;
     }
     
     public void set(byte[] bitField) {
@@ -107,5 +116,24 @@ public class Bitfield {
 
     public int getLengthInBits() {
         return lengthInBits_;
+    }
+    
+    public boolean isChanged() {
+    	return isChanged_;
+    }
+    
+    public void setChanged(boolean isChanged) {
+    	isChanged_ = isChanged;
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+    	Bitfield other = (Bitfield) o;
+    	if (this.lengthInBits_ != other.lengthInBits_) return false;
+    	for (int i = 0; i < bitfield_.length; i++) {
+    		if (this.bitfield_[i] != other.bitfield_[i]) return false;
+    	}
+    	
+    	return true;
     }
 }

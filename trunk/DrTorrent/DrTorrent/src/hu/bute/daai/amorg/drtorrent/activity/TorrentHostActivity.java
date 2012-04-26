@@ -3,6 +3,7 @@ package hu.bute.daai.amorg.drtorrent.activity;
 import hu.bute.daai.amorg.drtorrent.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
+import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
 import java.util.ArrayList;
 
@@ -183,6 +184,10 @@ public abstract class TorrentHostActivity extends Activity {
 					refreshPeerList(peers);
 					break;
 					
+				case TorrentService.MSG_SEND_BITFIELD:
+					Bitfield bitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_BITFIELD);
+					refreshBitfield(bitfield);
+					
 				default:
 					super.handleMessage(msg);
 			}
@@ -190,10 +195,12 @@ public abstract class TorrentHostActivity extends Activity {
 	}
 	
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {}
-	
+
 	protected void refreshTorrentList(ArrayList<TorrentListItem> list) {}
 
 	protected void refreshPeerItem(PeerListItem item, boolean isDisconnected) {}
 	
 	protected void refreshPeerList(ArrayList<PeerListItem> list) {}
+	
+	protected void refreshBitfield(Bitfield bitfield) {}
 }

@@ -2,9 +2,11 @@ package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.PeerListAdapter;
 import hu.bute.daai.amorg.drtorrent.PeerListItem;
+import hu.bute.daai.amorg.drtorrent.PiecesView;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
+import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
 import java.util.ArrayList;
 
@@ -13,6 +15,7 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TabHost;
@@ -33,6 +36,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	private TextView tvDownloaded_;
 	private TextView tvPeers_;
 	private ListView lvPeers_;
+	private PiecesView piecesView_;
 	
 	private boolean isStateChanged_ = false;
 	
@@ -54,12 +58,16 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	   	spec.setIndicator("Peers");
   		tabs.addTab(spec);
   		
-		/*spec=tabs.newTabSpec("tab3");
+		spec=tabs.newTabSpec("tab3");
 		spec.setContent(R.id.torrent_details_tab3);
-		spec.setIndicator("Trackers");
+		spec.setIndicator("Pieces");
 		tabs.addTab(spec);
-		*/
+		
 		tabs.setCurrentTab(0);
+		
+		piecesView_ = new PiecesView(activity_);
+		ViewGroup v = (ViewGroup) findViewById(R.id.torrent_details_tab3);
+		v.addView(piecesView_);
 		
 		tvName_ = (TextView) findViewById(R.id.torrent_details_tvName);
 		tvStatus_ = (TextView) findViewById(R.id.torrent_details_tvStatus);
@@ -214,4 +222,8 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		lvPeers_.invalidateViews();
 	}
 	
+	@Override
+	protected void refreshBitfield(Bitfield bitfield) {
+		piecesView_.updateBitfield(bitfield);
+	}
 }
