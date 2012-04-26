@@ -38,6 +38,10 @@ public class TorrentManager {
 					torrent = torrents_.elementAt(i);
 					if (torrent.isWorking()) {
 						torrentService_.updatePeerList(torrent);
+						if (torrent.getBitfield().isChanged()) {
+							torrentService_.updateBitfield(torrent);
+							torrent.getBitfield().setChanged(false);
+						}
 						torrent.onTimer();
 					}
 				}
