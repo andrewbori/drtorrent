@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import java.util.Vector;
+
 
 /** Class representing the Peer. */
 public class Peer {
@@ -20,7 +22,7 @@ public class Peer {
 	
 	/** Connects to the peer. */
 	public void connect(Torrent torrent) {
-		if (connection_ == null) connection_ = new PeerConnection(this, torrent, torrent.getTorrentManager());
+		if (connection_ == null) connection_ = new PeerConnection(this, torrent);
 		connection_.connect();
 	}
 	
@@ -96,6 +98,16 @@ public class Peer {
 	/** Returns the number of requests have not been sent to the peer yet. */
 	public int getRequestsToSendCount() {
 		return ((connection_ != null) ? connection_.getRequestsToSendCount() : 0);
+	}
+	
+	/** Returns the download speed. */
+	public int getDownloadSpeed() {
+		return ((connection_ != null) ? connection_.getDownloadSpeed() : 0);
+	}
+	
+	/** Returns the count of downloaded bytes. */
+	public int getDownloaded() {
+		return ((connection_ != null) ? connection_.getDownloaded() : 0);
 	}
 	
 	/** Returns the address and the port of the peer. Format: "address:port". */

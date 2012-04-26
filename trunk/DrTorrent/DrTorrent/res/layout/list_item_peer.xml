@@ -13,12 +13,30 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true" />
     
+     <TextView
+        android:id="@+id/list_item_peer_tvDownloaded"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingRight="10dp"
+        android:text="0 MB"
+        android:layout_toLeftOf="@+id/list_item_peer_tvDownloadSpeed"
+        android:layout_alignParentTop="true" />
+    
+    <TextView
+        android:id="@+id/list_item_peer_tvDownloadSpeed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingRight="10dp"
+        android:text="0 kB/s"
+        android:layout_toLeftOf="@+id/list_item_peer_tvRequests"
+        android:layout_alignParentTop="true" />
+    
     <TextView
         android:id="@+id/list_item_peer_tvRequests"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="right"
-        android:text="12/4"
+        android:text="0"
         android:layout_alignParentRight="true"
         android:layout_alignParentTop="true" />
     

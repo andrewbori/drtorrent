@@ -23,8 +23,8 @@ public class TorrentManager {
 	private boolean schedulerEnabled_;
 	private Vector<Torrent> torrents_;
 	
-	private String peerId_;
-	private int peerKey_;
+	private static String peerId_;
+	private static int peerKey_;
 	
 	/** TimerTask that schedules the torrents. */
 	class TorrentSchedulerTask extends TimerTask {
@@ -37,9 +37,8 @@ public class TorrentManager {
 				for (int i = 0; i < torrents_.size(); i++) {
 					torrent = torrents_.elementAt(i);
 					if (torrent.isWorking()) {
-						//torrentService_.updatePeerList(torrent);
-						torrent.onTimer();
 						torrentService_.updatePeerList(torrent);
+						torrent.onTimer();
 					}
 				}
 			}
@@ -199,13 +198,13 @@ public class TorrentManager {
 	}
 	
 	/** Returns the ID of the peer. */
-	public String getPeerID() {
+	public static String getPeerID() {
 		return peerId_;
 		//return "-DR0001-alkjfdcgjhsw";
 	}
 	
 	/** Returns the key of the peer. */
-	public int getPeerKey() {
+	public static int getPeerKey() {
 		return peerKey_;
 	}
 	

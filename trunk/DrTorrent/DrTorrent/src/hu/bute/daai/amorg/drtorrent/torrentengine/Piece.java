@@ -221,7 +221,7 @@ public class Piece {
 	/** Returns whether the piece has unrequested block(s). */
 	public boolean hasUnrequestedBlock() {
 		if (isRequested_) {
-			if (!blocksToRequest_.isEmpty()) return true;
+			if (blocksToRequest_.size() > 0) return true;
 		} else {
 			if (!isComplete()) return true;
 		}
@@ -236,7 +236,7 @@ public class Piece {
 			else return null;
 		}
 		synchronized(blocksToRequest_) {
-			if (!blocksToRequest_.isEmpty()) {
+			if (blocksToRequest_.size() > 0) {
 				Block block = blocksToRequest_.elementAt(0);
 				blocksToRequest_.removeElementAt(0);
 				return block;

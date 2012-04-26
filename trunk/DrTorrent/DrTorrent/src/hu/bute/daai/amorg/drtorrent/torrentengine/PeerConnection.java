@@ -44,13 +44,10 @@ public class PeerConnection {
     public final static int ERROR_INCREASE_ERROR_COUNTER = 1;
     public final static int ERROR_NOT_SPECIFIED = 2;
 	
-	private Peer peer_;
-	private Torrent torrent_;
-	private TorrentManager torrentManager_;
+	private Peer peer_;							// the peer
+	private Torrent torrent_;					// the torrent
 	private Vector<Block> blocksToDownload_;
 	private Vector<Block> blocksDownloading_;
-	
-	private int downloaded_ = 0;
 	
 	private boolean isIncomingConnection_;
 	private boolean isReadEnabled_;
@@ -73,13 +70,14 @@ public class PeerConnection {
 	private int reconnectAfter_;
 	public static int tcpConnectionTimeoutNum_ = 0;
 	
-	private int blocksRecieved_ = 0;
+	private int latestDownloaded_ = 0;
+	private int downloaded_ = 0;
+	private Vector<Integer> latestDownloadedBytes_;
 	
 	/** Creates a new instance of PeerConnection. */
-	public PeerConnection(Peer peer, Torrent torrent, TorrentManager torrentManager) {
+	public PeerConnection(Peer peer, Torrent torrent) {
         peer_ = peer;
         torrent_ = torrent;
-        torrentManager_ = torrentManager;
         isIncomingConnection_ = false;
 
         isInterested_ = false;
@@ -89,6 +87,8 @@ public class PeerConnection {
 
         blocksToDownload_ = new Vector<Block>();
         blocksDownloading_ = new Vector<Block>();
+        
+        latestDownloadedBytes_ = new Vector<Integer>();
         
         state_ = STATE_NOT_CONNECTED;
         isReadEnabled_ = true;
@@ -139,6 +139,10 @@ public class PeerConnection {
 				break;
 
 			case STATE_PW_CONNECTED:
+				if (latestDownloadedBytes_.size() > 9) latestDownloadedBytes_.removeElementAt(0);
+				latestDownloadedBytes_.add(downloaded_ - latestDownloaded_);
+				latestDownloaded_ = downloaded_;
+				
 				// Timeout: Because no messages have been received in the recent time
 				if ((ellapsedTime_ - lastMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
 					close(ERROR_INCREASE_ERROR_COUNTER, "General timeout (no data received)");
@@ -166,7 +170,7 @@ public class PeerConnection {
 					sendKeepAliveMessage();
 				}
 				
-				if (blocksToDownload_.size() == 0) {
+				if (blocksToDownload_.size() + blocksDownloading_.size() == 0) {
 					issueDownload();
 				}
 
@@ -193,7 +197,9 @@ public class PeerConnection {
 		// Get new blocks from the Torrent
 		synchronized (blocksDownloading_) {
 			synchronized (blocksToDownload_) {
-				while ( (blocksToDownload_.size() + blocksDownloading_.size() <= (5 + blocksRecieved_*5)) && (blocksToDownload_.size() + blocksDownloading_.size()) < 50  ) {
+				//while ( (blocksToDownload_.size() + blocksDownloading_.size() < (3 + (blocksRecieved_/3)*2)) && (blocksToDownload_.size() + blocksDownloading_.size()) < 50  ) {
+				// TODO: to find an optimal rate
+				while (blocksToDownload_.size() + blocksDownloading_.size() < getLatestBlocksCount() + 10) {
 					Block blockToDownload = torrent_.getBlockToDownload(peer_);
 					if (blockToDownload != null) {
 						blocksToDownload_.addElement(blockToDownload);
@@ -444,7 +450,7 @@ public class PeerConnection {
 			if (!peer_.getPeerId().equals(tempPeerId)) {
 				close(ERROR_INCREASE_ERROR_COUNTER, "Peer ID doesn't match!");
 				return;
-			} else if (tempPeerId.equals(torrentManager_.getPeerID())) {
+			} else if (tempPeerId.equals(TorrentManager.getPeerID())) {
 				close(ERROR_DELETE_PEER, "Connected to ourselves!");
 				return;
 			}
@@ -592,12 +598,12 @@ public class PeerConnection {
 			pieceBlock = null;
 			
 			if (appendResult != Torrent.ERROR_NONE) {
+				Log.v(LOG_TAG, "Writing file failed!!!!");
 				// close("Writing to piece failed"); // CRITICAL FAULT
 				return;
 			}
 			
 			downloaded_ += pieceBlockSize;
-			blocksRecieved_++;
 		}
 		
 		System.gc();
@@ -662,7 +668,7 @@ public class PeerConnection {
                     baos.write(MESSAGE_PROTOCOL_ID.getBytes());			// pstr:      string identifier of the protocol 
                     baos.write(zeros);									// reserved:  eight (8) reserved bytes. All current implementations use all zeroes.
                     baos.write(torrent_.getInfoHashByteArray());		// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
-                    baos.write(torrentManager_.getPeerID().getBytes());	// peer_id:   20-byte string used as a unique ID for the client.
+                    baos.write(TorrentManager.getPeerID().getBytes());	// peer_id:   20-byte string used as a unique ID for the client.
                     outputStream_.write(baos.toByteArray());
                     outputStream_.flush();
 
@@ -1244,6 +1250,40 @@ public class PeerConnection {
         ellapsedTime_ = 0;
         
         read();
+	}
+	
+	/** Returns the count of downloaded bytes. */
+	public int getDownloaded() {
+		return downloaded_;
+	}
+	
+	/** Returns the download speed. */
+	public int getDownloadSpeed() {
+		int sum = 0;
+		if (latestDownloadedBytes_.size() > 0) {
+			for (int i = 0; i < latestDownloadedBytes_.size(); i++) {
+				sum += latestDownloadedBytes_.elementAt(i);
+			}
+			sum = (int) ((float) sum / (float) latestDownloadedBytes_.size());
+		}
+		return sum;
+	}
+	
+	/** Returns the block speed. */
+	public int getBlockSpeed() {
+		return (int) ((float) getDownloadSpeed() / (float) Piece.DEFALT_BLOCK_LENGTH);
+	}
+	
+	/** Returns the count of the latest downloaded blocks. */
+	public int getLatestBlocksCount() {
+		int sum = 0;
+		if (latestDownloadedBytes_.size() > 0) {
+			for (int i = 0; i < latestDownloadedBytes_.size(); i++) {
+				sum += latestDownloadedBytes_.elementAt(i);
+			}
+			sum = (int) ((float) sum / (float) Piece.DEFALT_BLOCK_LENGTH);
+		}
+		return sum;
 	}
 	
 }

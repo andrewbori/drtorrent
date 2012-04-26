@@ -7,7 +7,6 @@ import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
 
 import java.util.ArrayList;
-import java.util.Hashtable;
 import java.util.Vector;
 
 import android.app.Service;
@@ -56,8 +55,11 @@ public class TorrentService extends Service {
 
 	private TorrentManager torrentManager_;
 
-	private Vector<Messenger> clientsAll_;
-	private Hashtable<String, Vector<Messenger>> clientsSingle_;
+	//private Vector<Messenger> clientsAll_;
+	//private Hashtable<String, Vector<Messenger>> clientsSingle_;
+	private Messenger clientAll_;
+	private Messenger clientSingle_;
+	private String clientSingleInfoHash_;
 
 	private Vector<TorrentListItem> torrents_; // only for sending message
 
@@ -66,8 +68,8 @@ public class TorrentService extends Service {
 		super.onCreate();
 
 		torrentManager_ = new TorrentManager(this);
-		clientsAll_ = new Vector<Messenger>();
-		clientsSingle_ = new Hashtable<String, Vector<Messenger>>();
+		//clientsAll_ = new Vector<Messenger>();
+		//clientsSingle_ = new Hashtable<String, Vector<Messenger>>();
 		torrents_ = new Vector<TorrentListItem>();
 	}
 
@@ -146,13 +148,21 @@ public class TorrentService extends Service {
 	/** Subscribes client to the given torrent. */
 	private void subscribeClient(Messenger messenger, String infoHash) {
 		if (infoHash != null) {
-			Vector<Messenger> clients = clientsSingle_.get(infoHash);
-			if (!clients.contains(messenger)) clients.add(messenger);
-			Log.v(LOG_TAG, clients.size() + " Client subscried to the following torrent: " + infoHash);
+			//Vector<Messenger> clients = clientsSingle_.get(infoHash);
+			//if (!clients.contains(messenger)) clients.add(messenger);
+			//Log.v(LOG_TAG, clients.size() + " Client subscried to the following torrent: " + infoHash);
+			Log.v(LOG_TAG, " Client subscried to the following torrent: " + infoHash);
+			clientAll_ = null;
+			clientSingleInfoHash_ = infoHash;
+			clientSingle_ = messenger;
 			sendTorrentItem(messenger, infoHash);
 		} else {
-			if (!clientsAll_.contains(messenger)) clientsAll_.add(messenger);
-			Log.v(LOG_TAG, clientsAll_.size() + " Client subscribed to the Torrent Service.");
+			//if (!clientsAll_.contains(messenger)) clientsAll_.add(messenger);
+			//Log.v(LOG_TAG, clientsAll_.size() + " Client subscribed to the Torrent Service.");
+			Log.v(LOG_TAG, " Client subscribed to the Torrent Service.");
+			clientSingle_ = null;
+			clientSingleInfoHash_ = "";
+			clientAll_ = messenger;
 			sendTorrentList(messenger);
 		}
 	}
@@ -160,12 +170,18 @@ public class TorrentService extends Service {
 	/** Unsubscribes client from the given torrent. */
 	private void unSubscribeClient(Messenger messenger, String infoHash) {
 		if (infoHash != null) {
-			Vector<Messenger> clients = clientsSingle_.get(infoHash);
-			clients.remove(messenger);
-			Log.v(LOG_TAG, clients.size() + " Client unsubscribed from the following torrent: " + infoHash);
+			//Vector<Messenger> clients = clientsSingle_.get(infoHash);
+			//clients.remove(messenger);
+			//Log.v(LOG_TAG, clients.size() + " Client unsubscribed from the following torrent: " + infoHash);
+			Log.v(LOG_TAG, "Client unsubscribed from the following torrent: " + infoHash);
+			clientSingle_ = null;
+			clientSingleInfoHash_ = "";
+			
 		} else {
-			clientsAll_.remove(messenger);
-			Log.v(LOG_TAG, clientsAll_.size() + " Client unsubscribed from the Torrent Service.");
+			//clientsAll_.remove(messenger);
+			//Log.v(LOG_TAG, clientsAll_.size() + " Client unsubscribed from the Torrent Service.");
+			clientAll_ = null;
+			Log.v(LOG_TAG, "Client unsubscribed from the Torrent Service.");
 		}
 	}
 
@@ -192,7 +208,7 @@ public class TorrentService extends Service {
 	/** Torrent changed */
 	public void updateTorrentItem(Torrent torrent) {
 		String infoHash = torrent.getInfoHash();	
-
+		
 		// Searching the torrent item
 		TorrentListItem item = null;
 		boolean found = false;
@@ -213,9 +229,11 @@ public class TorrentService extends Service {
 			item = new TorrentListItem(torrent);
 			torrents_.add(item);
 			
-			Vector<Messenger> messengers = new Vector<Messenger>();
-			clientsSingle_.put(torrent.getInfoHash(), messengers);
+			//Vector<Messenger> messengers = new Vector<Messenger>();
+			//clientsSingle_.put(torrent.getInfoHash(), messengers);
 		}
+		
+		if (clientAll_ == null && (!clientSingleInfoHash_.equals(infoHash) || clientSingle_ == null)) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -223,8 +241,9 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_TORRENT_ITEM;
 		msg.setData(bundle);
 
-		sendMessageToAll(msg);
-		sendMessageToSingle(msg, infoHash);
+		//sendMessageToAll(msg);
+		//sendMessageToSingle(msg, infoHash);
+		sendMessage(msg, infoHash);
 	}
 	
 	/** Torrent deleted */
@@ -241,17 +260,22 @@ public class TorrentService extends Service {
 			}
 		}
 		
+		if (clientAll_ == null && (!clientSingleInfoHash_.equals(infoHash) || clientSingle_ == null)) return;
+		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		bundle.putSerializable(MSG_KEY_TORRENT_ITEM, item);
 		bundle.putBoolean(MSG_KEY_IS_REMOVED, true);
 		msg.what = MSG_SEND_TORRENT_ITEM;
 		msg.setData(bundle);
-		sendMessageToAll(msg);
+		//sendMessageToAll(msg);
+		sendMessage(msg, null);
 	}
 	
 	/** Peer changed. */
 	public void updatePeerItem(Torrent torrent, Peer peer, boolean isDisconnected) {
+		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		
 		PeerListItem peerListItem = new PeerListItem(peer);
 		
 		Message msg = Message.obtain();
@@ -261,12 +285,14 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_PEER_ITEM;
 		msg.setData(bundle);
 
-		sendMessageToSingle(msg, torrent.getInfoHash());
+		//sendMessageToSingle(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getInfoHash());
 	}
 	
 	/** Peer list changed. */
 	public void updatePeerList(Torrent torrent) {
-		if (clientsSingle_.get(torrent.getInfoHash()).size() == 0) return;
+		//if (clientsSingle_.get(torrent.getInfoHash()).size() == 0) return;
+		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -281,7 +307,8 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_PEER_LIST;
 		msg.setData(bundle);
 
-		sendMessageToSingle(msg, torrent.getInfoHash());
+		//sendMessageToSingle(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getInfoHash());
 	}
 	
 	/** Shows a toast with a message. */
@@ -292,7 +319,8 @@ public class TorrentService extends Service {
 		msg.what = MSG_SHOW_TOAST;
 		msg.setData(bundle);
 		
-		sendMessageToAll(msg);
+		// sendMessageToAll(msg);
+		sendMessage(msg, null);
 	}
 	
 	/** Shows a dialog with a message. */
@@ -303,7 +331,8 @@ public class TorrentService extends Service {
 		msg.what = MSG_SHOW_DIALOG;
 		msg.setData(bundle);
 		
-		sendMessageToAll(msg);
+		//sendMessageToAll(msg);
+		sendMessage(msg, null);
 	}
 	
 	/** Shows a progress dialog with a message. */
@@ -314,7 +343,8 @@ public class TorrentService extends Service {
 		msg.what = MSG_SHOW_PROGRESS;
 		msg.setData(bundle);
 		
-		sendMessageToAll(msg);
+		//sendMessageToAll(msg);
+		sendMessage(msg, null);
 	}
 	
 	/** Hides the progress dialog. */
@@ -322,7 +352,8 @@ public class TorrentService extends Service {
 		Message msg = Message.obtain();
 		msg.what = MSG_HIDE_PROGRESS;
 		
-		sendMessageToAll(msg);
+		//sendMessageToAll(msg);
+		sendMessage(msg, null);
 	}
 
 	/** Sends an optional torrent to a client. */
@@ -388,7 +419,7 @@ public class TorrentService extends Service {
 	}
 	
 	/** Sending a message to clients subscribed to all torrents. */
-	private void sendMessageToAll(Message msg) {
+	/*private void sendMessageToAll(Message msg) {
 		for (int i=0; i < clientsAll_.size(); i++) {
 			try {
 				clientsAll_.get(i).send(msg);
@@ -396,14 +427,32 @@ public class TorrentService extends Service {
 				Log.v(LOG_TAG, LOG_ERROR_SENDING);
 			}
 		}
-	}
+	}*/
 	
 	/** Sending a message clients subscribed to a torrent. */
-	private void sendMessageToSingle(Message msg, String infoHash) {
+	/*private void sendMessageToSingle(Message msg, String infoHash) {
 		Vector<Messenger> clients = clientsSingle_.get(infoHash);
 		for (int i = 0; i < clients.size(); i++) {
 			try {
 				clients.get(i).send(msg);
+			} catch (RemoteException e) {
+				Log.v(LOG_TAG, LOG_ERROR_SENDING);
+			}
+		}
+	}*/
+	
+	// Sends a message to the subscribed client
+	private void sendMessage(Message msg, String infoHash) {
+		Messenger messenger = null;
+		if (clientAll_ != null) {
+			messenger = clientAll_;
+		}
+		if (clientSingle_ != null && clientSingleInfoHash_.equals(infoHash)) {
+			messenger = clientSingle_;
+		}
+		if (messenger != null) {
+			try {
+				messenger.send(msg);
 			} catch (RemoteException e) {
 				Log.v(LOG_TAG, LOG_ERROR_SENDING);
 			}
