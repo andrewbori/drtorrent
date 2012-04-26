@@ -16,6 +16,8 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 	private final int rowResource = R.layout.list_item_peer;
 	private final int tvAddressResource = R.id.list_item_peer_tvAddress;
 	private final int tvRequestsResource = R.id.list_item_peer_tvRequests;
+	private final int tvDownloadSpeedRecource = R.id.list_item_peer_tvDownloadSpeed;
+	private final int tvDownloadedRecource = R.id.list_item_peer_tvDownloaded;
 
 	public PeerListAdapter(Activity context, ArrayList<T> items) {
 		super(context, R.layout.list_item_torrent, items);
@@ -33,11 +35,15 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 
 		TextView tvAddress = (TextView) reusableView.findViewById(tvAddressResource);
 		TextView tvRequests = (TextView) reusableView.findViewById(tvRequestsResource);
+		TextView tvDownloadSpeed = (TextView) reusableView.findViewById(tvDownloadSpeedRecource);
+		TextView tvDownloaded = (TextView) reusableView.findViewById(tvDownloadedRecource);
 
 		PeerListItem item = (PeerListItem) items_.get(position);
 
 		tvAddress.setText(item.getAddress());
 		tvRequests.setText(item.getRequests());
+		tvDownloadSpeed.setText(item.getDownloadSpeed());
+		tvDownloaded.setText(item.getDownloaded());
 
 		return reusableView;
 	}

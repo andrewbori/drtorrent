@@ -54,11 +54,11 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	   	spec.setIndicator("Peers");
   		tabs.addTab(spec);
   		
-		spec=tabs.newTabSpec("tab3");
+		/*spec=tabs.newTabSpec("tab3");
 		spec.setContent(R.id.torrent_details_tab3);
 		spec.setIndicator("Trackers");
 		tabs.addTab(spec);
-		
+		*/
 		tabs.setCurrentTab(0);
 		
 		tvName_ = (TextView) findViewById(R.id.torrent_details_tvName);

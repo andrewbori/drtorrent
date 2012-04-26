@@ -27,7 +27,7 @@ public class Torrent {
 	public final static int ERROR_NOT_ATTACHED       = -7;
 	public final static int ERROR_GENERAL            = -8;
 
-	private final int MAX_STORED_PEERS = 50;
+	private final int MAX_STORED_PEERS = 20;
 	
 	private TorrentManager torrentManager_;
 	private FileManager fileManager_;
@@ -54,8 +54,7 @@ public class Torrent {
 	private int bytesTotal_           = 0;
 	private int bytesUploaded_        = 0;
 	private int bytesDownloaded_      = 0;
-	private Vector<Integer> lastBytesDownloaded_;
-	private int downloadSpeed_;
+	private Vector<Integer> latestDownloadedBytes_;
 	private int uploadSpeed_;
 	private int bytesLeft_            = 0;
 	private double downloadPercent_   = 0;
@@ -71,6 +70,7 @@ public class Torrent {
 
 	private Vector<Peer> peers_;
 	private Vector<Peer> connectedPeers_;
+	private Vector<Peer> disconnectedPeers_;
 	private Tracker tracker_;
 	private Vector<Vector<Tracker>> trackerList_;
 	private Vector<String> announceList_;
@@ -97,7 +97,7 @@ public class Torrent {
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
 		connectedPeers_ = new Vector<Peer>();
-		lastBytesDownloaded_ = new Vector<Integer>();
+		latestDownloadedBytes_ = new Vector<Integer>();
 	}
 
 	/** Class containing the path and the size of a file to be created. */
@@ -641,9 +641,8 @@ public class Torrent {
             }
 		}
 		
-		downloadSpeed_ = bytesDownloaded_ - latestBytesDownloaded_;
-		if (lastBytesDownloaded_.size() >= 10) lastBytesDownloaded_.removeElementAt(0);
-		lastBytesDownloaded_.add(downloadSpeed_);
+		if (latestDownloadedBytes_.size() > 9) latestDownloadedBytes_.removeElementAt(0);
+		latestDownloadedBytes_.add(bytesDownloaded_ - latestBytesDownloaded_);
 		
 		torrentManager_.updateTorrent(this);
 
@@ -667,7 +666,7 @@ public class Torrent {
 		}
 		// * ***/
 		
-		//if (downloadablePieces_.size() > 0) {
+		if (downloadablePieces_.size() > 0) {
 			// NORMAL MODE
 			
 			synchronized (downloadingPieces_) {
@@ -730,7 +729,7 @@ public class Torrent {
 				}
 			}
 		
-		/*} else {
+		} else {
 			// END GAME MODE
 			isEndGame_ = true;
 			// Get a block from the downloading pieces
@@ -743,47 +742,30 @@ public class Torrent {
 							requestedBlocks_.addElement(block);
 							return block;
 						}
-					} else {
-						Vector<Block> blocksToDownload = piece.getRequestedBlocks();
-						for (int j = 0; j < blocksToDownload.size(); j++) {
-							block = blocksToDownload.elementAt(j);
-							if (!peer.hasBlock(block)) {
-								return block;
-							}
-						}
 					}
 				}
 			}
-			
-			
-		}*/
-		
-		/*if (pieceToDownload == null) {
-			for (int i = 0; i < pieces_.size(); i++) {
-				if (peer.hasPiece(i)) {
-					pieceToDownload = pieces_.elementAt(i);
-					if (!pieceToDownload.isComplete() && downloadingPieces_.contains(pieceToDownload)) {
-						if (pieceToDownload.)
-						
-						downloadingPieces_.addElement(pieceToDownload);
-						break;
-					}
-					else {
-						pieceToDownload = null;
+			synchronized (requestedBlocks_) {
+				for (int j = requestedBlocks_.size() - 1; j >= 0; j--) {
+					block = requestedBlocks_.elementAt(j);
+					if (!peer.hasBlock(block)) {
+						return block;
 					}
 				}
 			}
-		}*/
+		}
 		
 		return null;
 	}
 	
 	/** Cancels the downloading of a block. */
 	public void cancelBlock(Block block) {
-		block.setNotRequested();
-		Piece piece = getPiece(block.pieceIndex());
-		piece.addBlockToRequest(block);
-		requestedBlocks_.removeElement(block);
+		if (!isEndGame_) {
+			block.setNotRequested();
+			Piece piece = getPiece(block.pieceIndex());
+			piece.addBlockToRequest(block);
+			requestedBlocks_.removeElement(block);
+		}
 	}
 	
 	/**
@@ -1025,11 +1007,11 @@ public class Torrent {
 	/** Returns the download speed. */
 	public int getDownloadSpeed() {
 		int sum = 0;
-		if (lastBytesDownloaded_.size() > 0) {
-			for (int i = 0; i < lastBytesDownloaded_.size(); i++) {
-				sum += lastBytesDownloaded_.elementAt(i);
+		if (latestDownloadedBytes_.size() > 0) {
+			for (int i = 0; i < latestDownloadedBytes_.size(); i++) {
+				sum += latestDownloadedBytes_.elementAt(i);
 			}
-			sum /= lastBytesDownloaded_.size();
+			sum /= latestDownloadedBytes_.size();
 		}
 		return sum;
 	}
