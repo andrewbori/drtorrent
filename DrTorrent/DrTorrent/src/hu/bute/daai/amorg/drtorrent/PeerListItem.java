@@ -3,7 +3,6 @@ package hu.bute.daai.amorg.drtorrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
 
 import java.io.Serializable;
-import java.text.DecimalFormat;
 
 public class PeerListItem implements Serializable {
 
@@ -36,8 +35,8 @@ public class PeerListItem implements Serializable {
 	public void set(Peer peer) {
 		address_ = peer.getAddressPort();
 		requests_ = peer.getRequestsCount() + "";
-		downloadSpeed_ = bytesToString(peer.getDownloadSpeed()) + "/s";
-		downloaded_ = bytesToString(peer.getDownloaded());
+		downloadSpeed_ = DrTorrentTools.bytesToString(peer.getDownloadSpeed()) + "/s";
+		downloaded_ = DrTorrentTools.bytesToString(peer.getDownloaded());
 	}
 	
 	public void set(String address, String requests, String downloadSpeed, String downloaded) {
@@ -82,28 +81,5 @@ public class PeerListItem implements Serializable {
 	@Override
 	public boolean equals(Object other) {
 		return address_.equals(((PeerListItem)other).address_);
-	}
-	
-	private String bytesToString(int bytesInt) {
-		double bytes = bytesInt;
-		String bytesStr = "";
-		if (bytes > 1024.0) {
-			bytes = bytes / 1024.0;
-			String metric = "kB";
-		
-			if (bytes > 1024.0) {
-					bytes = bytes / 1024.0;
-					metric = "MB";
-					
-				if (bytes > 1024.0) {
-					bytes = bytes / 1024.0;
-					metric = "GB";
-				}
-			}
-			DecimalFormat dec = new DecimalFormat("###.#");
-			bytesStr = dec.format(bytes) + " " + metric;
-		} else bytesStr = (int) bytes + " byte";
-		
-		return bytesStr;
 	}
 }

@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.PeerListItem;
+import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
@@ -23,7 +24,9 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.widget.Toast;
 
-public abstract class TorrentHostActivity extends Activity {
+import com.actionbarsherlock.app.SherlockActivity;
+
+public abstract class TorrentHostActivity extends SherlockActivity {
 	public static final String KEY_INFO_HASH = "infoHash";
 	
 	protected static final int MENU_ADD_TORRENT    = 101;
@@ -44,6 +47,7 @@ public abstract class TorrentHostActivity extends Activity {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
+		setTheme(R.style.Theme_Sherlock);
 		super.onCreate(savedInstanceState);
 
 		Bundle extras = getIntent().getExtras();

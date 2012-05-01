@@ -37,12 +37,13 @@ public class TorrentManager {
 				for (int i = 0; i < torrents_.size(); i++) {
 					torrent = torrents_.elementAt(i);
 					if (torrent.isWorking()) {
+						torrent.onTimer();
+						
 						torrentService_.updatePeerList(torrent);
 						if (torrent.getBitfield().isChanged()) {
 							torrentService_.updateBitfield(torrent);
 							torrent.getBitfield().setChanged(false);
 						}
-						torrent.onTimer();
 					}
 				}
 			}

@@ -158,7 +158,7 @@ public class TorrentService extends Service {
 			clientSingleInfoHash_ = infoHash;
 			clientSingle_ = messenger;
 			sendTorrentItem(messenger, infoHash);
-			//sendPeerList(messenger, infoHash);
+			sendPeerList(messenger, infoHash);
 			updateBitfield(torrentManager_.getTorrent(infoHash));
 		} else {
 			//if (!clientsAll_.contains(messenger)) clientsAll_.add(messenger);
