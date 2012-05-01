@@ -9,6 +9,8 @@ import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Vector;
 
 import android.util.Log;
@@ -67,6 +69,9 @@ public class Torrent {
 	private Vector<Piece> downloadingPieces_;
 	private Vector<Block> requestedBlocks_;
 	private Bitfield bitfield_;
+	
+	private int elapsedTime_ = 0;
+	private long lastTime_ = 0;
 
 	private Vector<Peer> peers_;
 	private Vector<Peer> connectedPeers_;
@@ -590,6 +595,8 @@ public class Torrent {
 	/** Starts the torrent. */
 	public void start() {
 		if (valid_) {
+			lastTime_ = System.currentTimeMillis();
+			
 			status_ = R.string.status_connecting;
 			torrentManager_.updateTorrent(this);
 			
@@ -640,6 +647,10 @@ public class Torrent {
 				connectedPeers_.elementAt(i).onTimer();
             }
 		}
+		
+		long currentTime = System.currentTimeMillis();
+		elapsedTime_ += (int) (currentTime - lastTime_);
+		lastTime_ = currentTime;
 		
 		if (latestDownloadedBytes_.size() > 9) latestDownloadedBytes_.removeElementAt(0);
 		latestDownloadedBytes_.add(bytesDownloaded_ - latestBytesDownloaded_);
@@ -712,6 +723,7 @@ public class Torrent {
 			piece = null;
 			
 			synchronized (downloadablePieces_) {
+				Collections.shuffle(downloadablePieces_);
 				// Get a block from the downloadable pieces
 				for (int i = 0; i < downloadablePieces_.size(); i++) {
 					piece = downloadablePieces_.elementAt(i);
@@ -867,6 +879,8 @@ public class Torrent {
 					int k = piece.getNumberOfPeersHaveThis();
 					if (k == n) rarestPieces_.add(piece);
 				}
+				
+				Collections.shuffle(rarestPieces_);
 			}
 		}
 	}
@@ -1074,5 +1088,21 @@ public class Torrent {
 	/** Returns the array of the connected peers. */
 	public Vector<Peer> getConnectedPeers() {
 		return connectedPeers_;
+	}
+
+	public int getRemainingTime() {
+		int speed = getDownloadSpeed();
+		if (speed == 0) return -1;
+		int remaining = getSize() - getBytesDownloaded();
+		double millis = ((double) remaining / (double) speed) * 1000.0; 
+		return (int) millis;
+	}
+
+	public int getElapsedTime() {
+		return elapsedTime_;
+	}
+
+	public void updateBytesUploaded(int length) {
+		bytesUploaded_ += length;
 	}
 }

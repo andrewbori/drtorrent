@@ -26,11 +26,11 @@ public class PeerConnection {
 	private final static int MESSAGE_ID_PIECE          = 7;
 	private final static int MESSAGE_ID_CANCEL         = 8;
 	
-	private final static int TIMEOUT_TCP_CONNECTION = 15;
-	private final static int TIMEOUT_HANDSHAKE      = 15;
-	private final static int TIMEOUT_PW_CONNECTION  = 2 * 60;
-	private final static int TIMEOUT_REQUEST        = 60;
-    private final static int KEEP_ALIVE_INTERVAL    = 2 * 60;	// once in every two minutes
+	private final static int TIMEOUT_TCP_CONNECTION = 1000 * 15;
+	private final static int TIMEOUT_HANDSHAKE      = 1000 * 15;
+	private final static int TIMEOUT_PW_CONNECTION  = 1000 * 2 * 60;
+	private final static int TIMEOUT_REQUEST        = 1000 * 60;
+    private final static int KEEP_ALIVE_INTERVAL    = 1000 * 2 * 58;	// once in every two minutes
     private final static int MAX_PIECE_REQUESTS     = 5;
 	
 	public final static int STATE_NOT_CONNECTED  = 0;
@@ -49,6 +49,8 @@ public class PeerConnection {
 	private Vector<Block> blocksToDownload_;
 	private Vector<Block> blocksDownloading_;
 	
+	private Vector<Block> blocksToUpload_;
+	
 	private boolean isIncomingConnection_;
 	private boolean isReadEnabled_;
 	private int state_;
@@ -63,10 +65,11 @@ public class PeerConnection {
 	private InputStream inputStream_;
 	private OutputStream outputStream_;
 	
-	private int ellapsedTime_ = 0;
-	private int lastRequestTime_ = 0;
-	private int lastMessageReceivedTime_ = 0;
-	private int lastMessageSentTime_ = 0;
+	private int elapsedTime_ = 0;
+	private long lastTime_ = 0;
+	private int latestRequestTime_ = 0;
+	private int latestMessageReceivedTime_ = 0;
+	private int latestMessageSentTime_ = 0;
 	private int reconnectAfter_;
 	public static int tcpConnectionTimeoutNum_ = 0;
 	
@@ -87,6 +90,8 @@ public class PeerConnection {
 
         blocksToDownload_ = new Vector<Block>();
         blocksDownloading_ = new Vector<Block>();
+        
+        blocksToUpload_ = new Vector<Block>();
         
         latestDownloadedBytes_ = new Vector<Integer>();
         
@@ -120,20 +125,22 @@ public class PeerConnection {
 
 	/** Schedules the connection. Mainly for checking timeouts. */
 	public void onTimer() {
-		ellapsedTime_++;
+		
+		calculateElapsedTime();
+		
 		if (reconnectAfter_ > 0) reconnectAfter_--;
 
 		switch (state_) {
 			
 			case STATE_TCP_CONNECTING:
-				if (ellapsedTime_ > TIMEOUT_TCP_CONNECTION) {
+				if (elapsedTime_ > TIMEOUT_TCP_CONNECTION) {
 					tcpConnectionTimeoutNum_++;
 					close(ERROR_INCREASE_ERROR_COUNTER, "Timeout while trying to connect.");
 				}
 				break;
 
 			case STATE_PW_HANDSHAKING:
-				if (ellapsedTime_ > TIMEOUT_HANDSHAKE) {
+				if (elapsedTime_ > TIMEOUT_HANDSHAKE) {
 					close(ERROR_INCREASE_ERROR_COUNTER, "Handshake timeout (no data received).");
 				}
 				break;
@@ -144,13 +151,13 @@ public class PeerConnection {
 				latestDownloaded_ = downloaded_;
 				
 				// Timeout: Because no messages have been received in the recent time
-				if ((ellapsedTime_ - lastMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
+				if ((elapsedTime_ - latestMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
 					close(ERROR_INCREASE_ERROR_COUNTER, "General timeout (no data received)");
 					break;
 				}
 
-				if (lastRequestTime_ > 0 && ((ellapsedTime_ - lastRequestTime_) > TIMEOUT_REQUEST)) {
-					lastRequestTime_ = 0;
+				if (latestRequestTime_ > 0 && ((elapsedTime_ - latestRequestTime_) > TIMEOUT_REQUEST)) {
+					latestRequestTime_ = 0;
 					/*if (torrent_.hasTimeoutlessPeer()) {
 					 peer_.setHadRequestTimeout(true);
 					 close(EIncreaseErrorCounter, "Request timeout"); break; }
@@ -161,12 +168,12 @@ public class PeerConnection {
 				}
 				
 				// Nobody interested
-				if (ellapsedTime_ > 10 && !isInterested() && !isPeerInterested()) {
+				if (elapsedTime_ > 10000 && !isInterested() && !isPeerInterested()) {
 					close("Nobody interested!");
 				}
 				
 				// Keep alive: because we have not sent message in the recent time
-				if ((ellapsedTime_ - lastMessageSentTime_) >= KEEP_ALIVE_INTERVAL) {
+				if ((elapsedTime_ - latestMessageSentTime_) >= KEEP_ALIVE_INTERVAL) {
 					sendKeepAliveMessage();
 				}
 				
@@ -180,7 +187,7 @@ public class PeerConnection {
 				break;
 		}
 	}
-	
+
 	public void issueDownload2() {
 		new Thread() {
 			@Override
@@ -322,7 +329,8 @@ public class PeerConnection {
 						messageLength = readInt();				// length prefix
 						if (messageLength == -1) continue;
 						
-						lastMessageReceivedTime_ = ellapsedTime_;
+						calculateElapsedTime();
+						latestMessageReceivedTime_ = elapsedTime_;
 						if (messageLength == 0) {
 							// keep-alive
 							Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
@@ -541,7 +549,7 @@ public class PeerConnection {
 	/** Reading message: piece. */
 	private void readPieceMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
 		peer_.resetErrorCounter();
-		lastRequestTime_ = 0;
+		latestRequestTime_ = 0;
 		//peer_.setHadRequestTimeout(false);
 		int index = readInt();								// index
 		int begin = readInt();								// begin
@@ -619,7 +627,12 @@ public class PeerConnection {
 			int pieceIndex = readInt();
 			int begin = readInt();
 			int length = readInt();
-
+			
+			if (isChoking()) return;
+			
+			Block block = new Block(torrent_.getPiece(pieceIndex), begin, length);
+			blocksToUpload_.add(block);
+			
 			//log("in REQUEST Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
 
 			/*if (Preferences.UploadEnabled) {
@@ -642,14 +655,14 @@ public class PeerConnection {
 			int begin = readInt();
 			int length = readInt();
 
-			/*for (int i = 0; i < incomingRequests_.size(); i++) {
-				if (((BlockRequest) incomingRequests_.elementAt(i)).pieceIndex == pieceIndex
-						&& ((BlockRequest) incomingRequests_.elementAt(i)).begin == begin
-						&& ((BlockRequest) incomingRequests_.elementAt(i)).length == length) {
-					incomingRequests_.removeElementAt(i);
+			for (int i = 0; i < blocksToUpload_.size(); i++) {
+				if (blocksToUpload_.elementAt(i).pieceIndex() == pieceIndex &&
+				blocksToUpload_.elementAt(i).begin() == begin &&
+				blocksToUpload_.elementAt(i).length() == length) {
+					blocksToUpload_.removeElementAt(i);
 					break;
 				}
-			}*/
+			}
 		}
 	}
 
@@ -694,7 +707,8 @@ public class PeerConnection {
 	public void sendKeepAliveMessage() {
         try {
             if (outputStream_ != null) {
-                lastMessageSentTime_ = ellapsedTime_;
+            	calculateElapsedTime();
+                latestMessageSentTime_ = elapsedTime_;
                 
                 outputStream_.write(intToByteArray(0));
                 outputStream_.flush();
@@ -713,7 +727,8 @@ public class PeerConnection {
 		ByteArrayOutputStream baos = null;
         try {
             if (outputStream_ != null) {
-                lastMessageSentTime_ = ellapsedTime_;
+            	calculateElapsedTime();
+                latestMessageSentTime_ = elapsedTime_;
 
                 baos = new ByteArrayOutputStream();
                 baos.write(intToByteArray(1));	// len = 1
@@ -741,7 +756,8 @@ public class PeerConnection {
     	ByteArrayOutputStream baos = null;
         try {
             if (outputStream_ != null) {
-                lastMessageSentTime_ = ellapsedTime_;
+            	calculateElapsedTime();
+                latestMessageSentTime_ = elapsedTime_;
 
                 baos = new ByteArrayOutputStream();
                 baos.write(intToByteArray(1));	// len = 1
@@ -770,8 +786,8 @@ public class PeerConnection {
 		try {
 			if (outputStream_ != null) {
 				Log.v(LOG_TAG, "Sending interested to: " + peer_.getAddress());
-				
-				lastMessageSentTime_ = ellapsedTime_;
+				calculateElapsedTime();
+				latestMessageSentTime_ = elapsedTime_;
 
 				baos = new ByteArrayOutputStream();
 				baos.write(intToByteArray(1));		// len = 1
@@ -803,7 +819,8 @@ public class PeerConnection {
 		ByteArrayOutputStream baos = null;
 		try {
 			if (outputStream_ != null) {
-				lastMessageSentTime_ = ellapsedTime_;
+				calculateElapsedTime();
+				latestMessageSentTime_ = elapsedTime_;
 
 				baos = new ByteArrayOutputStream();
 				baos.write(intToByteArray(1));			// len = 1
@@ -833,7 +850,8 @@ public class PeerConnection {
 		ByteArrayOutputStream baos = null;
 		try {
 			if (outputStream_ != null) {
-				lastMessageSentTime_ = ellapsedTime_;
+				calculateElapsedTime();
+				latestMessageSentTime_ = elapsedTime_;
 
 				baos = new ByteArrayOutputStream();
 				baos.write(intToByteArray(5));			// len = 5
@@ -864,7 +882,8 @@ public class PeerConnection {
 	    try {
 	        if (outputStream_ != null) {
 	        	Log.v(LOG_TAG, "Sending bitfield to: " + peer_.getAddress());
-	            lastMessageSentTime_ = ellapsedTime_;
+	        	calculateElapsedTime();
+	            latestMessageSentTime_ = elapsedTime_;
 	
 	            baos = new ByteArrayOutputStream();
 	            baos.write(intToByteArray(1 + bitfield.length));	// len = 1 + X
@@ -896,7 +915,9 @@ public class PeerConnection {
 			ByteArrayOutputStream baos = null;
 			try {
 				if (outputStream_ != null) {
-					lastMessageSentTime_ = lastRequestTime_ = ellapsedTime_;
+					calculateElapsedTime();
+					latestMessageSentTime_ = elapsedTime_;
+					latestRequestTime_ = elapsedTime_;
 
 					baos = new ByteArrayOutputStream();
 					baos.write(intToByteArray(13));							// len = 13
@@ -926,19 +947,19 @@ public class PeerConnection {
 	}
 	
 	/** Sending message: piece. */
-	private void sendPieceMessage(int pieceIndex, int begin, int length) {
-		Piece piece = torrent_.getPiece(pieceIndex);
+	private void sendPieceMessage(Block block) {
+		Piece piece = torrent_.getPiece(block.pieceIndex());
 		
 		if (piece != null) {
 			//Log.v(LOG_TAG, "Processing piece request " + pieceIndex + " Begin: " + begin + " Length: " + length + " while piece totalsize: " + piece.size());
 
-			if (begin + length > piece.size()) {
+			if (block.begin() + block.length() > piece.size()) {
 				close("Bad PIECE request (index is out of bounds)");
 				return;
 			}
 
-			byte[] block = piece.getBlock(begin, length);
-			if (block == null) {
+			byte[] blockBytes = piece.getBlock(block.begin(), block.length());
+			if (blockBytes == null) {
 				close("Failed to extract block of piece");
 				return;
 			}
@@ -946,20 +967,22 @@ public class PeerConnection {
 			ByteArrayOutputStream baos = null;
 			try {
 				if (outputStream_ != null) {
+					calculateElapsedTime();
+					latestMessageSentTime_ = elapsedTime_;
+					
 					baos = new ByteArrayOutputStream();
-					baos.write(intToByteArray(9 + length));	// len = 9 + X
-					baos.write(MESSAGE_ID_PIECE);			// id = 7
-					baos.write(intToByteArray(pieceIndex));	// index
-					baos.write(intToByteArray(begin));		// begin
-					baos.write(block);						// block
+					baos.write(intToByteArray(9 + block.length()));	// len = 9 + X
+					baos.write(MESSAGE_ID_PIECE);					// id = 7
+					baos.write(intToByteArray(block.pieceIndex()));	// index
+					baos.write(intToByteArray(block.begin()));		// begin
+					baos.write(blockBytes);							// block
 					baos.flush();
 
 					outputStream_.write(baos.toByteArray());
 					outputStream_.flush();
 
-					//torrent_.updateBytesUploaded(length, true);
+					torrent_.updateBytesUploaded(block.length());
 
-					lastMessageSentTime_ = ellapsedTime_;
 					//Log.v(LOG_TAG, "out PIECE Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
 				} else {
 					close("ERROR, while send piece, outputstream is NULL");
@@ -978,21 +1001,27 @@ public class PeerConnection {
 
 	/** Sending message: cancel. */
 	private void sendCancelMessage(Block block) {
-		lastMessageSentTime_ = ellapsedTime_;
 		ByteArrayOutputStream baos = null;
 		try {
-			baos = new ByteArrayOutputStream();
-			baos.write(intToByteArray(13));							// len = 13
-			baos.write(MESSAGE_ID_CANCEL);							// id = cancel
-			baos.write(intToByteArray(block.pieceIndex()));			// index
-			baos.write(intToByteArray(block.begin()));				// begin
-			baos.write(intToByteArray(block.length()));				// length
-			baos.flush();
-
-			outputStream_.write(baos.toByteArray());
-			outputStream_.flush();
-
-			Log.v(LOG_TAG, "Cancel block index: " + block.pieceIndex() + " begin: " + block.begin() + " length: " + block.length());
+			if (outputStream_ != null) {
+				calculateElapsedTime();
+				latestMessageSentTime_ = elapsedTime_;
+				
+				baos = new ByteArrayOutputStream();
+				baos.write(intToByteArray(13));							// len = 13
+				baos.write(MESSAGE_ID_CANCEL);							// id = cancel
+				baos.write(intToByteArray(block.pieceIndex()));			// index
+				baos.write(intToByteArray(block.begin()));				// begin
+				baos.write(intToByteArray(block.length()));				// length
+				baos.flush();
+	
+				outputStream_.write(baos.toByteArray());
+				outputStream_.flush();
+	
+				Log.v(LOG_TAG, "Cancel block index: " + block.pieceIndex() + " begin: " + block.begin() + " length: " + block.length());
+			} else {
+				close("ERROR, while send piece, outputstream is NULL");
+			}
 		} catch (IOException e) {
 			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing cancel message");
 		} catch (Exception e) {
@@ -1145,7 +1174,8 @@ public class PeerConnection {
 	/** Changes the state of the connection. */
 	public void changeState(int state) {
 		state_ = state;
-		ellapsedTime_ = 0;
+		calculateElapsedTime();
+		elapsedTime_ = 0;
 	}
 	
 	/** Returns the connections state. */
@@ -1153,23 +1183,23 @@ public class PeerConnection {
 		return state_;
 	}
 	
-	/** Returns wheter we are chocking the peer or not. */
-	private boolean isChoking() {
+	/** Returns whether we are chocking the peer or not. */
+	public boolean isChoking() {
 		return isChoking_;
 	}
 
 	/** Returns whether the peer is chocking us or not. */
-	private boolean isPeerChoking() {
+	public boolean isPeerChoking() {
 		return isPeerChoking_;
 	}
 	
 	/** Returns whether we find the peer interesting or not. */
-	private boolean isInterested() {
+	public boolean isInterested() {
 		return isInterested_;
 	}
 
 	/** Returns whether the peer is interested in us or not. */
-	private boolean isPeerInterested() {
+	public boolean isPeerInterested() {
 		return isPeerInterested_;
 	}
 	
@@ -1247,7 +1277,8 @@ public class PeerConnection {
 
         sendHandshakeMessage();
 
-        ellapsedTime_ = 0;
+        calculateElapsedTime();
+        elapsedTime_ = 0;
         
         read();
 	}
@@ -1284,6 +1315,12 @@ public class PeerConnection {
 			sum = (int) ((float) sum / (float) Piece.DEFALT_BLOCK_LENGTH);
 		}
 		return sum;
+	}
+	
+	private void calculateElapsedTime() {
+		long currentTime = System.currentTimeMillis();
+		elapsedTime_ += (int) (currentTime - lastTime_);
+		lastTime_ = currentTime;
 	}
 	
 }

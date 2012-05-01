@@ -55,6 +55,34 @@ public class PiecesView extends View {
 			}
 		}
 	}
+	
+	/*@Override
+	protected void onDraw(Canvas canvas) {
+		super.onDraw(canvas);
+		if (bitfield_ == null) return;
+		
+		//int height = canvas.getHeight() / 20;
+		int width = canvas.getWidth() / 10;
+		
+		int i = 0;
+		
+		for (int hi = 0; i < bitfield_.getLengthInBits(); hi+=20) {
+			for (int wi = 0; wi < width && i < bitfield_.getLengthInBits(); wi+=10) {			
+				Rect rectangle = new Rect();
+				rectangle.set(wi, hi, wi + 10, hi + 20);
+				
+				Paint paint = new Paint();
+				if (bitfield_.isBitSet(i)) paint.setColor(Color.GREEN);
+				else paint.setColor(Color.DKGRAY);
+				paint.setStyle(Style.FILL);
+				//paint.setStrokeWidth(1);
+				
+				canvas.drawRect(rectangle, paint);
+				
+				i++;
+			}
+		}	
+	}*/
 
 	public void updateBitfield(Bitfield bitfield) {
 		bitfield_ = bitfield;

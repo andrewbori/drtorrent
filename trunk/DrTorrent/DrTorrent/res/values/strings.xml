@@ -16,6 +16,12 @@
 	<string name="peers">Seeds/peers:</string>
 	<string name="download_speed">Down speed:</string>
 	<string name="upload_speed">Up speed:</string>
+	<string name="size">Size:</string>
+	<string name="elapsed_time">Elapsed time:</string>
+	<string name="remaining_time">Remaining time:</string>
+	<string name="tab_info">Info</string>
+	<string name="tab_peers">Peers</string>
+	<string name="tab_pieces">Pieces</string>
 	<string name="status_opening">Opening</string>
 	<string name="status_started">Started</string>
 	<string name="status_wrong_file">Wrong torrent file</string>

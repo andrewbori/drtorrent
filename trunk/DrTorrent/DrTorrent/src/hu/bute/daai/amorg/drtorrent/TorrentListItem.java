@@ -3,7 +3,6 @@ package hu.bute.daai.amorg.drtorrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
 import java.io.Serializable;
-import java.text.DecimalFormat;
 
 /** Item of the torrent list adapter */
 public class TorrentListItem implements Serializable, Comparable<TorrentListItem> {
@@ -18,6 +17,10 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	private String downloaded_ = "0 kB";
 	private String uploaded_ = "0 kB";
 	private String peers_ = "0/0";
+	
+	private String size_ = "0";
+	private String elapsedTime_ = "0";
+	private String remainingTime_ = "0";
 
 	public TorrentListItem(String name) {
 		this.name_ = name;
@@ -41,6 +44,10 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.downloaded_ = item.downloaded_;
 		this.uploaded_ = item.uploaded_;
 		this.peers_ = item.peers_;
+		
+		this.size_ = item.size_;
+		this.remainingTime_ = item.remainingTime_;
+		this.elapsedTime_ = item.elapsedTime_;
 	}
 
 	public void set(Torrent torrent) {
@@ -50,8 +57,12 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
-		this.downloaded_ = bytesToString(torrent.getBytesDownloaded());
-		this.downloadSpeed_ = bytesToString(torrent.getDownloadSpeed()) + "/s";
+		this.downloaded_ = DrTorrentTools.bytesToString(torrent.getBytesDownloaded());
+		this.downloadSpeed_ = DrTorrentTools.bytesToString(torrent.getDownloadSpeed()) + "/s";
+		
+		this.size_ = DrTorrentTools.bytesToString(torrent.getSize());
+		this.remainingTime_ = DrTorrentTools.intToTime(torrent.getRemainingTime(), DrTorrentTools.MSEC, 2);
+		this.elapsedTime_ = DrTorrentTools.intToTime(torrent.getElapsedTime(), DrTorrentTools.MSEC, 2);
 	}
 
 	public String getInfoHash() {
@@ -125,34 +136,23 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public void setPeers(String peers) {
 		this.peers_ = peers;
 	}
+	
+	public String getSize() {
+		return size_;
+	}
 
+	public String getElapsedTime() {
+		return elapsedTime_;
+	}
+	
+	public String getRemainingTime() {
+		return remainingTime_;
+	}
+	
 	public int compareTo(TorrentListItem another) {
 		if (this.name_ != null)
 			return this.infoHash_.toLowerCase().compareTo(another.getInfoHash().toLowerCase());
 		else
 			throw new IllegalArgumentException();
-	}
-	
-	private String bytesToString(int bytesInt) {
-		double bytes = bytesInt;
-		String bytesStr = "";
-		if (bytes > 1024.0) {
-			bytes = bytes / 1024.0;
-			String metric = "kB";
-		
-			if (bytes > 1024.0) {
-					bytes = bytes / 1024.0;
-					metric = "MB";
-					
-				if (bytes > 1024.0) {
-					bytes = bytes / 1024.0;
-					metric = "GB";
-				}
-			}
-			DecimalFormat dec = new DecimalFormat("###.#");
-			bytesStr = dec.format(bytes) + " " + metric;
-		} else bytesStr = (int) bytes + " byte";
-		
-		return bytesStr;
 	}
 }
