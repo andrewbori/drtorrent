@@ -31,6 +31,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	private TextView tvDownSpeed_ = null;
 	private TextView tvUpSpeed_ = null;
 	private TextView tvDownloaded_ = null;
+	private TextView tvUploaded_ = null;
 	private TextView tvPeers_ = null;
 	private TextView tvElapsedTime_ = null;
 	private TextView tvRemainingTime_ = null;
@@ -80,6 +81,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	    			tvDownSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloadSpeed);
 	    			tvUpSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvUploadSpeed);
 	    			tvDownloaded_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloaded);
+	    			tvUploaded_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvUploaded);
 	    			tvElapsedTime_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvElapsedTime);
 	    			tvRemainingTime_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvRemainingTime);
 	    			tvPeers_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvPeers);
@@ -100,6 +102,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	    			tvDownSpeed_ = null;
 	    			tvUpSpeed_ = null;
 	    			tvDownloaded_ = null;
+	    			tvUploaded_ = null;
 	    			tvElapsedTime_ = null;
 	    			tvRemainingTime_ = null;
 	    			tvPeers_ = null;*/
@@ -134,6 +137,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 			tvDownSpeed_.setText(item.getDownloadSpeed());
 			tvUpSpeed_.setText(item.getUploadSpeed());
 			tvDownloaded_.setText(item.getDownloaded());
+			tvUploaded_.setText(item.getUploaded());
 			tvElapsedTime_.setText(item.getElapsedTime());
 			tvRemainingTime_.setText(item.getRemainingTime());
 			tvPeers_.setText(item.getPeers());

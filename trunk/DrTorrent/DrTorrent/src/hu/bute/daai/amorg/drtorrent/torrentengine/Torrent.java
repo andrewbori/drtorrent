@@ -9,7 +9,6 @@ import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Vector;
 
@@ -76,6 +75,7 @@ public class Torrent {
 	private Vector<Peer> peers_;
 	private Vector<Peer> connectedPeers_;
 	private Vector<Peer> disconnectedPeers_;
+	private Vector<Peer> interestedPeers_;
 	private Tracker tracker_;
 	private Vector<Vector<Tracker>> trackerList_;
 	private Vector<String> announceList_;
@@ -102,6 +102,7 @@ public class Torrent {
 		tracker_ = new Tracker();
 		peers_ = new Vector<Peer>();
 		connectedPeers_ = new Vector<Peer>();
+		interestedPeers_ = new Vector<Peer>();
 		latestDownloadedBytes_ = new Vector<Integer>();
 	}
 
@@ -596,6 +597,7 @@ public class Torrent {
 	public void start() {
 		if (valid_) {
 			lastTime_ = System.currentTimeMillis();
+			lastOptimisticUnchokingTime_ = lastUnchokingTime_ = 0;
 			
 			status_ = R.string.status_connecting;
 			torrentManager_.updateTorrent(this);
@@ -614,6 +616,7 @@ public class Torrent {
 			}
 			peers_ = new Vector<Peer>();
 			connectedPeers_ = new Vector<Peer>();
+			interestedPeers_ = new Vector<Peer>();
 			
 			status_ = R.string.status_stopped;
 			torrentManager_.updateTorrent(this);
@@ -628,6 +631,8 @@ public class Torrent {
 		for (int i = 0; i < peers_.size() && i < MAX_STORED_PEERS; i++) {
 			Peer peer = peers_.get(i);
 			connectedPeers_.addElement(peer);
+			peers_.remove(i);
+			i--;
 			peer.connect(this);
 		}
 	}
@@ -635,10 +640,30 @@ public class Torrent {
 	/** Removes a disconnected peer from the array of connected peers. */
 	public void peerDisconnected(Peer peer) {
 		connectedPeers_.removeElement(peer);
+		interestedPeers_.removeElement(peer);
+		if (status_ == R.string.status_downloading) {
+			if (peers_.size() > 0) {
+				peer = peers_.get(0);
+				connectedPeers_.addElement(peer);
+				peers_.remove(0);
+				peer.connect(this);
+			}
+		}
 //		torrentManager_.updatePeer(this, peer, true);
 	}
 	
+	/** Adds the given peer to the interested peers. */
+	public void peerInterested(Peer peer) {
+		if (!interestedPeers_.contains(peer)) interestedPeers_.addElement(peer);
+	}
+	
+	/** Removes the given peer from the interested peers. */
+	public void peerNotInterested(Peer peer) {
+		interestedPeers_.removeElement(peer);
+	}
+	
 	private int latestBytesDownloaded_ = 0;
+	
 	/** Scheduler method. Schedules the peers and the trackers. */
 	public void onTimer() {
 		if (valid_) {
@@ -656,8 +681,75 @@ public class Torrent {
 		latestDownloadedBytes_.add(bytesDownloaded_ - latestBytesDownloaded_);
 		
 		torrentManager_.updateTorrent(this);
-
+		
 		latestBytesDownloaded_ = bytesDownloaded_;
+		
+		chokeAlgorithm();
+	}
+	
+	private long lastUnchokingTime_ = 0;
+	private Peer optimisticUnchokedPeer_ = null;
+	private long lastOptimisticUnchokingTime_ = 0;
+	
+	/** Selects the unchoked peers and unchokes them. */
+	public void chokeAlgorithm() {
+		// Choking algorithm runs in every 10 seconds
+		long currentTime = System.currentTimeMillis();
+		if (!(lastUnchokingTime_ + 10000.0 < currentTime || lastOptimisticUnchokingTime_ + 30000.0 < currentTime)) return;
+		
+		if (interestedPeers_.size() > 0) {			
+			Vector<Peer> peersToUnchoke = new Vector<Peer>();
+			
+			synchronized (interestedPeers_) {
+				// Choosing the optimistic unchoked peer (a random peer) in every 30 seconds
+				if (lastOptimisticUnchokingTime_ + 30000.0 < currentTime) {
+					lastOptimisticUnchokingTime_ = currentTime;
+					Collections.shuffle(interestedPeers_);	// shuffle to select a random peer
+					optimisticUnchokedPeer_ = interestedPeers_.elementAt(0);
+				}
+				
+				if (lastUnchokingTime_ + 10000.0 < currentTime) {
+					lastUnchokingTime_ = currentTime;
+					
+					// TODO: Choosing peers in seed mode!!!
+					// Tit for tat: unchoking the peers with the most upload.
+					Peer peer = null;
+					for (int i = 0; i < interestedPeers_.size(); i++) {
+						peer = interestedPeers_.elementAt(i);
+						
+						int speed = peer.getDownloadSpeed();
+						boolean isFound = false;
+						if (speed > 0 && peer != optimisticUnchokedPeer_) {
+							for (int j = 0; j < peersToUnchoke.size(); j++) {
+								if (peersToUnchoke.elementAt(j).getDownloadSpeed() > speed) {
+									peersToUnchoke.add(j, peer);
+									isFound = true;
+									break;
+								}
+							}
+							if (!isFound) peersToUnchoke.add(peer);
+						}
+					}
+					
+					// Only keeps 3 peers and the optimistic unchoked peer
+					for (int i = 3; i < peersToUnchoke.size(); i++) {
+						peersToUnchoke.remove(i);
+						i--;
+					}
+					if (optimisticUnchokedPeer_ != null) peersToUnchoke.add(optimisticUnchokedPeer_);
+					
+					
+					for (int i = 0; i < interestedPeers_.size(); i++) {
+						peer = interestedPeers_.elementAt(i);
+						if (peersToUnchoke.contains(peer)) {
+							peer.setChoking(false);
+						} else {
+							peer.setChoking(true);
+						}
+					}	
+				}
+			}
+		} else optimisticUnchokedPeer_ = null;
 	}
 	
 	/** Returns a downloadable block for the given peer. */
@@ -828,6 +920,14 @@ public class Torrent {
 		return fileManager_.writeFile(file.getPath(), filePosition, block, offset, length);
 	}
 	
+	/** 
+	 * Reads a block from the file.
+	 * The position and the length within the file is also given. 
+	 */
+	public synchronized byte[] read(String filepath, int position, int length) {
+		return fileManager_.read(filepath, position, length);
+	}
+	
 	/** Adds a new peer to the list of the peers of the torrent. */
 	public int addPeer(Peer peer) {
         //if (peers_.size() >= MAX_STORED_PEERS) return ERROR_OVERFLOW;
@@ -925,7 +1025,7 @@ public class Torrent {
 		// TODO: notify the service that a new piece has been downloaded
 
 		if (!calledBySavedTorrent) {
-			autosave(false);
+			// autosave(false);
 		}
 
 		if (downloadedPieceCount_ == pieces_.size()) {
@@ -950,7 +1050,7 @@ public class Torrent {
 			//avarageBytesPerSecond_ = 0;
 			//bytesPerSecond_ = 0;
 			//torrentManager.notifyTorrentObserverMain(this, MTTorrentObserver.EMTMainEventTorrentComplete);
-			autosave(true);
+			//autosave(true);
 			// Check and start end game if neccesary
 			//endGameCheck();
 		}
@@ -961,18 +1061,6 @@ public class Torrent {
 			}
 		}
 		
-	}
-	
-	private void autosave(boolean forced) {
-		/* TODO
-		final long curTime = (new Date()).getTime();
-		final long deltaTime = curTime - lastAutosaveTime_;
-		downloadedSinceLastSave_ = downloadedPieceCount_ * pieceLength_;
-
-		if (forced || deltaTime >= autosavePeriod_ || downloadedSinceLastSave_ >= autosaveSize_) {
-			lastAutosaveTime_ = curTime;
-			downloadedSinceLastSave_ = 0L;
-		}*/
 	}
 
 	/** Called when the downloaded piece is wrong. */
@@ -1090,6 +1178,7 @@ public class Torrent {
 		return connectedPeers_;
 	}
 
+	/** Returns the remaining time (ms) until the downloading ends. */
 	public int getRemainingTime() {
 		int speed = getDownloadSpeed();
 		if (speed == 0) return -1;
@@ -1098,11 +1187,22 @@ public class Torrent {
 		return (int) millis;
 	}
 
+	/** Returns the elapsed time (ms) since the torrent has been started. */
 	public int getElapsedTime() {
 		return elapsedTime_;
 	}
 
 	public void updateBytesUploaded(int length) {
 		bytesUploaded_ += length;
+	}
+	
+	/** Return whether the bitfield has changed since the latest check or not. */
+	public boolean isBitfieldChanged() {
+		return bitfield_.isChanged();
+	}
+	
+	/** Sets whether the bitfield has changed or not. */
+	public void setBitfieldChanged(boolean isChanged) {
+		bitfield_.setChanged(isChanged);
 	}
 }

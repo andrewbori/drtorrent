@@ -2,6 +2,7 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Vector;
 
 import android.util.Log;
@@ -76,7 +77,7 @@ public class Piece {
     }
 	
 	/** 
-	 * Appends the given block to its file.
+	 * Appends the given block to its file(s).
 	 * 
 	 * @param data  The block that has to be appended.
 	 * @param offset The position of the block within the piece.
@@ -99,14 +100,15 @@ public class Piece {
 				int filePosition = 0;
 				int pos = 0;
 				for (int i = 0; i < fragments_.size(); i++) {
+					FileFragment fragment = (FileFragment) fragments_.elementAt(i);
 					// If the already downloaded part doesn't extend beyond the current fragment...
 					// (...which means that a part of the current fragment was received.)
-					if (block.begin() < (pos + fragments_.elementAt(i).length())) {
-						file = fragments_.elementAt(i).file();
-						filePosition = fragments_.elementAt(i).offset() + (block.begin() - pos);
+					if (block.begin() < (pos + fragment.length())) {
+						file = fragment.file();
+						filePosition = fragment.offset() + (block.begin() - pos);
 						i = fragments_.size(); // break
 					} else {
-						pos += fragments_.elementAt(i).length();
+						pos += fragment.length();
 					}
 				}
 
@@ -177,6 +179,66 @@ public class Piece {
 
 			return Torrent.ERROR_NONE;
 		}
+	}
+	
+	/** Reads a block from its file(s). */
+	public byte[] readBlock(Block block) {
+		int length = block.length();
+		
+		ByteArrayOutputStream blockByteArray = new ByteArrayOutputStream();
+
+		File file = null;
+		int filePosition = 0;
+		
+		int i = 0;
+		int pos = 0;
+		for (; i < fragments_.size(); i++) {
+			FileFragment fragment = (FileFragment) fragments_.elementAt(i);
+			if (block.begin() < (pos + fragment.length())) {
+				file = fragment.file();
+				filePosition = fragment.offset() + (block.begin() - pos);
+				break;
+			} else {
+				pos += fragment.length();
+			}
+		}
+
+		if (file == null) {
+			return null;
+		}
+
+		while (length > 0) {
+			if (length >= (file.getSize() - filePosition)) {
+				byte[] buffer = torrent_.read(file.getPath(), filePosition, file.getSize() - filePosition);
+				if (buffer != null) {
+					blockByteArray.write(buffer, 0, buffer.length);
+					buffer = null;
+					length -= (file.getSize() - filePosition);
+				} else
+					break;
+			} else {
+				byte[] buf = torrent_.read(file.getPath(), filePosition, length);
+				if (buf != null) {
+					blockByteArray.write(buf, 0, buf.length);
+					length = 0;
+					buf = null;
+				}
+
+				break;
+			}
+
+			if (i >= fragments_.size() - 1)
+				break;
+
+			file = ((FileFragment) fragments_.elementAt(++i)).file();
+			filePosition = 0;
+		}
+
+		if (length != 0) {
+			return null;
+		}
+
+		return blockByteArray.toByteArray();
 	}
 	
 	/** Returns whether the piece equals its hash or not. */

@@ -13,6 +13,7 @@ import android.util.Log;
 
 /** Class managing the file system. */
 public class FileManager {
+	private final static String LOG_TAG = "FileManager";
 
 	/** Returns the size of free space in bytes. */
 	public static long freeSize(String path) {
@@ -91,7 +92,7 @@ public class FileManager {
 	 * Writes a block to the file in the given position.
 	 * The offset and length within the block is also given. 
 	 */
-	public synchronized int writeFile(String filePath, int filePosition, byte[] block, int offset, int length) {
+	public int writeFile(String filePath, int filePosition, byte[] block, int offset, int length) {
 		RandomAccessFile file = null;
 		try {
 			file = new RandomAccessFile(filePath, "rw");
@@ -99,7 +100,7 @@ public class FileManager {
 			file.write(block, offset, length);
 			return Torrent.ERROR_NONE;
 		} catch (IOException e) {
-			// Log.v(LOG_TAG, "[File] " + e.getMessage());
+			Log.v(LOG_TAG, e.getMessage());
 			return Torrent.ERROR_GENERAL;
 		} finally {
 			try {
@@ -107,5 +108,30 @@ public class FileManager {
 			} catch (Exception e) {}
 		}
 	}
+	
+	/** 
+	 * Reads a block from the file.
+	 * The position and the length within the file is also given. 
+	 */
+	public byte[] read(String filepath, int position, int length) {
+		RandomAccessFile file = null;
+		byte[] result = new byte[length];
+		try {
+			file = new RandomAccessFile(filepath, "r");
+			file.seek(position);
+			final int cnt = file.read(result);
 
+			if (cnt != length) result = null;
+		} catch (IOException e) {
+			Log.v(LOG_TAG, e.getMessage());
+			result = null;
+		} finally {
+			try {
+				file.close();
+			} catch (Exception e) {
+			}
+		}
+		return result;
+	}
+	
 }
