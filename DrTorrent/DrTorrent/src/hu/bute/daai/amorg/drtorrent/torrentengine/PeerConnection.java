@@ -99,23 +99,6 @@ public class PeerConnection {
         isReadEnabled_ = true;
     }
 	
-	/** Class containing information about the piece to download. */
-	/*private class PieceToDownload {
-	    public Piece piece;
-	    public boolean hasPendingRequest;
-	    public int lastRequestTime;
-	    public int lastRequestBegin;
-	    public int lastRequestLength;    
-
-	    public PieceToDownload(Piece piece0, int lastRequestTime0){
-	        piece = piece0;
-	        lastRequestTime = lastRequestTime0;
-	        hasPendingRequest = false;
-	        lastRequestBegin = -1;
-	        lastRequestLength = -1;
-	    }
-	}*/
-	
 	/** Connects to the peer (including the peer wire connection). */
 	public void connect() {
 		String destination = peer_.getAddress() + ":" + peer_.getPort();
@@ -197,7 +180,7 @@ public class PeerConnection {
 		}.start();
 	}
 	
-	/** Issue the download. */
+	/** Issues the download requests. */
 	public synchronized void issueDownload() {
 		if (isPeerChoking()) return;
 		
@@ -268,6 +251,17 @@ public class PeerConnection {
 						}
 					}
 				}
+			}
+		}
+	}
+	
+	/** Issues the upload requests. */
+	public void issueUpload() {
+		if (!isChoking()) {
+			while (blocksToUpload_.size() > 0) {
+				Block block = (Block) blocksToUpload_.elementAt(0);
+				sendPieceMessage(block);
+				blocksToUpload_.removeElementAt(0);
 			}
 		}
 	}
@@ -505,12 +499,13 @@ public class PeerConnection {
 			setPeerInterested(true);
 			setChoking(false);
 		}*/
+		setPeerInterested(true);
 	}
 
 	/** Reading message: not interested. */
 	private void readNotInterestedMessage() {
 		peer_.resetErrorCounter();
-		//setPeerInterested(false);
+		setPeerInterested(false);
 		//issueDownload();
 	}
 
@@ -585,7 +580,7 @@ public class PeerConnection {
 				close("Error: unexpected block.");
 			} else {
 				byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
-				boolean successfullRead = readData(pieceBlock);
+				readData(pieceBlock);
 			}
 		} else {
 			byte[] pieceBlock = new byte[pieceBlockSize];	// block
@@ -600,7 +595,7 @@ public class PeerConnection {
 
 			int appendResult = piece.appendBlock(pieceBlock, block, peer_);
 			
-			blocksToDownload_.removeElement(block);
+			blocksDownloading_.removeElement(block);
 //			torrentManager_.updatePeer(torrent_, peer_);
 			torrent_.blockDownloaded(block);
 			pieceBlock = null;
@@ -632,6 +627,8 @@ public class PeerConnection {
 			
 			Block block = new Block(torrent_.getPiece(pieceIndex), begin, length);
 			blocksToUpload_.add(block);
+			
+			issueUpload();
 			
 			//log("in REQUEST Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
 
@@ -951,7 +948,7 @@ public class PeerConnection {
 		Piece piece = torrent_.getPiece(block.pieceIndex());
 		
 		if (piece != null) {
-			//Log.v(LOG_TAG, "Processing piece request " + pieceIndex + " Begin: " + begin + " Length: " + length + " while piece totalsize: " + piece.size());
+			Log.v(LOG_TAG, "Sending piece to " + peer_.getAddress() + " " + block.pieceIndex() + " Begin: " + block.begin() + " Length: " + block.length());
 
 			if (block.begin() + block.length() > piece.size()) {
 				close("Bad PIECE request (index is out of bounds)");
@@ -983,7 +980,7 @@ public class PeerConnection {
 
 					torrent_.updateBytesUploaded(block.length());
 
-					//Log.v(LOG_TAG, "out PIECE Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
+					// Log.v(LOG_TAG, "Piece sent to " + peer_.getAddress());
 				} else {
 					close("ERROR, while send piece, outputstream is NULL");
 				}
@@ -1090,6 +1087,7 @@ public class PeerConnection {
 			}
 			
 			torrent_.peerDisconnected(peer_);
+			if (isPeerInterested()) torrent_.peerNotInterested(peer_);
 			
 			try {
 				if (connectThread_ != null && connectThread_.isAlive()) connectThread_.interrupt();
@@ -1116,11 +1114,12 @@ public class PeerConnection {
     }
 
     /** Sets our chocking state. */
-	private void setChoking(boolean choking) {
+	public void setChoking(boolean choking) {
 		if (choking) {
 			if (!isChoking()) {
 				isChoking_ = true;
 				if (state_ == STATE_PW_CONNECTED) {
+					blocksToUpload_ = new Vector<Block>();
 					sendChokeMessage();
 				}
 			}
@@ -1162,9 +1161,10 @@ public class PeerConnection {
 	private void setPeerInterested(boolean interested) {
 		if (interested) {
 			isPeerInterested_ = true;
-		}
-		else {
+			torrent_.peerInterested(peer_);
+		} else {
 			isPeerInterested_ = false;
+			torrent_.peerNotInterested(peer_);
 			if ((state_ == STATE_PW_CONNECTED) && (!isInterested())) {
 				close("Nobody interested");
 			}

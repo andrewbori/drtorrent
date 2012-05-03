@@ -40,9 +40,9 @@ public class TorrentManager {
 						torrent.onTimer();
 						
 						torrentService_.updatePeerList(torrent);
-						if (torrent.getBitfield().isChanged()) {
+						if (torrent.isBitfieldChanged()) {
 							torrentService_.updateBitfield(torrent);
-							torrent.getBitfield().setChanged(false);
+							torrent.setBitfieldChanged(false);
 						}
 					}
 				}

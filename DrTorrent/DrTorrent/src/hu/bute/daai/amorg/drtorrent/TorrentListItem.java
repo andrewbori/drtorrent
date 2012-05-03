@@ -60,6 +60,8 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.downloaded_ = DrTorrentTools.bytesToString(torrent.getBytesDownloaded());
 		this.downloadSpeed_ = DrTorrentTools.bytesToString(torrent.getDownloadSpeed()) + "/s";
 		
+		this.uploaded_ = DrTorrentTools.bytesToString(torrent.getBytesUploaded());
+		
 		this.size_ = DrTorrentTools.bytesToString(torrent.getSize());
 		this.remainingTime_ = DrTorrentTools.intToTime(torrent.getRemainingTime(), DrTorrentTools.MSEC, 2);
 		this.elapsedTime_ = DrTorrentTools.intToTime(torrent.getElapsedTime(), DrTorrentTools.MSEC, 2);

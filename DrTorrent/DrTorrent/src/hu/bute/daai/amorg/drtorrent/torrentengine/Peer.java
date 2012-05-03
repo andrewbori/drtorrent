@@ -85,6 +85,11 @@ public class Peer {
 		connection_.sendHaveMessage(pieceIndex);
 	}
 	
+	/** Sets our chocking state. */
+	public void setChoking(boolean choking) {
+		connection_.setChoking(choking);
+	}
+	
 	/** Resets the error counter. */
 	public void resetErrorCounter() {
 		// TODO
