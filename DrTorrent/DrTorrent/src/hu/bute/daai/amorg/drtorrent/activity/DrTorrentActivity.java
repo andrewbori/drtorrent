@@ -1,16 +1,20 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.R;
-import hu.bute.daai.amorg.drtorrent.TorrentListAdapter;
-import hu.bute.daai.amorg.drtorrent.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.TorrentListAdapter;
+import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
+import java.io.File;
 import java.util.ArrayList;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -44,60 +48,126 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				Intent intent = new Intent(activity_, TorrentDetailsActivity.class);
 				intent.putExtra(KEY_INFO_HASH, infoHash);
 				startActivity(intent);
-				/*
-				Message msg = Message.obtain();
-				Bundle bundle = new Bundle();
-				bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash);
-				msg.setData(bundle);
-				msg.what = TorrentService.MSG_STOP_TORRENT;
-				try {
-					serviceMessenger_.send(msg);
-				} catch (RemoteException e) {}
-				*/
 			}
 		});
 	}
 
 	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		if (requestCode == RESULT_FILEBROWSER_ACTIVITY) {
-			if (resultCode == Activity.RESULT_OK) {
-				// data contains the full path of the torrent
-				String filePath = data.getStringExtra(FileBrowserActivity.RESULT_KEY_FILEPATH);
-				
-				Message msg = Message.obtain();
-				Bundle b = new Bundle();
-				b.putString(TorrentService.MSG_KEY_FILEPATH, filePath);
-				msg.what = TorrentService.MSG_OPEN_TORRENT;
-				msg.setData(b);
-				try {
-					serviceMessenger_.send(msg);
-				} catch (Exception e) {}
+	protected void onStart() {
+		final Intent intent = getIntent ();
+		if (intent != null) {
+			final Uri data = intent.getData();
+			setIntent(null);
+			if (data != null) {
+				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http")) {
+					fileToOpen_ = data;
+				}
 			}
 		}
+		super.onStart();
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		switch (requestCode) {
+			case RESULT_FILEBROWSER_ACTIVITY:
+				if (resultCode == Activity.RESULT_OK) {
+					// data contains the full path of the torrent
+					final String filePath = data.getStringExtra(FileBrowserActivity.RESULT_KEY_FILEPATH);
+					openTorrent(Uri.fromFile(new File(filePath)));
+				}
+				break;
+				
+			case RESULT_TORRENT_SETTINGS:
+				if (resultCode == Activity.RESULT_OK) {
+					TorrentListItem torrent = (TorrentListItem) data.getSerializableExtra(TorrentService.MSG_KEY_TORRENT_ITEM);
+					@SuppressWarnings("unchecked")
+					ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) data.getSerializableExtra(TorrentService.MSG_KEY_FILE_LIST));
+					
+					Message msg = Message.obtain();
+					Bundle b = new Bundle();
+					b.putSerializable(TorrentService.MSG_KEY_TORRENT_ITEM, torrent);
+					b.putSerializable(TorrentService.MSG_KEY_FILE_LIST, fileList);
+					msg.what = TorrentService.MSG_SEND_TORRENT_SETTINGS;
+					msg.setData(b);
+					try {
+						serviceMessenger_.send(msg);
+					} catch (Exception e) {}
+				}
+				break;
+		}
+	}
+	
+	/** Sends torrent file open request to the Torrent Service. */
+	@Override
+	protected void openTorrent(Uri torrentUri) {
+		fileToOpen_ = null;
+		Log.v("", torrentUri.getHost() + torrentUri.getPath());
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putParcelable(TorrentService.MSG_KEY_FILEPATH, torrentUri);
+		msg.what = TorrentService.MSG_OPEN_TORRENT;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+	
+	/** Shows the Torrent Settings (before the first start of the torrent). */
+	@Override
+	protected void showTorrentSettings(TorrentListItem torrent, ArrayList<FileListItem> fileList) {
+		Intent intent = new Intent(this, TorrentSettingsActivity.class);
+		intent.putExtra(TorrentService.MSG_KEY_TORRENT_ITEM, torrent);
+		intent.putExtra(TorrentService.MSG_KEY_FILE_LIST, fileList);
+		startActivityForResult(intent, RESULT_TORRENT_SETTINGS);
+	}
+	
+	/** Shuts down the application. */
+	protected void shutDown() {
+		Message msg = Message.obtain();
+		msg.what = TorrentService.MSG_SHUT_DOWN;
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+		finish();
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
+		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, "Settings")
+			.setIcon(R.drawable.ic_settings)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		menu.add(Menu.NONE, MENU_ADD_TORRENT, Menu.NONE, R.string.menu_addtorrent)
 			.setIcon(R.drawable.ic_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+		menu.add(Menu.NONE, MENU_SHUT_DOWN, Menu.NONE, "Shut down")
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		return true;
 	}
 
 	@Override
 	public boolean onMenuItemSelected(int featureId, MenuItem item) {
 		super.onMenuItemSelected(featureId, item);
+		Intent intent = null;
 		switch (item.getItemId()) {
 			case MENU_ADD_TORRENT:
-				Intent i = new Intent(this, FileBrowserActivity.class);
-				startActivityForResult(i, RESULT_FILEBROWSER_ACTIVITY);
+				intent = new Intent(this, FileBrowserActivity.class);
+				startActivityForResult(intent, RESULT_FILEBROWSER_ACTIVITY);
+				break;
+				
+			case MENU_SETTINGS:
+				intent = new Intent(this, SettingsActivity.class);
+				startActivity(intent);
+				break;
+				
+			case MENU_SHUT_DOWN:
+				shutDown();
 				break;
 		}
 		return true;
 	}
-
+	
 	@Override
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
 		String infoHash = item.getInfoHash();

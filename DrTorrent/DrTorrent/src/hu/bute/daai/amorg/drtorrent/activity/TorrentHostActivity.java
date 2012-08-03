@@ -1,8 +1,10 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
-import hu.bute.daai.amorg.drtorrent.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.R;
-import hu.bute.daai.amorg.drtorrent.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
@@ -16,6 +18,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -33,7 +36,11 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int MENU_START_TORRENT  = 102;
 	protected static final int MENU_STOP_TORRENT   = 103;
 	protected static final int MENU_DELETE_TORRENT = 104;
+	protected static final int MENU_SETTINGS       = 111;
+	protected static final int MENU_SHUT_DOWN      = 112;
+	
 	protected static final int RESULT_FILEBROWSER_ACTIVITY = 201;
+	protected static final int RESULT_TORRENT_SETTINGS     = 202;
 	
 	protected Activity activity_ = this;
 	protected String infoHash_ = null;
@@ -45,6 +52,8 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected AlertDialog dialog_;
 	protected ProgressDialog progressDialog_;
 
+	protected Uri fileToOpen_ = null;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		setTheme(R.style.Theme_Sherlock);
@@ -100,6 +109,11 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 			try {
 				serviceMessenger_.send(msg);
 			} catch (RemoteException e) {}
+			
+			if (fileToOpen_ != null) {
+				openTorrent(fileToOpen_);
+				fileToOpen_ = null;
+			}
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
@@ -165,9 +179,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 					break;
 					
 				case TorrentService.MSG_SEND_TORRENT_ITEM:
-					TorrentListItem torrent = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
+					TorrentListItem item = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
 					boolean isRemoved = bundle.getBoolean(TorrentService.MSG_KEY_IS_REMOVED, false); 
-					refreshTorrentItem(torrent, isRemoved);
+					refreshTorrentItem(item, isRemoved);
 					break;
 
 				case TorrentService.MSG_SEND_TORRENT_LIST:
@@ -188,15 +202,39 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 					refreshPeerList(peers);
 					break;
 					
+				case TorrentService.MSG_SEND_FILE_LIST:
+					@SuppressWarnings("unchecked")
+					ArrayList<FileListItem> files = ((ArrayList<FileListItem>) bundle.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
+					refreshFileList(files);
+					break;
+					
+				case TorrentService.MSG_SEND_TORRENT_SETTINGS:
+					TorrentListItem torrent = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
+					@SuppressWarnings("unchecked")
+					ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) bundle.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
+					showTorrentSettings(torrent, fileList);
+					break;
+					
+				case TorrentService.MSG_SEND_TRACKER_LIST:
+					@SuppressWarnings("unchecked")
+					ArrayList<TrackerListItem> trackers = ((ArrayList<TrackerListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TRACKER_LIST));
+					refreshTrackerList(trackers);
+					break;
+					
 				case TorrentService.MSG_SEND_BITFIELD:
 					Bitfield bitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_BITFIELD);
-					refreshBitfield(bitfield);
+					Bitfield downloadingBitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_DOWNLOADING_BITFIELD);
+					refreshBitfield(bitfield, downloadingBitfield);
 					
 				default:
 					super.handleMessage(msg);
 			}
 		}
 	}
+	
+	protected void openTorrent(Uri filePath) {}
+	
+	protected void showTorrentSettings(TorrentListItem torrent, ArrayList<FileListItem> fileList) {}
 	
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {}
 
@@ -206,5 +244,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	
 	protected void refreshPeerList(ArrayList<PeerListItem> list) {}
 	
-	protected void refreshBitfield(Bitfield bitfield) {}
+	protected void refreshBitfield(Bitfield bitfield, Bitfield downloadingBitfield) {}
+	
+	protected void refreshFileList(ArrayList<FileListItem> list) {}
+	
+	protected void refreshTrackerList(ArrayList<TrackerListItem> list) {}
 }

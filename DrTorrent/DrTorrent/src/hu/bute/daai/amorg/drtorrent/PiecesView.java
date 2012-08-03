@@ -12,6 +12,7 @@ import android.view.View;
 public class PiecesView extends View {
 
 	private Bitfield bitfield_ = null;
+	private Bitfield downloadingBitfield_ = null;
 	
 	
 	public PiecesView(Context context) {
@@ -22,7 +23,8 @@ public class PiecesView extends View {
 	protected void onDraw(Canvas canvas) {
 		super.onDraw(canvas);
 		
-		if (bitfield_ == null) return;
+		if (bitfield_ == null || downloadingBitfield_ == null) return;
+		if (bitfield_.getLengthInBits() > downloadingBitfield_.getLengthInBits()) return;
 		
 		double height = canvas.getHeight() - 100.0;
 		double width = canvas.getWidth();
@@ -46,7 +48,10 @@ public class PiecesView extends View {
 				
 				Paint paint = new Paint();
 				if (bitfield_.isBitSet(i)) paint.setColor(Color.GREEN);
-				else paint.setColor(Color.DKGRAY);
+				else {
+					if (downloadingBitfield_.isBitSet(i)) paint.setColor(Color.GRAY);
+					else paint.setColor(Color.DKGRAY);
+				}
 				paint.setStyle(Style.FILL);
 				
 				canvas.drawRect(rectangle, paint);
@@ -84,8 +89,9 @@ public class PiecesView extends View {
 		}	
 	}*/
 
-	public void updateBitfield(Bitfield bitfield) {
+	public void updateBitfield(Bitfield bitfield, Bitfield downloadingBitfield) {
 		bitfield_ = bitfield;
+		downloadingBitfield_ = downloadingBitfield;
 		invalidate();
 	}
 

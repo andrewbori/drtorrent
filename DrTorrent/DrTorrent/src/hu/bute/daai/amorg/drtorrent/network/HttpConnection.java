@@ -14,11 +14,14 @@ import android.util.Log;
 public class HttpConnection {
 	private final static String LOG_TAG = "HttpConnection";
 	private String url_;
+	private String message_ = null;
 	
+	/** Constructor with the URL that has to be connecting to. */
 	public HttpConnection(String url) {
 		url_ = url;
 	}
 	
+	/** Executes the GET request and returns the response as a byte array. */
 	public byte[] execute() {
 		HttpClient client = new DefaultHttpClient();
 		HttpGet get = new HttpGet(url_);
@@ -41,16 +44,21 @@ public class HttpConnection {
             return baos.toByteArray();
 
 		} catch (IOException e) {
-			Log.v(LOG_TAG, "Exception:" + e.getMessage());
+			message_ = e.getMessage();
+			Log.v(LOG_TAG, "Exception: " + message_);
 			return null;
 		} finally {
 			try {
 				if (is != null) is.close();
+			} catch (IOException e) {}
+			try {
 				if (baos != null) baos.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			} catch (IOException e) {}
 		}
 	}
 	
+	/** Returns the error message. If the connection was successful it equals NULL. */
+	public String getMessage() {
+		return message_;
+	}	
 }

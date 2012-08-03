@@ -3,11 +3,12 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InterruptedIOException;
-import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Vector;
 
 import android.util.Log;
@@ -26,12 +27,12 @@ public class PeerConnection {
 	private final static int MESSAGE_ID_PIECE          = 7;
 	private final static int MESSAGE_ID_CANCEL         = 8;
 	
-	private final static int TIMEOUT_TCP_CONNECTION = 1000 * 15;
+	private final static int TIMEOUT_TCP_CONNECTION = 1000 * 30;
 	private final static int TIMEOUT_HANDSHAKE      = 1000 * 15;
-	private final static int TIMEOUT_PW_CONNECTION  = 1000 * 2 * 60;
+	private final static int TIMEOUT_PW_CONNECTION  = 1000 * 2 * 65;
 	private final static int TIMEOUT_REQUEST        = 1000 * 60;
-    private final static int KEEP_ALIVE_INTERVAL    = 1000 * 2 * 58;	// once in every two minutes
-    private final static int MAX_PIECE_REQUESTS     = 5;
+    private final static int KEEP_ALIVE_INTERVAL    = 1000 * 2 * 55;	// once in every two minutes
+    //private final static int MAX_PIECE_REQUESTS     = 5;
 	
 	public final static int STATE_NOT_CONNECTED  = 0;
     public final static int STATE_TCP_CONNECTING = 1;
@@ -62,8 +63,8 @@ public class PeerConnection {
 	
 	private ConnectThread connectThread_;
 	private Socket socket_;
-	private InputStream inputStream_;
-	private OutputStream outputStream_;
+	private DataInputStream inputStream_;
+	private DataOutputStream outputStream_;
 	
 	private int elapsedTime_ = 0;
 	private long lastTime_ = 0;
@@ -75,7 +76,7 @@ public class PeerConnection {
 	
 	private int latestDownloaded_ = 0;
 	private int downloaded_ = 0;
-	private Vector<Integer> latestDownloadedBytes_;
+	private Speed downloadSpeed_;
 	
 	/** Creates a new instance of PeerConnection. */
 	public PeerConnection(Peer peer, Torrent torrent) {
@@ -93,7 +94,7 @@ public class PeerConnection {
         
         blocksToUpload_ = new Vector<Block>();
         
-        latestDownloadedBytes_ = new Vector<Integer>();
+        downloadSpeed_ = new Speed();
         
         state_ = STATE_NOT_CONNECTED;
         isReadEnabled_ = true;
@@ -129,8 +130,7 @@ public class PeerConnection {
 				break;
 
 			case STATE_PW_CONNECTED:
-				if (latestDownloadedBytes_.size() > 9) latestDownloadedBytes_.removeElementAt(0);
-				latestDownloadedBytes_.add(downloaded_ - latestDownloaded_);
+				downloadSpeed_.addBytes(downloaded_ - latestDownloaded_, lastTime_);
 				latestDownloaded_ = downloaded_;
 				
 				// Timeout: Because no messages have been received in the recent time
@@ -189,8 +189,14 @@ public class PeerConnection {
 			synchronized (blocksToDownload_) {
 				//while ( (blocksToDownload_.size() + blocksDownloading_.size() < (3 + (blocksRecieved_/3)*2)) && (blocksToDownload_.size() + blocksDownloading_.size()) < 50  ) {
 				// TODO: to find an optimal rate
-				while (blocksToDownload_.size() + blocksDownloading_.size() < getLatestBlocksCount() + 10) {
-					Block blockToDownload = torrent_.getBlockToDownload(peer_);
+				//int number =  getLatestBlocksCount() + 5 - (blocksToDownload_.size() + blocksDownloading_.size());
+				int number;
+				if (getLatestBlocksCount() == 0 && (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty())) number = 3;
+				else number =  (getLatestBlocksCount()) / 4 + 4 - (blocksToDownload_.size() + blocksDownloading_.size());
+				ArrayList<Block> blocks = torrent_.getBlockToDownload(peer_, number);
+				//while (blocksToDownload_.size() + blocksDownloading_.size() < getLatestBlocksCount() + 10) {
+				for (int i = 0; i < blocks.size(); i++) {
+					Block blockToDownload = blocks.get(i);
 					if (blockToDownload != null) {
 						blocksToDownload_.addElement(blockToDownload);
 						Log.v(LOG_TAG, "BLOCK TO DOWNLOAD: " + blockToDownload.pieceIndex() + " - " + blockToDownload.begin());
@@ -200,10 +206,9 @@ public class PeerConnection {
 				//Log.v(LOG_TAG, blocksToDownload_.size() + " issue download from " + peer_.getAddress());
 			}
 		}
-//		torrentManager_.updatePeer(torrent_, peer_);
 
-		if (blocksToDownload_.size() == 0) {
-			//setInterested(false);
+		if (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty()) {
+			setInterested(false);
 /*
 			if (ellapsedTime_ > 15) {
 				if (!isPeerInterested()) {
@@ -233,12 +238,10 @@ public class PeerConnection {
 							else break;
 							
 							blocksDownloading_.addElement(block);
-							blocksToDownload_.removeElement(block);		// Evil remove!!!
-							i--;										// The hero who saved the say! :-)
+							blocksToDownload_.removeElement(block);
+							i--;
 							block.setRequested();
 							Log.v(LOG_TAG, "Request sent to " + peer_.getAddress());
-							
-//							torrentManager_.updatePeer(torrent_, peer_);
 						}
 					} 
 					if (isPeerChoking()) {
@@ -266,43 +269,28 @@ public class PeerConnection {
 		}
 	}
 	
-	/** Reads at most data.length bytes from the inputStream_ and puts it into the data array. */
+	/** Reads data.length bytes from the inputStream_ and puts it into the data array. */
 	private boolean readData(byte [] data) throws Exception {
-        return readData(data, 0, data.length);
-    }
-
-	/** Reads at most len bytes from the inputStream_ and puts it into the data array starting from the offset position. */
-    private boolean readData(byte [] data, int offset, int len) throws Exception {
-        int remain = len;
-        while (remain > 0) {
-            final int readed = inputStream_.read(data, offset, remain);
-            if (readed == -1) {
-            	//Log.v(LOG_TAG, "-1");
-            	break;
-            } else {
-            	remain -= readed;
-            	offset += readed;
-            }
+        try {
+        	inputStream_.readFully(data);
+        } catch (Exception e) {
+        	Log.v("AAAAAAA", "Exception was thrown while readFully...");
+        	if (e.getMessage() != null) Log.v("AAAAAA", e.getMessage());
+        	return false;
         }
-        return remain == 0;
+        
+        return true;
     }
     
     /** Reads an integer from the inputStream_. */
 	public int readInt() {
-		byte[] array = new byte[4];
-		boolean success = false;
 		try {
-			success = readData(array);
-		} catch (IOException ex) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Read error");
-			return -1;
+			return inputStream_.readInt();
 		} catch (Exception ex) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Read error");
+			close(ERROR_INCREASE_ERROR_COUNTER, "Read error " + ex.getMessage());
 			return -1;
 		}
 		
-		if (success) return byteArrayToInt(array);
-		return -1;
 	}
 	
     /** Reads data from the inputStream_. */
@@ -328,7 +316,6 @@ public class PeerConnection {
 						if (messageLength == 0) {
 							// keep-alive
 							Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
-							// TODO: we have to close connection,
 							// issueDownload();
 						} else {
 							int id = inputStream_.read();		// message ID
@@ -472,17 +459,7 @@ public class PeerConnection {
 		peer_.resetErrorCounter();
 		setPeerChoking(true);
 
-		synchronized (blocksToDownload_) {
-			Block block = null;
-			for (int i = 0; i < blocksToDownload_.size(); i++) {
-				block = blocksToDownload_.elementAt(i);
-				block.setNotRequested();
-				Piece piece = torrent_.getPiece(block.pieceIndex());
-				piece.addBlockToRequest(block);
-			}
-
-			blocksToDownload_.removeAllElements();
-		}
+		cancelBlocks();
 	}
 
 	/** Reading message: unchoke. */
@@ -557,19 +534,21 @@ public class PeerConnection {
 		synchronized (blocksDownloading_) {
 			for (int i = 0; i < blocksDownloading_.size(); i++) {
 				block = blocksDownloading_.elementAt(i);
-				if (block.isDownloaded()) {
-					Log.v(LOG_TAG, "This is an already received block.");
-					blocksDownloading_.remove(block);
-					block = null;
-					byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
-					readData(pieceBlock);
-					return;
-				}
-				// block.setDownloaded(); EVIL SET!!!
 				if (block.pieceIndex() == index && block.begin() == begin) {
-					block.setDownloaded();	// GOOD SET
-					piece = torrent_.getPiece(block.pieceIndex());
-					break;
+					synchronized (block) {
+						if (block.isDownloaded()) {
+							Log.v(LOG_TAG, "This is an already received block.");
+							blocksDownloading_.removeElement(block);
+							block = null;
+							byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
+							readData(pieceBlock);
+							return;
+						}
+						
+						//block.setDownloaded();	// GOOD SET
+						piece = torrent_.getPiece(block.pieceIndex());
+						break;
+					}
 				}
 			}
 		}
@@ -579,6 +558,7 @@ public class PeerConnection {
 			if (pieceBlockSize < 0 || pieceBlockSize > Piece.DEFALT_BLOCK_LENGTH) {
 				close("Error: unexpected block.");
 			} else {
+				Log.v(LOG_TAG, "Warning: Unexpected block.");
 				byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
 				readData(pieceBlock);
 			}
@@ -590,13 +570,12 @@ public class PeerConnection {
 				close(ERROR_INCREASE_ERROR_COUNTER, "Reading piece failed!");
 				return;
 			}
-
-			// //if(torrent_.isEndGame()) torrent_.endGamePieceReceived(piece.piece, peer);
-
+			
 			int appendResult = piece.appendBlock(pieceBlock, block, peer_);
 			
 			blocksDownloading_.removeElement(block);
-//			torrentManager_.updatePeer(torrent_, peer_);
+			
+			block.setDownloaded();	// GOOD SET
 			torrent_.blockDownloaded(block);
 			pieceBlock = null;
 			
@@ -609,7 +588,6 @@ public class PeerConnection {
 			downloaded_ += pieceBlockSize;
 		}
 		
-		System.gc();
 		issueDownload();
 	}
 
@@ -707,7 +685,7 @@ public class PeerConnection {
             	calculateElapsedTime();
                 latestMessageSentTime_ = elapsedTime_;
                 
-                outputStream_.write(intToByteArray(0));
+                outputStream_.writeInt(0);
                 outputStream_.flush();
             } else {
                 close("ERROR, while send keepalive, outputstream is NULL");
@@ -955,7 +933,7 @@ public class PeerConnection {
 				return;
 			}
 
-			byte[] blockBytes = piece.getBlock(block.begin(), block.length());
+			byte[] blockBytes = piece.readBlock(block);
 			if (blockBytes == null) {
 				close("Failed to extract block of piece");
 				return;
@@ -1028,8 +1006,6 @@ public class PeerConnection {
 				if (baos != null) baos.close();
 			} catch (IOException e) {}
         }
-		
-//		torrentManager_.updatePeer(torrent_, peer_);
 	}
 	
 	/** Closes the socket connection. */
@@ -1044,11 +1020,6 @@ public class PeerConnection {
 			changeState(STATE_CLOSING);
 			
 			isReadEnabled_ = false;		// Stop reading the socket
-
-			// Notify the torrent about the disconnection of the peer
-			if (torrent_ != null) {
-				// torrent_.peerDisconnected(peer, peerWireConnected);
-			}
 			
 			// Stop thread and close streams and socket
 			try {
@@ -1069,23 +1040,9 @@ public class PeerConnection {
 			changeState(STATE_NOT_CONNECTED);
 			
 			// Notify the torrent that the downloading blocks won't be received
-			synchronized (blocksToDownload_) {
-				if (blocksToDownload_ != null && !blocksToDownload_.isEmpty()) {
-					for (int i = 0; i < blocksToDownload_.size(); i++) {
-						torrent_.cancelBlock(blocksToDownload_.elementAt(i));
-					}
-					blocksToDownload_.removeAllElements();
-				}
-			}
-			synchronized (blocksDownloading_) {
-				if (blocksDownloading_ != null && !blocksDownloading_.isEmpty()) {
-					for (int i = 0; i < blocksDownloading_.size(); i++) {
-						torrent_.cancelBlock(blocksDownloading_.elementAt(i));
-					}
-					blocksDownloading_.removeAllElements();
-				}
-			}
+			cancelBlocks();
 			
+			// Notify the torrent about the disconnection of the peer
 			torrent_.peerDisconnected(peer_);
 			if (isPeerInterested()) torrent_.peerNotInterested(peer_);
 			
@@ -1171,6 +1128,26 @@ public class PeerConnection {
 		}
 	}
 	
+	/** Notifies the torrent that the downloading blocks won't be received. */
+	public void cancelBlocks() {
+		synchronized (blocksToDownload_) {
+			if (blocksToDownload_ != null && !blocksToDownload_.isEmpty()) {
+				for (int i = 0; i < blocksToDownload_.size(); i++) {
+					torrent_.cancelBlock(blocksToDownload_.elementAt(i));
+				}
+				blocksToDownload_.removeAllElements();
+			}
+		}
+		synchronized (blocksDownloading_) {
+			if (blocksDownloading_ != null && !blocksDownloading_.isEmpty()) {
+				for (int i = 0; i < blocksDownloading_.size(); i++) {
+					torrent_.cancelBlock(blocksDownloading_.elementAt(i));
+				}
+				blocksDownloading_.removeAllElements();
+			}
+		}
+	}
+	
 	/** Changes the state of the connection. */
 	public void changeState(int state) {
 		state_ = state;
@@ -1246,6 +1223,7 @@ public class PeerConnection {
 			try {
 				Log.v(LOG_TAG, "Connecting to: " + destination_);
 				socket_ = new Socket(peer_.getAddress(), peer_.getPort());
+				socket_.setSoTimeout(TIMEOUT_REQUEST);
 				Log.v(LOG_TAG, "Connected to: " + destination_);
 			} catch (IOException e) {
 				if (socket_ != null) {
@@ -1267,8 +1245,8 @@ public class PeerConnection {
 		Log.v(LOG_TAG, "Opening streams on: " + peer_.getAddress());
 
         try {
-            inputStream_ = socket_.getInputStream();
-            outputStream_ = socket_.getOutputStream();
+            inputStream_ = new DataInputStream(socket_.getInputStream());
+            outputStream_ = new DataOutputStream(socket_.getOutputStream());
         } catch(IOException ex) {
             close(ERROR_INCREASE_ERROR_COUNTER, "Opening streams failed - " + ex.getMessage());
             Log.v(LOG_TAG, "Opening streams failed on: " + peer_.getAddress() + " | " + ex.getMessage());
@@ -1290,31 +1268,22 @@ public class PeerConnection {
 	
 	/** Returns the download speed. */
 	public int getDownloadSpeed() {
-		int sum = 0;
-		if (latestDownloadedBytes_.size() > 0) {
-			for (int i = 0; i < latestDownloadedBytes_.size(); i++) {
-				sum += latestDownloadedBytes_.elementAt(i);
-			}
-			sum = (int) ((float) sum / (float) latestDownloadedBytes_.size());
-		}
-		return sum;
+		//return downloadSpeed_.getSpeed();
+		return downloadSpeed_.getBytes() / 10;
 	}
 	
 	/** Returns the block speed. */
 	public int getBlockSpeed() {
-		return (int) ((float) getDownloadSpeed() / (float) Piece.DEFALT_BLOCK_LENGTH);
+		return getDownloadSpeed() / Piece.DEFALT_BLOCK_LENGTH;
 	}
 	
 	/** Returns the count of the latest downloaded blocks. */
 	public int getLatestBlocksCount() {
-		int sum = 0;
-		if (latestDownloadedBytes_.size() > 0) {
-			for (int i = 0; i < latestDownloadedBytes_.size(); i++) {
-				sum += latestDownloadedBytes_.elementAt(i);
-			}
-			sum = (int) ((float) sum / (float) Piece.DEFALT_BLOCK_LENGTH);
-		}
-		return sum;
+		return downloadSpeed_.getBytes() / Piece.DEFALT_BLOCK_LENGTH;
+	}
+	
+	public boolean isConnected() {
+		return (state_ == STATE_PW_CONNECTED);
 	}
 	
 	private void calculateElapsedTime() {
@@ -1322,5 +1291,4 @@ public class PeerConnection {
 		elapsedTime_ += (int) (currentTime - lastTime_);
 		lastTime_ = currentTime;
 	}
-	
 }

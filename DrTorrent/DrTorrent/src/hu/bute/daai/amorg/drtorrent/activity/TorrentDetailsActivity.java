@@ -1,9 +1,11 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
-import hu.bute.daai.amorg.drtorrent.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.TorrentDetailsPagerAdapter;
-import hu.bute.daai.amorg.drtorrent.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
@@ -149,7 +151,17 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	}
 	
 	@Override
-	protected void refreshBitfield(Bitfield bitfield) {
-		pagerAdapter_.refreshBitfield(bitfield);
+	protected void refreshFileList(ArrayList<FileListItem> itemList) {
+		pagerAdapter_.refreshFileList(itemList);
+	}
+	
+	@Override
+	protected void refreshTrackerList(ArrayList<TrackerListItem> itemList) {
+		pagerAdapter_.refreshTrackerList(itemList);
+	}
+	
+	@Override
+	protected void refreshBitfield(Bitfield bitfield, Bitfield downloadingBitfield) {
+		pagerAdapter_.refreshBitfield(bitfield, downloadingBitfield);
 	}
 }

@@ -55,7 +55,7 @@ public abstract class Bencoded {
         
         while (parseIndex<dataLength && parseState==0)
         {
-            System.gc();
+            //System.gc();
             // bencoded string
             if (Character.isDigit((char)buff[parseIndex]))
             {
@@ -173,12 +173,4 @@ public abstract class Bencoded {
 			                
         return parsedItem;
     }
-    
-    /**
-     * Writes the content of the object to the log
-     */    
-    public void toLog(int aIndentation)
-    {
-    	//for (int i=0; i<aIndentation; i++) MTLogger.write("  ");
-    }    
 }

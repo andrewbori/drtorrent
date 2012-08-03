@@ -69,6 +69,15 @@ public class Bitfield implements Serializable {
         }
         return true;
     }
+    
+    /** Returns the count of the setted bits. */
+    public int countOfSet() {
+    	int n = 0;
+    	for (int i = 0; i < lengthInBits_; i++) {
+           if (isBitSet(i)) n++; 
+        }
+    	return n;
+    }
 
     public Bitfield clone() {
         byte[] clonedBitField = new byte[bitfield_.length];        
@@ -92,22 +101,11 @@ public class Bitfield implements Serializable {
     }
         
     public boolean isBitSet(int index) {
-        return ((128 >> (index % 8)) & (bitfield_[index/8]))>0;
+        return ((128 >> (index % 8)) & (bitfield_[index / 8])) > 0;
     }
 
     public byte[] data()  {
         return bitfield_;	
-    }
-    
-    public String getLogData() {
-        String result = "";
-        
-        for (int i = 0; i < bitfield_.length * 8; i++) {
-            if (isBitSet(i)) result+="1";
-            else result+="0";
-        }
-        
-        return result;
     }
 
     public int getLengthInBytes() {

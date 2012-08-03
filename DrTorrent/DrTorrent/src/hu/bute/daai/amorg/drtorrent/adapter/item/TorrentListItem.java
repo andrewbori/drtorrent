@@ -1,5 +1,7 @@
-package hu.bute.daai.amorg.drtorrent;
+package hu.bute.daai.amorg.drtorrent.adapter.item;
 
+import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
 import java.io.Serializable;
@@ -53,7 +55,7 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public void set(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
-		this.percent_ = (int) torrent.getDownloadPercent();
+		this.percent_ = (int) torrent.getProgressPercent();
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		

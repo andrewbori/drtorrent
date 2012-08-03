@@ -8,6 +8,7 @@
     
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission  android:name="android.permission.INTERNET" />
+    <uses-permission  android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application android:debuggable="true"
         android:icon="@drawable/icon_app"
@@ -19,9 +20,28 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file"
+                      android:mimeType="application/x-bittorrent"
+                      android:pathPattern=".*\\.torrent" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http"
+                      android:host="*"
+                      android:pathPattern=".*\\.torrent" />
+            </intent-filter>
+            
         </activity>
         <activity android:name=".activity.TorrentDetailsActivity" />
+        <activity android:name=".activity.SettingsActivity" />
         <activity android:name=".activity.FileBrowserActivity"
+            	  android:theme="@android:style/Theme.Dialog" />
+        <activity android:name=".activity.TorrentSettingsActivity"
             	  android:theme="@android:style/Theme.Dialog" />
         
         <service android:name=".service.TorrentService" />
