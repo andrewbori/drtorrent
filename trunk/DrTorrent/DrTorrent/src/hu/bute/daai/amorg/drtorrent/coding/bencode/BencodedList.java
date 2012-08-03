@@ -25,19 +25,7 @@ public class BencodedList extends Bencoded{
     public BencodedList() 
     {
         items = new Vector<Bencoded>();
-    }
-
-    public void toLog(int aIndentation)
-    {      
-	if (items.size() > 0)
-	{						
-            for (int i=0; i<items.size(); i++)
-            {		
-                ((Bencoded)items.elementAt(i)).toLog(aIndentation+1);
-                //MTLogger.writeLine("");
-            }
-	}        
-    }    
+    }  
     
     public Bencoded item(int aIndex)
     {

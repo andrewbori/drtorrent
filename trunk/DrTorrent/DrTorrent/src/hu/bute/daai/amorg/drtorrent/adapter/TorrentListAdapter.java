@@ -1,4 +1,7 @@
-package hu.bute.daai.amorg.drtorrent;
+package hu.bute.daai.amorg.drtorrent.adapter;
+
+import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 
 import java.util.ArrayList;
 

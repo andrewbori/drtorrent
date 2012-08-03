@@ -1,4 +1,7 @@
-package hu.bute.daai.amorg.drtorrent;
+package hu.bute.daai.amorg.drtorrent.adapter;
+
+import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 
 import java.util.ArrayList;
 
@@ -18,6 +21,7 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 	private final int tvRequestsResource = R.id.list_item_peer_tvRequests;
 	private final int tvDownloadSpeedRecource = R.id.list_item_peer_tvDownloadSpeed;
 	private final int tvDownloadedRecource = R.id.list_item_peer_tvDownloaded;
+	private final int tvPercentRecource = R.id.list_item_peer_tvPercent;
 
 	public PeerListAdapter(Activity context, ArrayList<T> items) {
 		super(context, R.layout.list_item_torrent, items);
@@ -37,6 +41,7 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 		TextView tvRequests = (TextView) reusableView.findViewById(tvRequestsResource);
 		TextView tvDownloadSpeed = (TextView) reusableView.findViewById(tvDownloadSpeedRecource);
 		TextView tvDownloaded = (TextView) reusableView.findViewById(tvDownloadedRecource);
+		TextView tvPercent = (TextView) reusableView.findViewById(tvPercentRecource);
 
 		PeerListItem item = (PeerListItem) items_.get(position);
 
@@ -44,6 +49,7 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 		tvRequests.setText(item.getRequests());
 		tvDownloadSpeed.setText(item.getDownloadSpeed());
 		tvDownloaded.setText(item.getDownloaded());
+		tvPercent.setText(item.getPercent());
 
 		return reusableView;
 	}

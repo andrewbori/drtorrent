@@ -26,11 +26,6 @@ public class BencodedString extends Bencoded{
         setValue(aValue);
     }
     
-    public void toLog(int aIndentation)
-    {        
-        //MTLogger.write(new String(getValue()));
-    }
-    
     public int type()
     {
         return Bencoded.BencodedString;

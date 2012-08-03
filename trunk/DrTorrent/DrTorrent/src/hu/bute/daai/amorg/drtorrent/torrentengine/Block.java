@@ -6,7 +6,7 @@ public class Block {
 	private int begin_;
 	private int length_;
 	
-	private boolean isRequested_;
+	private boolean isRequested_;	// True if a peer got this to request to download
 	private boolean isDownloaded_;
 	private long requestTime_;
 	

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <string name="hello">Hello World, DrTorrentActivity!</string>
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">Add Torrent</string>
     <string name="menu_start">Start</string>
     <string name="menu_stop">Stop</string>
+    <string name="menu_ok">OK</string>
+    <string name="menu_cancel">Cancel</string>
     <string name="menu_delete">Delete</string>
     <string name="filebrowser_current">Directory</string>
     <string name="filebrowser_parent">Parent directory</string>
@@ -22,12 +23,20 @@
 	<string name="tab_info">Info</string>
 	<string name="tab_peers">Peers</string>
 	<string name="tab_pieces">Pieces</string>
+	<string name="tab_files">Files</string>
+	<string name="tab_trackers">Trackers</string>
+	<string name="status_hash_check">Checking hash</string>
 	<string name="status_opening">Opening</string>
 	<string name="status_started">Started</string>
 	<string name="status_wrong_file">Wrong torrent file</string>
-	<string name="status_connecting">Connecting</string>
 	<string name="status_downloading">Downloading</string>
-	<string name="status_tracker_failed">Tracker failed</string>
 	<string name="status_seeding">Seeding</string>
 	<string name="status_stopped">Stopped</string>
+	<string name="preferences_streaming">Streaming mode</string>
+	<string name="preferences_streaming_sum">Download the content continuously</string>
+	<string name="preferences_port">P2P Port</string>
+	<string name="preferences_port_sum">P2P protocol port</string>
+	<string name="preferences_connections">Connections</string>
+	<string name="preferences_connections_sum">Maximum number of connected peers per torrent</string>
+	<string name="all">All</string>
 </resources>

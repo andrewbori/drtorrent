@@ -4,7 +4,7 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
     <ListView
-        android:id="@+id/torrent_details_lvPeer"
+        android:id="@+id/list_listview"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent">
     </ListView>

@@ -112,24 +112,7 @@ public class BencodedDictionary extends Bencoded{
     public BencodedDictionaryEntry entry(int aIndex)
     {
         return (BencodedDictionaryEntry)entries.elementAt(aIndex);
-    }
-    
-    public void toLog(int aIndentation)
-    {        
-	for (int i=0; i<entries.size(); i++)
-	{
-            ((BencodedDictionaryEntry)entries.elementAt(i)).getKey().toLog(aIndentation+1);
-            //MTLogger.write(" :");
-            String tempKey = new String(((BencodedDictionaryEntry)entries.elementAt(i)).getKey().getValue());
-            if (!tempKey.equals("pieces"))
-            {
-                ((BencodedDictionaryEntry)entries.elementAt(i)).getValue().toLog(aIndentation + 2);
-            }
-            /*else
-                MTLogger.write("[pieces]");
-            MTLogger.writeLine("");*/
-	}
-    }    
+    }   
     
     public byte[] Bencode() 
     {

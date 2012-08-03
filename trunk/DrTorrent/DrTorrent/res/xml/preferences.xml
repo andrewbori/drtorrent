@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <CheckBoxPreference
+        android:key="streaming"
+        android:defaultValue="false"
+        android:summary="@string/preferences_streaming_sum"
+        android:title="@string/preferences_streaming" />
+
+    <EditTextPreference
+        android:key="port"
+        android:defaultValue="36400"
+        android:inputType="number" 
+        android:dialogTitle="@string/preferences_port"
+        android:summary="@string/preferences_port_sum"
+        android:title="@string/preferences_port" />
+    
+    <EditTextPreference
+        android:key="connections"
+        android:defaultValue="20"
+        android:inputType="number" 
+        android:dialogTitle="@string/preferences_connections"
+        android:summary="@string/preferences_connections_sum"
+        android:title="@string/preferences_connections" />
+
+</PreferenceScreen>

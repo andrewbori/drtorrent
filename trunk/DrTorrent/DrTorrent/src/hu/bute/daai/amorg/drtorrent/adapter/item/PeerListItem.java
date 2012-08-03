@@ -1,5 +1,6 @@
-package hu.bute.daai.amorg.drtorrent;
+package hu.bute.daai.amorg.drtorrent.adapter.item;
 
+import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
 
 import java.io.Serializable;
@@ -12,9 +13,10 @@ public class PeerListItem implements Serializable {
 	private String requests_;
 	private String downloadSpeed_;
 	private String downloaded_;
+	private String percent_;
 	
-	public PeerListItem(String address, String requests, String downloadSpeed, String downloaded) {
-		set(address, requests, downloadSpeed, downloaded);
+	public PeerListItem(String address, String requests, String downloadSpeed, String downloaded, String percent) {
+		set(address, requests, downloadSpeed, downloaded, percent);
 	}
 	
 	public PeerListItem(Peer peer) {
@@ -30,6 +32,7 @@ public class PeerListItem implements Serializable {
 		requests_ = item.requests_;
 		downloadSpeed_ = item.downloadSpeed_;
 		downloaded_ = item.downloaded_;
+		percent_ = item.percent_;
 	}
 	
 	public void set(Peer peer) {
@@ -37,13 +40,15 @@ public class PeerListItem implements Serializable {
 		requests_ = peer.getRequestsCount() + "";
 		downloadSpeed_ = DrTorrentTools.bytesToString(peer.getDownloadSpeed()) + "/s";
 		downloaded_ = DrTorrentTools.bytesToString(peer.getDownloaded());
+		percent_ = peer.getPercent() + " %";
 	}
 	
-	public void set(String address, String requests, String downloadSpeed, String downloaded) {
+	public void set(String address, String requests, String downloadSpeed, String downloaded, String percent) {
 		address_ = address;
 		requests_ = requests;
 		downloadSpeed_ = downloadSpeed;
 		downloaded_ = downloaded;
+		percent_ = percent;
 	}
 	
 	public String getAddress() {
@@ -76,6 +81,14 @@ public class PeerListItem implements Serializable {
 	
 	public void setDownloaded(String downloaded) {
 		downloaded_ = downloaded;
+	}
+	
+	public String getPercent() {
+		return percent_;
+	}
+	
+	public void setPercent(String percent) {
+		percent_ = percent;
 	}
 
 	@Override

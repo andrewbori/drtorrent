@@ -1,6 +1,5 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import java.util.Vector;
 
 
 /** Class representing the Peer. */
@@ -10,6 +9,8 @@ public class Peer {
 	private int port_;
 	private String peerId_;
 	private Bitfield bitfield_;
+	
+	private int failedPieceCount_ = 0;
 	
 	private PeerConnection connection_ = null;
 	
@@ -82,12 +83,17 @@ public class Peer {
 	
 	/** Notify the peer that the client have the given piece. */
 	public void notifyThatClientHavePiece(int pieceIndex) {
-		connection_.sendHaveMessage(pieceIndex);
+		if (connection_ != null && connection_.isConnected()) connection_.sendHaveMessage(pieceIndex);
 	}
 	
 	/** Sets our chocking state. */
 	public void setChoking(boolean choking) {
 		connection_.setChoking(choking);
+	}
+	
+	/** Returns whether the peer is interested in us or not. */
+	public boolean isPeerInterested() {
+		return connection_.isInterested();
 	}
 	
 	/** Resets the error counter. */
@@ -138,5 +144,19 @@ public class Peer {
 	/** Returns the bitfield. */
 	public Bitfield getBitfield() {
 		return bitfield_;
+	}
+	
+	/** Returns the percent of the peer's download progress. */
+	public int getPercent() {
+		return bitfield_.countOfSet() * 100 / bitfield_.getLengthInBits();
+	}
+	
+	public void pieceHashCorrect(boolean isCorrect) {
+		if (isCorrect) {
+			failedPieceCount_ -= 2;
+		} else {
+			failedPieceCount_++;
+			if (failedPieceCount_ >= 5) connection_.close("POOR CONNECTION!!!");
+		}
 	}
 }

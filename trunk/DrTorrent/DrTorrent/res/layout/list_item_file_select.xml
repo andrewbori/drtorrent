@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:paddingRight="3dp" >
+
+    <CheckBox
+        android:id="@+id/list_item_file_select_cbFile"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
+        android:paddingTop="8dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:textSize="5pt"
+        android:text="File in torrent.txt"
+        android:checked="true" />
+    
+    <TextView
+        android:id="@+id/list_item_file_select_tvFileSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right"
+        android:text="1 kB"
+        android:textSize="4pt"
+        android:layout_alignRight="@+id/list_item_file_select_cbFile"
+        android:layout_alignBottom="@+id/list_item_file_select_cbFile" />
+
+    
+</RelativeLayout>

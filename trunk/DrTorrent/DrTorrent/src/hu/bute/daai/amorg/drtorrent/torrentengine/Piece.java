@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
 import java.io.ByteArrayOutputStream;
@@ -17,15 +18,16 @@ public class Piece {
 	private byte[] hash_;
 	private int index_;
 	private int size_;
-	private int downloadedSize_;
 	private Vector<FileFragment> fragments_;
-	private int numberOfPeersHaveThis_;
+	private int numberOfPeersHaveThis_ = 0;
 	private boolean isRequested_ = false;
+	private boolean isComplete_ = false;
 	
-	private Vector<Block> blocksToDownload_ = null;
-	private Vector<Block> blocksToRequest_ = null;
+	private Vector<Block> blocks_ = null;
+	private Vector<Block> unrequestedBlocks_ = null;
+	private Vector<Block> downloadedBlocks_ = null;
 	
-	private SHA1 incommingHash_ = null;
+	private Vector<Peer> peers_ = null;
 	
 	/** 
 	 * Constructor of the piece.
@@ -39,17 +41,16 @@ public class Piece {
 		hash_ = hash;
 		index_ = index;
 		size_ = length;
-		downloadedSize_ = 0;
 		fragments_ = new Vector<FileFragment>();
-		numberOfPeersHaveThis_ = 0;
 	}
 	
 	/** Calculates the blocks of the piece. */
-	public void calculateBlocks() {
+	public void calculateBlocks() {		
 		isRequested_ = true;
 		Log.v(LOG_TAG, "Calculate blocks.");
-		blocksToDownload_ = new Vector<Block>();
-		blocksToRequest_ = new Vector<Block>();
+		blocks_ = new Vector<Block>();
+		unrequestedBlocks_ = new Vector<Block>();
+		downloadedBlocks_ = new Vector<Block>();
 		
 		int blockCount = size_ / DEFALT_BLOCK_LENGTH;
 		if (size_ % DEFALT_BLOCK_LENGTH > 0) blockCount++;
@@ -60,9 +61,11 @@ public class Piece {
 			} else {
 				block = new Block(this, i * DEFALT_BLOCK_LENGTH, size_ - (i * DEFALT_BLOCK_LENGTH));
 			}
-			blocksToDownload_.addElement(block);
-			blocksToRequest_.addElement(block);
+			blocks_.addElement(block);
+			unrequestedBlocks_.addElement(block);
 		}
+		
+		peers_ = new Vector<Peer>();
 	}
 	
 	/** 
@@ -86,7 +89,7 @@ public class Piece {
 	 */
 	public int appendBlock(byte[] data, Block block, Peer peer) {
 		// If received an already received part.
-		if (!blocksToDownload_.contains(block)) {
+		if (blocks_ == null || !blocks_.contains(block)) {
 			Log.v(LOG_TAG, "Wrong block has been received: " + block.begin());
 			return Torrent.ERROR_NONE;
 		}
@@ -103,79 +106,82 @@ public class Piece {
 					FileFragment fragment = (FileFragment) fragments_.elementAt(i);
 					// If the already downloaded part doesn't extend beyond the current fragment...
 					// (...which means that a part of the current fragment was received.)
-					if (block.begin() < (pos + fragment.length())) {
+					if (block.begin() + blockPosition < (pos + fragment.length())) {
 						file = fragment.file();
-						filePosition = fragment.offset() + (block.begin() - pos);
+						filePosition = fragment.offset() + ((block.begin() + blockPosition) - pos);//- pos);
 						i = fragments_.size(); // break
 					} else {
 						pos += fragment.length();
 					}
 				}
 
-				// set the file to downloading state
-				/**
-				 * TODO: what if file is set not to be downloaded?
-				 */
-				if (file.getDownloadState() != File.STATUS_DOWNLOADING) {
-					file.setDownloadState(File.STATUS_DOWNLOADING);
-					// TODO: TorrentManager notify "Torrent Files State Changed".
-				}
-
 				if (file != null) {
+					// set the file to downloading state
+					/**
+					 * TODO: what if file is set not to be downloaded?
+					 */
+					if (file.getDownloadState() != File.STATUS_DOWNLOADING) {
+						file.setDownloadState(File.STATUS_DOWNLOADING);
+					}
+
 					int res = Torrent.ERROR_NONE;
-					int fileBlockLength = file.getSize() - filePosition; // Remaining length from the position
+					int fileRemainingLength = file.getSize() - filePosition; // Remaining length from the position
 
 					Log.v(LOG_TAG, "Appending block to " + file.getPath());
 
-					 // If the end of a file was reached...
-					if (fileBlockLength <= (data.length - blockPosition)) {
-						//Log.v(LOG_TAG, "File complete: " + file.getPath());
-
-						res = torrent_.writeFile(file, filePosition, data, blockPosition, fileBlockLength);
-						if (res != Torrent.ERROR_NONE) return res;
-
-						blockPosition += fileBlockLength;
-						downloadedSize_ += fileBlockLength;
-						
-					// ...if the file isn't finished yet
-					} else {
-						int rightSize = data.length - blockPosition;
-
-						//Log.v(LOG_TAG, "Block has been saved from: " + peer.getAddress() + ":" + peer.getPort());
-						res = torrent_.writeFile(file, filePosition, data, data.length - rightSize, rightSize);
-						if (res != Torrent.ERROR_NONE) return res;
-
-						downloadedSize_ += rightSize;
-						break;
+					int rightSize;
+					// If the file is not finished yet
+					if (fileRemainingLength > (data.length - blockPosition)) {
+						rightSize = data.length - blockPosition;
 					}
+					// If the end of a file was reached...
+					else {
+						rightSize = fileRemainingLength;
+					}
+
+					res = torrent_.writeFile(file, filePosition, data, blockPosition, rightSize);
+					if (res != Torrent.ERROR_NONE) return res;
+
+					blockPosition += rightSize;
 				} else {
 					return Torrent.ERROR_GENERAL;
 				}
 			}
 			
-			torrent_.updateBytesDownloaded(data.length);
+			addPeer(peer);
+			
+			if (!downloadedBlocks_.contains(block)) {
+				downloadedBlocks_.addElement(block);
+				torrent_.updateBytesDownloaded(data.length);
+			}
 
-			if (remaining() == 0) {
-				//Log.v(LOG_TAG, "Downloading piece completed!");
-				// torrent.getHashChecker().addPieceToCheck(this);
-				// TODO: HASH check
-				if (checkHash()) {
+			// If the piece is complete...
+			if (downloadedBlocks_.size() >= blocks_.size()) {
+				// Hash check
+				boolean isHashCorrect = checkHash();
+				if (isHashCorrect) {
 					Log.v(LOG_TAG, "Hash OK!");
+					isComplete_ = true;
 					setFilesDownloaded();
 					torrent_.pieceDownloaded(this, false);
+					
+					blocks_ = null;
+					downloadedBlocks_ = null;
 				} else {
 					Log.v(LOG_TAG, "Hash FAILED!");
-					downloadedSize_ = 0;
-					calculateBlocks();
-					torrent_.pieceHashFailed(this);
-					// ask this piece from an other peer
-					// peer_.cancelPieceRequest(this);
-					// peer.terminate(); // TODO: 
-				}
 
-				// we no longer need the hash
-				incommingHash_ = null;
-			} else if (remaining() < 0) return Torrent.ERROR_GENERAL;
+					isRequested_ = false;
+					blocks_ = null;
+					downloadedBlocks_ = null;
+					unrequestedBlocks_ = null;
+						
+					torrent_.pieceHashFailed(this);
+				}
+				
+				for (int i = 0; i < peers_.size(); i++) {
+					peers_.elementAt(i).pieceHashCorrect(isHashCorrect);
+				}
+			}
 
 			return Torrent.ERROR_NONE;
 		}
@@ -241,10 +247,34 @@ public class Piece {
 		return blockByteArray.toByteArray();
 	}
 	
-	/** Returns whether the piece equals its hash or not. */
+	/** Returns whether the piece is correct or not by checking its hash. */
 	public boolean checkHash() {
-		// TODO
-		return true;
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			for (int i = 0; i < fragments_.size(); i++) {
+				FileFragment fragment = fragments_.get(i);
+				byte[] content = torrent_.read(fragment.file().getPath(), fragment.offset(), fragment.length());
+				baos.write(content);
+				Log.v(LOG_TAG, fragment.file().getRelativePath() + " " + fragment.offset() + " " + fragment.length());
+			}
+			
+			SHA1 sha1 = new SHA1();
+			sha1.update(baos.toByteArray());
+			byte[] hash = SHA1.resultToByte(sha1.digest());
+			
+			Log.v(LOG_TAG, SHA1.resultToString(hash_));
+			Log.v(LOG_TAG, SHA1.resultToString(hash));
+			if (DrTorrentTools.byteArrayEqual(hash_, hash)) return true;
+		} catch (Exception e) {
+		} finally {
+			try {
+				baos.flush();
+				baos.close();
+			} catch (Exception e) {
+			}
+		}
+		
+		return false;
 	}
 	
 	public void setFilesDownloaded() {
@@ -266,12 +296,6 @@ public class Piece {
 		return numberOfPeersHaveThis_;
 	}
 	
-	/** Returns a block of this piece. */
-	public byte[] getBlock(int position, int length) {
-		// TODO
-		return null;
-	}
-	
 	/** Returns the length of the block in the given position. */
 	public int getBlockLength(int index) {
 		int lengthFromIndex = size_ - (index * DEFALT_BLOCK_LENGTH);
@@ -283,9 +307,9 @@ public class Piece {
 	/** Returns whether the piece has unrequested block(s). */
 	public boolean hasUnrequestedBlock() {
 		if (isRequested_) {
-			if (blocksToRequest_.size() > 0) return true;
+			if (unrequestedBlocks_.size() > 0) return true;
 		} else {
-			if (!isComplete()) return true;
+			if (!isComplete_) return true;
 		}
 		
 		return false;
@@ -294,13 +318,13 @@ public class Piece {
 	/** Returns an unrequested block. */
 	public Block getUnrequestedBlock() {
 		if (!isRequested_) {
-			if (!isComplete()) calculateBlocks();
+			if (!isComplete_) calculateBlocks();
 			else return null;
 		}
-		synchronized(blocksToRequest_) {
-			if (blocksToRequest_.size() > 0) {
-				Block block = blocksToRequest_.elementAt(0);
-				blocksToRequest_.removeElementAt(0);
+		synchronized(unrequestedBlocks_) {
+			if (unrequestedBlocks_.size() > 0) {
+				Block block = unrequestedBlocks_.elementAt(0);
+				unrequestedBlocks_.removeElementAt(0);
 				return block;
 			}
 		}
@@ -308,14 +332,14 @@ public class Piece {
 		return null;
 	}
 	
-	/** Returns the requested blocks not downloaded yet. */
-	public Vector<Block> getRequestedBlocks() {
-		return blocksToDownload_;
-	}
-	
 	/** Adds a block to the the array of blocks to be requested. */
 	public void addBlockToRequest(Block block) {
-		blocksToRequest_.addElement(block);
+		unrequestedBlocks_.addElement(block);
+	}
+	
+	/** Returns the file fragments of the piece. */
+	public Vector<FileFragment> getFragments() {
+		return fragments_;
 	}
 	
 	/** The index of piece in the torrent. */
@@ -328,23 +352,13 @@ public class Piece {
 		return size_;
 	}
 	
-	/** The downloaded fragments in bytes. */
-	public int downloaded() {
-		return downloadedSize_;
-    }
-	
-	/** The remaining fragments in bytes. */
-	public int remaining() {
-		return size_ - downloadedSize_;
-	}
-	
-	/** Returns whether the piece is complete or not. */
-	public boolean isComplete() {
-		return (size_ == downloadedSize_); 
-	}
-	
 	/** Returns whether the piece has been requested or not. */
 	public boolean isRequested() {
 		return isRequested_;
+	}
+	
+	/** Adds a peer to the list of the peers that gave the blocks of this piece. */
+	public void addPeer(Peer peer) {
+		if (!peers_.contains(peer)) peers_.addElement(peer);
 	}
 }
