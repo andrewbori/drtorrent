@@ -81,7 +81,7 @@
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
-				      android:text="0 MB" />
+				      android:text="0 B" />
 	        </TableRow>
 			<TableRow>
 	            <TextView
@@ -129,7 +129,7 @@
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
-				      android:text="0 MB" />
+				      android:text="0 B" />
 	        </TableRow>
 	        <TableRow>
 	            <TextView
@@ -145,7 +145,7 @@
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
-				      android:text="0 MB" />
+				      android:text="0 B" />
 	        </TableRow>
 	        <TableRow>
 	            <TextView
@@ -161,7 +161,7 @@
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
-				      android:text="0 kB/s" />
+				      android:text="0 B/s" />
          	</TableRow>
 
 	        <TableRow>
@@ -178,7 +178,7 @@
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
-				      android:text="0 kB/s" />
+				      android:text="0 B/s" />
             </TableRow>
 	        <TableRow>
 	            <TextView

@@ -1,40 +1,24 @@
-/*
- * MTBencode.java
- *
- * Created on 2007. február 8., 18:19
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- */
 
 package hu.bute.daai.amorg.drtorrent.coding.bencode;
 
 import java.util.Stack;
 
-/**
- *
- * @author Tyrial
- */
 public abstract class Bencoded {
 
     // Bencode types
-    public static int BencodedString = 0;
-    public static int BencodedInteger = 1;
-    public static int BencodedList = 2;    
-    public static int BencodedDictionary = 3; 
+    public static int BENCODED_STRING 	  = 0;
+    public static int BENCODED_INTEGER	  = 1;
+    public static int BENCODED_LIST 	  = 2;    
+    public static int BENCODED_DICTIONARY = 3; 
     
-    /** Creates a new instance of MTBencode */
+    /** Creates a new instance of Bencode */
     public Bencoded() {
     }
     
-    /**
-     * returns the Bencode type
-     */     
+    /** Returns the Bencode type */     
     public abstract int type();
     
-    /**
-     * returns the bencoded data
-     */ 
+    /** Returns the bencoded data */ 
     public abstract byte[] Bencode();    
     
     /**
@@ -143,7 +127,7 @@ public abstract class Bencoded {
                         
                         case 0: // bencodedString
                         {
-                            if (((Bencoded)parseStack.elementAt(parseStack.size()-3)).type() == Bencoded.BencodedDictionary)
+                            if (((Bencoded)parseStack.elementAt(parseStack.size()-3)).type() == Bencoded.BENCODED_DICTIONARY)
                             {
                                 Bencoded value = (Bencoded)parseStack.pop();
                                 BencodedString key = (BencodedString)parseStack.pop();

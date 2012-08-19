@@ -12,17 +12,16 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 
 	private String infoHash_ = "";
 	private String name_ = "";
-	private int percent_ = 0;
+	private double percent_ = 0;
 	private int status_ = R.string.status_stopped;
-	private String downloadSpeed_ = "0 kB/s";
-	private String uploadSpeed_ = "0 kB/s";
-	private String downloaded_ = "0 kB";
-	private String uploaded_ = "0 kB";
+	private String size_ = "0 B";
+	private String downloaded_ = "0 B";
+	private String downloadSpeed_ = "0 B/s";
+	private String uploaded_ = "0 B";
+	private String uploadSpeed_ = "0 B/s";
 	private String peers_ = "0/0";
-	
-	private String size_ = "0";
-	private String elapsedTime_ = "0";
-	private String remainingTime_ = "0";
+	private String elapsedTime_ = "0 s";
+	private String remainingTime_ = "0 s";
 
 	public TorrentListItem(String name) {
 		this.name_ = name;
@@ -41,13 +40,12 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.name_ = item.name_;
 		this.percent_ = item.percent_;
 		this.status_ = item.status_;
-		this.downloadSpeed_ = item.downloadSpeed_;
-		this.uploadSpeed_ = item.uploadSpeed_;
-		this.downloaded_ = item.downloaded_;
-		this.uploaded_ = item.uploaded_;
-		this.peers_ = item.peers_;
-		
 		this.size_ = item.size_;
+		this.downloaded_ = item.downloaded_;
+		this.downloadSpeed_ = item.downloadSpeed_;
+		this.uploaded_ = item.uploaded_;
+		this.uploadSpeed_ = item.uploadSpeed_;
+		this.peers_ = item.peers_;
 		this.remainingTime_ = item.remainingTime_;
 		this.elapsedTime_ = item.elapsedTime_;
 	}
@@ -55,18 +53,20 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public void set(Torrent torrent) {
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
-		this.percent_ = (int) torrent.getProgressPercent();
+		this.percent_ = torrent.getProgressPercent();
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
+		this.size_ = DrTorrentTools.bytesToString(torrent.getSize());
+		
 		this.downloaded_ = DrTorrentTools.bytesToString(torrent.getBytesDownloaded());
-		this.downloadSpeed_ = DrTorrentTools.bytesToString(torrent.getDownloadSpeed()) + "/s";
+		this.downloadSpeed_ = DrTorrentTools.bytesToString(torrent.getDownloadSpeed()).concat("/s");
 		
 		this.uploaded_ = DrTorrentTools.bytesToString(torrent.getBytesUploaded());
+		this.uploadSpeed_ = DrTorrentTools.bytesToString(torrent.getUploadSpeed()).concat("/s");
 		
-		this.size_ = DrTorrentTools.bytesToString(torrent.getSize());
-		this.remainingTime_ = DrTorrentTools.intToTime(torrent.getRemainingTime(), DrTorrentTools.MSEC, 2);
-		this.elapsedTime_ = DrTorrentTools.intToTime(torrent.getElapsedTime(), DrTorrentTools.MSEC, 2);
+		this.remainingTime_ = DrTorrentTools.timeToString(torrent.getRemainingTime(), DrTorrentTools.MSEC, 2);
+		this.elapsedTime_ = DrTorrentTools.timeToString(torrent.getElapsedTime(), DrTorrentTools.MSEC, 2);
 	}
 
 	public String getInfoHash() {
@@ -85,11 +85,11 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.name_ = name;
 	}
 
-	public int getPercent() {
+	public double getPercent() {
 		return percent_;
 	}
 
-	public void setPercent(int percent) {
+	public void setPercent(double percent) {
 		this.percent_ = percent;
 	}
 
@@ -100,21 +100,9 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	public void setStatus(int status) {
 		this.status_ = status;
 	}
-
-	public String getDownloadSpeed() {
-		return downloadSpeed_;
-	}
-
-	public void setDownloadSpeed(String downloadSpeed) {
-		this.downloadSpeed_ = downloadSpeed;
-	}
-
-	public String getUploadSpeed() {
-		return uploadSpeed_;
-	}
-
-	public void setUploadSpeed(String uploadSpeed) {
-		this.uploadSpeed_ = uploadSpeed;
+	
+	public String getSize() {
+		return size_;
 	}
 
 	public String getDownloaded() {
@@ -125,6 +113,14 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.downloaded_ = downloaded;
 	}
 
+	public String getDownloadSpeed() {
+		return downloadSpeed_;
+	}
+
+	public void setDownloadSpeed(String downloadSpeed) {
+		this.downloadSpeed_ = downloadSpeed;
+	}
+
 	public String getUploaded() {
 		return uploaded_;
 	}
@@ -133,16 +129,20 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.uploaded_ = uploaded;
 	}
 	
+	public String getUploadSpeed() {
+		return uploadSpeed_;
+	}
+
+	public void setUploadSpeed(String uploadSpeed) {
+		this.uploadSpeed_ = uploadSpeed;
+	}
+
 	public String getPeers() {
 		return peers_;
 	}
 
 	public void setPeers(String peers) {
 		this.peers_ = peers;
-	}
-	
-	public String getSize() {
-		return size_;
 	}
 
 	public String getElapsedTime() {

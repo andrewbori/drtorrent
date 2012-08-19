@@ -18,6 +18,9 @@ public class TrackerListAdapter<T> extends ArrayAdapter<T> {
 	
 	private final int rowResource = R.layout.list_item_tracker;
 	private final int tvAddressResource = R.id.list_item_tracker_tvUrl;
+	private final int tvStatusResource = R.id.list_item_tracker_tvStatus;
+	private final int tvTimeResource = R.id.list_item_tracker_tvTime;
+	private final int tvPeersResource = R.id.list_item_tracker_tvPeers;
 
 	public TrackerListAdapter(Activity context, ArrayList<T> items) {
 		super(context, R.layout.list_item_torrent, items);
@@ -34,10 +37,16 @@ public class TrackerListAdapter<T> extends ArrayAdapter<T> {
 		}
 
 		TextView tvAddress = (TextView) reusableView.findViewById(tvAddressResource);
+		TextView tvStatus = (TextView) reusableView.findViewById(tvStatusResource);
+		TextView tvTime = (TextView) reusableView.findViewById(tvTimeResource);
+		TextView tvPeers = (TextView) reusableView.findViewById(tvPeersResource);
 
 		TrackerListItem item = (TrackerListItem) items_.get(position);
 
 		tvAddress.setText(item.getAddress());
+		tvStatus.setText(context_.getString(item.getStatus()));
+		tvPeers.setText(item.getPeers());
+		tvTime.setText(item.getTime());
 
 		return reusableView;
 	}

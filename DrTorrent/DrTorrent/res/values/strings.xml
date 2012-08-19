@@ -39,4 +39,13 @@
 	<string name="preferences_connections">Connections</string>
 	<string name="preferences_connections_sum">Maximum number of connected peers per torrent</string>
 	<string name="all">All</string>
+	<string name="priority">"Priority: "</string>
+	<string name="priority_normal">normal</string>
+	<string name="priority_skip">skip</string>
+	<string name="priority_low">low</string>
+	<string name="priority_high">high</string>
+	<string name="updating">updating</string>
+	<string name="working">working</string>
+	<string name="failed">failed</string>
+	<string name="empty_field"></string>
 </resources>

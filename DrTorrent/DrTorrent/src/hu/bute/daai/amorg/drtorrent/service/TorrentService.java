@@ -47,6 +47,8 @@ public class TorrentService extends Service {
 	public final static int MSG_CLOSE_TORRENT       	 = 104;
 	public final static int MSG_SUBSCRIBE_CLIENT    	 = 201;
 	public final static int MSG_UNSUBSCRIBE_CLIENT  	 = 202;
+	public final static int MSG_UPDATE_TORRENT			 = 203;
+	public final static int MSG_CHANGE_FILE_PRIORITY	 = 204;
 	public final static int MSG_SEND_TORRENT_ITEM   	 = 301;
 	public final static int MSG_SEND_TORRENT_LIST   	 = 302;
 	public final static int MSG_TORRENT_CHANGED     	 = 303;
@@ -64,20 +66,28 @@ public class TorrentService extends Service {
 	public final static int MSG_SEND_TORRENT_SETTINGS	 = 315;
 	public final static int MSG_SHUT_DOWN				 = 321;
 	
-	public final static String MSG_KEY_FILEPATH         	= "filepath";
-	public final static String MSG_KEY_TORRENT_INFOHASH	    = "infohash";
-	public final static String MSG_KEY_TORRENT_OLD_INFOHASH = "oldinfohash";
-	public final static String MSG_KEY_TORRENT_ITEM     	= "torrentitem";
-	public final static String MSG_KEY_TORRENT_LIST     	= "torrentlist";
-	public final static String MSG_KEY_IS_REMOVED           = "isremoved";
-	public final static String MSG_KEY_PEER_ITEM     		= "peeritem";
-	public final static String MSG_KEY_PEER_LIST     		= "peerlist";
-	public final static String MSG_KEY_BITFIELD				= "bitfield";
-	public final static String MSG_KEY_DOWNLOADING_BITFIELD = "downloadingbitfield";
-	public final static String MSG_KEY_FILE_LIST     		= "filelist";
-	public final static String MSG_KEY_TRACKER_LIST     	= "trackerlist";
-	public final static String MSG_KEY_MESSAGE 				= "message";
-	public final static String MSG_KEY_IS_DISCONNECTED		= "isdisconnected";
+	public final static int UPDATE_INFO		    =  1;	// 0b00000001
+	public final static int UPDATE_FILE_LIST    =  2;	// 0b00000010
+	public final static int UPDATE_BITFIELD     =  4;	// 0b00000100
+	public final static int UPDATE_PEER_LIST    =  8;	// 0b00001000
+	public final static int UPDATE_TRACKER_LIST = 16;	// 0b00010000
+	
+	public final static String MSG_KEY_FILEPATH         	= "a";
+	public final static String MSG_KEY_TORRENT_INFOHASH	    = "b";
+	public final static String MSG_KEY_TORRENT_OLD_INFOHASH = "c";
+	public final static String MSG_KEY_TORRENT_UPDATE 		= "d";
+	public final static String MSG_KEY_TORRENT_ITEM     	= "e";
+	public final static String MSG_KEY_TORRENT_LIST     	= "f";
+	public final static String MSG_KEY_IS_REMOVED           = "g";
+	public final static String MSG_KEY_PEER_ITEM     		= "h";
+	public final static String MSG_KEY_PEER_LIST     		= "i";
+	public final static String MSG_KEY_BITFIELD				= "j";
+	public final static String MSG_KEY_DOWNLOADING_BITFIELD = "k";
+	public final static String MSG_KEY_FILE_ITEM			= "l";
+	public final static String MSG_KEY_FILE_LIST     		= "m";
+	public final static String MSG_KEY_TRACKER_LIST     	= "n";
+	public final static String MSG_KEY_MESSAGE 				= "o";
+	public final static String MSG_KEY_IS_DISCONNECTED		= "p";
 	
 	private Context context_;
 	
@@ -88,6 +98,7 @@ public class TorrentService extends Service {
 	private Messenger clientAll_;
 	private Messenger clientSingle_;
 	private String clientSingleInfoHash_;
+	private int clientSingleUpdateField_ = 0;
 
 	private Vector<TorrentListItem> torrents_; // only for sending message
 
@@ -109,7 +120,6 @@ public class TorrentService extends Service {
                 }
             }
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -157,6 +167,16 @@ public class TorrentService extends Service {
 				case MSG_UNSUBSCRIBE_CLIENT:
 					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
 					unSubscribeClient(msg.replyTo, infoHash);
+					break;
+					
+				case MSG_UPDATE_TORRENT:
+					clientSingleUpdateField_ = bundleMsg.getInt(MSG_KEY_TORRENT_UPDATE, 0);
+					break;
+					
+				case MSG_CHANGE_FILE_PRIORITY:
+					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
+					FileListItem item = (FileListItem) bundleMsg.getSerializable(TorrentService.MSG_KEY_FILE_ITEM);
+					(new ChangeFilePriorityThread(infoHash, item)).start();
 					break;
 
 				case MSG_OPEN_TORRENT:
@@ -235,6 +255,7 @@ public class TorrentService extends Service {
 			Log.v(LOG_TAG, "Client unsubscribed from the following torrent: " + infoHash);
 			clientSingle_ = null;
 			clientSingleInfoHash_ = "";
+			clientSingleUpdateField_ = 0;
 			
 		} else {
 			clientAll_ = null;
@@ -375,6 +396,30 @@ public class TorrentService extends Service {
 		sendMessage(msg, null);
 	}
 	
+	/** FileList changed. */
+	public void updateFileList(Torrent torrent) {
+		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		
+		Vector<File> files = torrent.getFiles();
+		ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
+		for (int i = 0; i < files.size(); i++) {
+			File file = files.elementAt(i);
+			if (file.isChanged()) {
+				fileListItems.add(new FileListItem(file));
+			}
+		}
+		if (fileListItems.isEmpty()) return;
+		
+		Bundle bundle = new Bundle();
+		bundle.putSerializable(MSG_KEY_FILE_LIST, fileListItems);
+		
+		Message msg = Message.obtain();
+		msg.what = MSG_SEND_FILE_LIST;
+		msg.setData(bundle);
+
+		sendMessage(msg, torrent.getInfoHash());
+	}
+	
 	/** Peer changed. */
 	public void updatePeerItem(Torrent torrent, Peer peer, boolean isDisconnected) {
 		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
@@ -411,16 +456,36 @@ public class TorrentService extends Service {
 		sendMessage(msg, torrent.getInfoHash());
 	}
 	
-	/** Bitfield changed. */
-	public void updateBitfield(Torrent torrent) {
+	/** Peer list changed. */
+	public void updateTrackerList(Torrent torrent) {
 		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
+		Vector<Tracker> trackers = torrent.getTrackers();
+		ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
+		for (int i = 0; i < trackers.size(); i++) {
+			trackerListItems.add(new TrackerListItem(trackers.elementAt(i)));
+		}
+		bundle.putSerializable(MSG_KEY_TRACKER_LIST, trackerListItems);
+		
+		msg.what = MSG_SEND_TRACKER_LIST;
+		msg.setData(bundle);
+
+		sendMessage(msg, torrent.getInfoHash());
+	}
+	
+	/** Bitfield changed. */
+	public void updateBitfield(Torrent torrent) {
+		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		
+		
+		Bundle bundle = new Bundle();
 		bundle.putSerializable(MSG_KEY_BITFIELD, torrent.getBitfield());
 		bundle.putSerializable(MSG_KEY_DOWNLOADING_BITFIELD, torrent.getDownloadingBitfield());
 		
+		Message msg = Message.obtain();
 		msg.what = MSG_SEND_BITFIELD;
 		msg.setData(bundle);
 
@@ -466,6 +531,19 @@ public class TorrentService extends Service {
 		msg.what = MSG_HIDE_PROGRESS;
 		
 		sendMessage(msg, null);
+	}
+	
+	/** Returns true if the given field should be updated. <br>
+	 * <br>
+	 *  MSG_UPDATE_INFO		    =  1;	// 0b00000001 <br>
+	 *  MSG_UPDATE_FILE_LIST    =  2;	// 0b00000010 <br>
+	 *	MSG_UPDATE_BITFIELD     =  4;	// 0b00000100 <br>
+	 *	MSG_UPDATE_PEER_LIST    =  8;	// 0b00001000 <br>
+	 *	MSG_UPDATE_TRACKER_LIST = 16;	// 0b00010000 <br>
+	 * 
+	 */
+	public boolean shouldUpdate(int updateField) {
+		return (updateField == UPDATE_INFO && clientAll_ != null) || ((clientSingleUpdateField_ & updateField) != 0);
 	}
 
 	/** Sends an optional torrent to a client. */
@@ -642,6 +720,20 @@ public class TorrentService extends Service {
 		}
 	}
 	
+	private class ChangeFilePriorityThread extends Thread {
+		private String infoHash_;
+		private FileListItem item_;
+		
+		public ChangeFilePriorityThread(String infoHash, FileListItem item) {
+			this.infoHash_ = infoHash;
+			this.item_ = item;
+		}
+		
+		@Override
+		public void run() {
+			torrentManager_.changeFilePriority(infoHash_, item_);
+		}
+	}
 	
 	private Handler schedulerHandler = new Handler();
 	private Runnable schedulerRunnable = new Runnable() {

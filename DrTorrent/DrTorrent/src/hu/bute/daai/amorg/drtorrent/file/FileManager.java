@@ -31,7 +31,7 @@ public class FileManager {
 	}
 
 	/** Creates a new file and reserves free space for it. */
-	public static boolean createFile(String filePath, int fileSize) {
+	public static boolean createFile(String filePath, long fileSize) {
 		RandomAccessFile file = null;
 
 		try {
@@ -84,7 +84,7 @@ public class FileManager {
 	}
 	
 	/** Writes a block to the file in the given position. */
-	public int writeFile(String filePath, int filePosition, byte[] block) {
+	public int writeFile(String filePath, long filePosition, byte[] block) {
 		return writeFile(filePath, filePosition, block, 0, block.length);
 	}
 
@@ -92,7 +92,7 @@ public class FileManager {
 	 * Writes a block to the file in the given position.
 	 * The offset and length within the block is also given. 
 	 */
-	public int writeFile(String filePath, int filePosition, byte[] block, int offset, int length) {
+	public int writeFile(String filePath, long filePosition, byte[] block, int offset, int length) {
 		RandomAccessFile file = null;
 		try {
 			file = new RandomAccessFile(filePath, "rw");
@@ -113,7 +113,7 @@ public class FileManager {
 	 * Reads a block from the file.
 	 * The position and the length within the file is also given. 
 	 */
-	public byte[] read(String filepath, int position, int length) {
+	public byte[] read(String filepath, long position, int length) {
 		RandomAccessFile file = null;
 		byte[] result = new byte[length];
 		try {

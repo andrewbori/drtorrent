@@ -18,6 +18,7 @@ public class FileListAdapter<T> extends ArrayAdapter<T> {
 	
 	private final int rowResource = R.layout.list_item_file_torrent;
 	private final int tvNameResource = R.id.list_item_file_torrent_tvFilePath;
+	private final int tvPriorityResource = R.id.list_item_file_torrent_tvPriority;
 	private final int tvSizeResource = R.id.list_item_file_torrent_tvFileSize;
 
 	public FileListAdapter(Activity context, ArrayList<T> items) {
@@ -35,11 +36,13 @@ public class FileListAdapter<T> extends ArrayAdapter<T> {
 		}
 
 		TextView tvName = (TextView) reusableView.findViewById(tvNameResource);
+		TextView tvPriority = (TextView) reusableView.findViewById(tvPriorityResource);
 		TextView tvSize = (TextView) reusableView.findViewById(tvSizeResource);
 
 		FileListItem item = (FileListItem) items_.get(position);
 
 		tvName.setText(item.getName());
+		tvPriority.setText(item.getPriorityString(context_));
 		tvSize.setText(item.getSize());
 
 		return reusableView;

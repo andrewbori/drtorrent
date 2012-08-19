@@ -14,11 +14,30 @@
         android:layout_alignParentTop="true" />
     
     <TextView
+        android:id="@+id/list_item_file_torrent_tvPriorityText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left"
+        android:text="@string/priority"
+        android:textStyle="bold"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
+    
+    <TextView
+        android:id="@+id/list_item_file_torrent_tvPriority"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left"
+        android:text="@string/priority_normal"
+        android:layout_toRightOf="@+id/list_item_file_torrent_tvPriorityText"
+        android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
+    
+    <TextView
         android:id="@+id/list_item_file_torrent_tvFileSize"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="right"
-        android:text="1 kB"
+        android:text="0 B/1MB"
         android:layout_alignParentRight="true"
         android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
     

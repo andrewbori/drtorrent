@@ -4,9 +4,9 @@ import java.util.Vector;
 
 /** Class for download/upload speed measurement. */
 public class Speed {
-	private static int TIME_INTERVAL = 10;
+	public static int TIME_INTERVAL = 5;
 	
-	private Vector<Integer> bytes_ = null;
+	private Vector<Long> bytes_ = null;
 	private Vector<Long> seconds_ = null;
 	
 	/** Constructor. */
@@ -15,7 +15,7 @@ public class Speed {
 	}
 	
 	/** Adds bytes to the speed. */
-	public void addBytes(int bytes, long time) {
+	public void addBytes(long bytes, long time) {
 		time /= 1000;
 		synchronized (bytes_) {
 			synchronized (seconds_) {
@@ -37,19 +37,19 @@ public class Speed {
 	/** Returns the speed in bytes/second. */
 	public int getSpeed() {
 		if (seconds_.size() > 0) {
-			int bytes = 0;
+			long bytes = 0;
 			for (int i = 0; i < bytes_.size(); i++) {
 				bytes += bytes_.elementAt(i);
 			}
-			return bytes / (int) (seconds_.lastElement() - seconds_.firstElement() + 1);
+			return (int) (bytes / (int) (seconds_.lastElement() - seconds_.firstElement() + 1));
 		}
 		
 		return 0;
 	}
 	
 	/** Returns the bytes. */
-	public int getBytes() {
-		int bytes = 0;
+	public long getBytes() {
+		long bytes = 0;
 		for (int i = 0; i < bytes_.size(); i++) {
 			bytes += bytes_.elementAt(i);
 		}
@@ -58,7 +58,7 @@ public class Speed {
 	
 	/** Reinitializes the speed. */
 	public void clean() {
-		bytes_ = new Vector<Integer>();
+		bytes_ = new Vector<Long>();
 		seconds_ = new Vector<Long>();
 	}
 }

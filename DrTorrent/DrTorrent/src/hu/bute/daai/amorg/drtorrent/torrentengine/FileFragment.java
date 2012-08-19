@@ -4,7 +4,7 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 public class FileFragment {
 
 	private File file_;
-	private int offset_;
+	private long offset_;
 	private int length_;
 	
 	public FileFragment(File file, int offset, int length) {
@@ -17,7 +17,7 @@ public class FileFragment {
 		return  file_;
 	}
 	
-	public int offset() {
+	public long offset() {
 		return  offset_;
 	}
 	
