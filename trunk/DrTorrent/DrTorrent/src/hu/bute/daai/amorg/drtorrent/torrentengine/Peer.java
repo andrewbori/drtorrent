@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import java.net.Socket;
+
 
 
 /** Class representing the Peer. */
@@ -10,8 +12,11 @@ public class Peer {
 	private String peerId_;
 	private Bitfield bitfield_;
 	
+	private TorrentManager torrentManager_ = null;
+	
 	private int failedPieceCount_ = 0;
 	
+	private boolean isIncomingConnection_ = false;
 	private PeerConnection connection_ = null;
 	
 	public Peer(String address, int port, String peerId, int piecesCount) {
@@ -21,10 +26,21 @@ public class Peer {
 		bitfield_ = new Bitfield(piecesCount, false);
 	}
 	
+	public Peer(Socket socket, TorrentManager torrentManager) {
+		address_ = socket.getInetAddress().getHostAddress();
+		port_ = socket.getPort();
+		torrentManager_ = torrentManager;
+	}
+	
 	/** Connects to the peer. */
 	public void connect(Torrent torrent) {
-		if (connection_ == null) connection_ = new PeerConnection(this, torrent);
+		if (connection_ == null) connection_ = new PeerConnection(this, torrent, false);
 		connection_.connect();
+	}
+	
+	public void connect(Socket socket) {
+		if (connection_ == null) connection_ = new PeerConnection(this, null, true);
+		connection_.connect(socket);
 	}
 	
 	/** Disconnects the peer. */
@@ -86,6 +102,29 @@ public class Peer {
 		if (connection_ != null && connection_.isConnected()) connection_.sendHaveMessage(pieceIndex);
 	}
 	
+	/** Gives the torrent manager the infoHash of the torrent to be attached to the peer. */
+	public boolean attachTorrent(String infoHash) {
+		boolean result = torrentManager_.attachPeerToTorrent(infoHash, this);
+		torrentManager_ = null;
+		return result;
+	}
+	
+	/** Sets the torrent which this peer is sharing. */
+	public void setTorrent(Torrent torrent) {
+		bitfield_ = new Bitfield(torrent.pieceCount(), false);
+		if (connection_ != null) connection_.setTorrent(torrent);
+	}
+	
+	/** Sets the Peer ID. */
+	public void setPeerId(String peerId) {
+		peerId_ = peerId;
+	}
+	
+	/** True if this is an incoming connection. */
+	public boolean isIncomingConnection() {
+		return isIncomingConnection_;
+	}
+	
 	/** Sets our chocking state. */
 	public void setChoking(boolean choking) {
 		connection_.setChoking(choking);
@@ -117,7 +156,7 @@ public class Peer {
 	}
 	
 	/** Returns the count of downloaded bytes. */
-	public int getDownloaded() {
+	public long getDownloaded() {
 		return ((connection_ != null) ? connection_.getDownloaded() : 0);
 	}
 	

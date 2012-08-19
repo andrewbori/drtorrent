@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -74,15 +75,15 @@ public class PeerConnection {
 	private int reconnectAfter_;
 	public static int tcpConnectionTimeoutNum_ = 0;
 	
-	private int latestDownloaded_ = 0;
-	private int downloaded_ = 0;
+	private long latestDownloaded_ = 0;
+	private long downloaded_ = 0;
 	private Speed downloadSpeed_;
 	
 	/** Creates a new instance of PeerConnection. */
-	public PeerConnection(Peer peer, Torrent torrent) {
+	public PeerConnection(Peer peer, Torrent torrent, boolean isIncomingConnection) {
         peer_ = peer;
         torrent_ = torrent;
-        isIncomingConnection_ = false;
+        isIncomingConnection_ = isIncomingConnection;
 
         isInterested_ = false;
         isPeerInterested_ = false;
@@ -102,6 +103,15 @@ public class PeerConnection {
 	
 	/** Connects to the peer (including the peer wire connection). */
 	public void connect() {
+		isIncomingConnection_ = false;
+		
+		String destination = peer_.getAddress() + ":" + peer_.getPort();
+		connectThread_ = new ConnectThread(destination);
+		connectThread_.start();
+	}
+	
+	public void connect(Socket socket) {
+		socket_ = socket;
 		String destination = peer_.getAddress() + ":" + peer_.getPort();
 		connectThread_ = new ConnectThread(destination);
 		connectThread_.start();
@@ -302,6 +312,7 @@ public class PeerConnection {
                 switch (state_) {
                 	
                     case STATE_PW_HANDSHAKING: {
+                    	Log.v(LOG_TAG, "Reading choke message from: " + peer_.getAddress());
                         readHandshakeMessage();
                         break;
                     }
@@ -409,27 +420,16 @@ public class PeerConnection {
 		byte[] infoHash = new byte[20]; // info_hash
 		System.arraycopy(handshake, 27, infoHash, 0, 20);
 
-		if (torrent_ != null) {
+		if (!isIncomingConnection_) {
 			if (!DrTorrentTools.byteArrayEqual(torrent_.getInfoHashByteArray(), infoHash)) {
 				close(ERROR_DELETE_PEER, "Torrent infohash doesn't match!");
 				return;
 			}
 		} else { // if torrent is null then we should attach peer to torrent (most likely it is an incoming connection)
-		/*
-		 * if((torrentManager_.attachPeerToTorrent(infoHash,
-		 * getPeerConnection()) != MTErrorCodes.ErrNone) || (torrent_ == null))
-		 * // close if the attach failed { close(EDeletePeer,
-		 * "Invalid infohash or peer is already connected or too many peers!");
-		 * continue; }
-		 */
-		}
-
-		if (isIncomingConnection_) {
-			/*
-			 * torrent_.incIncomingConnectionsNum();
-			 * sendHandshakeMessage();
-			 * peer_.resetAddress();
-			 */
+			Log.v(LOG_TAG, "Attach");
+			boolean result = peer_.attachTorrent(SHA1.resultToString(infoHash));
+			if (result) sendHandshakeMessage();
+			else close(ERROR_DELETE_PEER, "Invalid infohash or peer is already connected or too many peers!"); 
 		}
 
 		byte[] peerId = new byte[20]; // peer_id
@@ -444,13 +444,12 @@ public class PeerConnection {
 				return;
 			}
 		} else {
-			// peer_.setPeerId(tempPeerId);
+			peer_.setPeerId(tempPeerId);
 		}
 
 		Log.v(LOG_TAG, "Handshake completed! Peer wire connected!");
 		changeState(STATE_PW_CONNECTED);
 
-//		setInterested(true);
 		if (!torrent_.getBitfield().isNull()) sendBitfieldMessage();
 	}
 	
@@ -1155,6 +1154,11 @@ public class PeerConnection {
 		elapsedTime_ = 0;
 	}
 	
+	/** Sets the torrent that this peer is sharing. */
+	public void setTorrent(Torrent torrent) {
+		torrent_ = torrent;
+	}
+	
 	/** Returns the connections state. */
 	public int getState() {
 		return state_;
@@ -1221,10 +1225,12 @@ public class PeerConnection {
 		public void run() {
 			state_ = STATE_TCP_CONNECTING;
 			try {
-				Log.v(LOG_TAG, "Connecting to: " + destination_);
-				socket_ = new Socket(peer_.getAddress(), peer_.getPort());
+				if (!isIncomingConnection_) {
+					Log.v(LOG_TAG, "Connecting to: " + destination_);
+					socket_ = new Socket(peer_.getAddress(), peer_.getPort());
+					Log.v(LOG_TAG, "Connected to: " + destination_);
+				}
 				socket_.setSoTimeout(TIMEOUT_REQUEST);
-				Log.v(LOG_TAG, "Connected to: " + destination_);
 			} catch (IOException e) {
 				if (socket_ != null) {
 					try {
@@ -1253,7 +1259,8 @@ public class PeerConnection {
             return;
         }
 
-        sendHandshakeMessage();
+        if (!isIncomingConnection_) sendHandshakeMessage();
+        else state_ = STATE_PW_HANDSHAKING;
 
         calculateElapsedTime();
         elapsedTime_ = 0;
@@ -1262,24 +1269,24 @@ public class PeerConnection {
 	}
 	
 	/** Returns the count of downloaded bytes. */
-	public int getDownloaded() {
+	public long getDownloaded() {
 		return downloaded_;
 	}
 	
 	/** Returns the download speed. */
 	public int getDownloadSpeed() {
 		//return downloadSpeed_.getSpeed();
-		return downloadSpeed_.getBytes() / 10;
+		return (int) (downloadSpeed_.getBytes() / Speed.TIME_INTERVAL);
 	}
 	
 	/** Returns the block speed. */
 	public int getBlockSpeed() {
-		return getDownloadSpeed() / Piece.DEFALT_BLOCK_LENGTH;
+		return (int) (getDownloadSpeed() / Piece.DEFALT_BLOCK_LENGTH);
 	}
 	
 	/** Returns the count of the latest downloaded blocks. */
 	public int getLatestBlocksCount() {
-		return downloadSpeed_.getBytes() / Piece.DEFALT_BLOCK_LENGTH;
+		return (int) (downloadSpeed_.getBytes() / Piece.DEFALT_BLOCK_LENGTH);
 	}
 	
 	public boolean isConnected() {

@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 
 public class DrTorrentTools {
 
@@ -16,27 +17,32 @@ public class DrTorrentTools {
 		return true;
 	}
 	
-	public static String bytesToString(int bytesInt) {
-		double bytes = bytesInt;
-		String bytesStr = "";
-		if (bytes > 1024.0) {
+	/** Converts the given amount of bytes to a human readable text. */
+	public static String bytesToString(long bytesLong) {
+		double bytes = bytesLong;
+		String metric = " B";
+		if (bytes > 1023.0) {
 			bytes = bytes / 1024.0;
-			String metric = "kB";
+			metric = " kB";
 		
-			if (bytes > 1024.0) {
+			if (bytes > 1023.0) {
 					bytes = bytes / 1024.0;
-					metric = "MB";
+					metric = " MB";
 					
-				if (bytes > 1024.0) {
+				if (bytes > 1023.0) {
 					bytes = bytes / 1024.0;
-					metric = "GB";
+					metric = " GB";
+					
+					if (bytes > 1023.0) {
+						bytes = bytes / 1024.0;
+						metric = " TB";
+					}
 				}
 			}
-			DecimalFormat dec = new DecimalFormat("###.#");
-			bytesStr = dec.format(bytes) + " " + metric;
-		} else bytesStr = (int) bytes + " byte";
-		
-		return bytesStr;
+		}
+		DecimalFormat dec = new DecimalFormat("###.#");
+
+		return dec.format(bytes) + metric;
 	}
 	
 	public final static int MSEC = 1;
@@ -46,113 +52,76 @@ public class DrTorrentTools {
 	public final static int DAY  = 5;
 	public final static int YEAR = 6;
 	
-	public static String intToTime(int timeInt, int metric, int precision) {
-		if (timeInt == -1) return "???";
-		if (precision == 0) return "";
+	/** 
+	 * Converts the given time to a human readable text.
+	 *
+	 * @param time      the integer value to be converted
+	 * @param metric    the metric (unit) of the time
+	 * @param precision the precision of the returned text
+	 */
+	public static String timeToString(long time, int metric, int precision) {
+		if (time == -1) return "???";
+		if (precision <= 0) return "";
 		
-		double time = (double) timeInt;
+		long timeTemp = time;
+		ArrayList<Integer> times = new ArrayList<Integer>();
 		
-		String metricStr = "";
-		if (metric == MSEC) {
-			time /= 1000.0;
-			metric = SEC;
-			metricStr = "s";
-		}
-		
-		switch (metric) {			
+		switch (metric) {
+			case MSEC:
+				timeTemp /= 1000;
+				time = timeTemp;
+				
 			case SEC:
-				if (time >= 60.0) {
-					time /= 60.0;
-					metricStr = "m";
-					metric = MIN;
-				} else {
-					return ((int) time) + " s";
-				}
+				metric = SEC;
+				if (timeTemp >= 60) {
+					timeTemp /= 60;
+					times.add(0, (int) (time - (timeTemp * 60)));
+					time = timeTemp;
+				} else break;
 				
 			case MIN:
-				if (time >= 60.0) {
-					time /= 60.0;
-					metricStr = "h";
-					metric = HOUR;
+				metric = MIN;
+				if (timeTemp >= 60) {
+					timeTemp /= 60;
+					times.add(0, (int) (time - (timeTemp * 60)));
+					time = timeTemp;
 				} else break;
 				
 			case HOUR:
-				if (time >= 24.0) {
-					time /= 24.0;
-					metricStr = "d";
-					metric = DAY;
+				metric = HOUR;
+				if (timeTemp >= 24) {
+					timeTemp /= 24;
+					times.add(0, (int) (time - (timeTemp * 24)));
+					time = timeTemp;
 				} else break;
 				
 			case DAY:
-				if (time >= 365.0) {
-					time /= 365.0;
-					metricStr = "y";
-					metric = YEAR;
+				metric = DAY;
+				if (timeTemp >= 365) {
+					timeTemp /= 365;
+					times.add(0, (int) (time - (timeTemp * 365)));
+					time = timeTemp;
 				} else break;
+				
+			case YEAR:
+				metric = YEAR;
 		}
+		times.add(0, (int) time);
 		
-		double nextTime = 0.0;
-		precision--;
-		if (precision > 0) {
-			timeInt = (int) time;
-			nextTime = time - (double) timeInt;
-			switch (metric) {			
-				case MIN:
-					nextTime *= 60.0;
-					break;
-					
-				case HOUR:
-					nextTime *= 60.0;
-					break;
-					
-				case DAY:
-					nextTime *= 24.0;
-					break;
-					
-				case YEAR:
-					nextTime *= 365.0;
-					break;
-					
-				default:
-					break;
+		StringBuilder timeStr = new StringBuilder();
+		for (int i = 0; i < times.size() && precision > 0 && metric > MSEC; i++, precision--, metric--) {
+			if (i > 0) timeStr.append(" ");
+			timeStr.append(times.get(i));
+			
+			switch (metric) {
+				case SEC:  timeStr.append(" s"); break;
+				case MIN:  timeStr.append(" m"); break;
+				case HOUR: timeStr.append(" h"); break;
+				case DAY:  timeStr.append(" d"); break;
+				case YEAR: timeStr.append(" y"); break;
 			}
 		}
-		
-		String timeStr = "";
-		
-		timeStr = (int) time + " " + metricStr + " " + intToTime((int) nextTime, metric - 1, precision);
-		
-		return timeStr;
-	}
-	
-	public static String millisToTime(int millisInt) {
-		if (millisInt == -1) return "???";
-		double millis = millisInt;
-		double time = millis / 1000.0;
-		String timeStr = "";
-		if (time > 59.0) {
-			time /= 60.0;
-			String metric = "m";
-		
-			if (time > 59.0) {
-					time /= 60.0;
-					metric = "h";
-					
-				if (time > 23.0) {
-					time /= 24.0;
-					metric = "d";
-					
-					if (time > 364.0) {
-						time /= 365.0;
-						metric = "y";
-					}
-				}
-			}
-			DecimalFormat dec = new DecimalFormat("###.#");
-			timeStr = dec.format(time) + " " + metric;
-		} else timeStr = (int) time + " s";
-		
-		return timeStr;
-	}
 
+		return timeStr.toString();
+	}
 }

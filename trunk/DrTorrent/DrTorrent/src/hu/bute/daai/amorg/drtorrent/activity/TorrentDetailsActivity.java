@@ -24,6 +24,7 @@ import com.viewpagerindicator.TitlePageIndicator;
 public class TorrentDetailsActivity extends TorrentHostActivity {
 
 	private TorrentDetailsPagerAdapter pagerAdapter_;
+	private int updateField_ = 0;
 	
 	boolean isStopped_ = false;
 	
@@ -38,6 +39,13 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		TitlePageIndicator indicator = (TitlePageIndicator) findViewById(R.id.torrent_details_indicator);
         viewPager.setAdapter(pagerAdapter_);
         indicator.setViewPager(viewPager);
+	}
+	
+	
+	@Override
+	protected void onStart() {
+		super.onStart();
+		updateTorrent(updateField_);
 	}
 	
 	@Override
@@ -128,6 +136,32 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		return true;
 	}
 
+	/** Sends torrent file open request to the Torrent Service. */
+	public void updateTorrent(int updateField) {
+		updateField_ = updateField;
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_UPDATE, updateField);
+		msg.what = TorrentService.MSG_UPDATE_TORRENT;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+	
+	/** Changes the priority of a file. */
+	public void changeFilePriority(FileListItem item) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
+		b.putSerializable(TorrentService.MSG_KEY_FILE_ITEM, item);
+		msg.what = TorrentService.MSG_CHANGE_FILE_PRIORITY;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+	
 	@Override
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
 		if (isStopped_) {

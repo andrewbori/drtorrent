@@ -14,6 +14,11 @@ public class PiecesView extends View {
 	private Bitfield bitfield_ = null;
 	private Bitfield downloadingBitfield_ = null;
 	
+	private boolean isMeasured_ = false;
+	
+	private int w_ = 0;
+	private int h_ = 0;
+	private double e_ = 0.0;
 	
 	public PiecesView(Context context) {
 		super(context);
@@ -26,25 +31,28 @@ public class PiecesView extends View {
 		if (bitfield_ == null || downloadingBitfield_ == null) return;
 		if (bitfield_.getLengthInBits() > downloadingBitfield_.getLengthInBits()) return;
 		
-		double height = canvas.getHeight() - 100.0;
-		double width = canvas.getWidth();
-		
-		double proportion = height / width;
-		int w = (int) Math.sqrt(((double) bitfield_.getLengthInBits()) / proportion);
-		int h = (int) (w * proportion);
-		h++;
-		w++;
-		
-		double e;
-		e = ((double) canvas.getWidth() / (double) w);
-		// int he = (int) ((double) canvas.getHeight() / (double) h);
+		if (!isMeasured_) {
+			double height = this.getHeight();
+			double width = this.getWidth();
+			
+			double proportion = height / width;
+			w_ = (int) Math.sqrt(((double) bitfield_.getLengthInBits()) / proportion);
+			h_ = (int) (w_ * proportion);
+			h_++;
+			w_++;
+			
+			e_ = ((double) this.getWidth() / (double) w_);
+			
+			isMeasured_ = true;
+		}
 		
 		int i = 0;
-		for (int hi = 0; hi < h && i < bitfield_.getLengthInBits(); hi++) {
-			for (int wi = 0; wi < w && i < bitfield_.getLengthInBits(); wi++) {		
+		double hd = 0.0;
+		for (int hi = 0; hi < h_ && i < bitfield_.getLengthInBits(); hi++) {
+			double wd = 0.0; 
+			for (int wi = 0; wi < w_ && i < bitfield_.getLengthInBits(); wi++) {		
 				Rect rectangle = new Rect();
-				//rectangle.set((int) (hi * he), (int) (wi * we), (int) (hi * he + he), (int) (wi * we + we));
-				rectangle.set((int) (wi * e), (int) (hi * e), (int) (wi * e + e), (int) (hi * e + e));
+				rectangle.set((int) (wd), (int) (hd), (int) (wd + e_), (int) (hd + e_));
 				
 				Paint paint = new Paint();
 				if (bitfield_.isBitSet(i)) paint.setColor(Color.GREEN);
@@ -57,42 +65,15 @@ public class PiecesView extends View {
 				canvas.drawRect(rectangle, paint);
 				
 				i++;
+				wd += e_;
 			}
+			hd += e_;
 		}
 	}
 	
-	/*@Override
-	protected void onDraw(Canvas canvas) {
-		super.onDraw(canvas);
-		if (bitfield_ == null) return;
-		
-		//int height = canvas.getHeight() / 20;
-		int width = canvas.getWidth() / 10;
-		
-		int i = 0;
-		
-		for (int hi = 0; i < bitfield_.getLengthInBits(); hi+=20) {
-			for (int wi = 0; wi < width && i < bitfield_.getLengthInBits(); wi+=10) {			
-				Rect rectangle = new Rect();
-				rectangle.set(wi, hi, wi + 10, hi + 20);
-				
-				Paint paint = new Paint();
-				if (bitfield_.isBitSet(i)) paint.setColor(Color.GREEN);
-				else paint.setColor(Color.DKGRAY);
-				paint.setStyle(Style.FILL);
-				//paint.setStrokeWidth(1);
-				
-				canvas.drawRect(rectangle, paint);
-				
-				i++;
-			}
-		}	
-	}*/
-
 	public void updateBitfield(Bitfield bitfield, Bitfield downloadingBitfield) {
 		bitfield_ = bitfield;
 		downloadingBitfield_ = downloadingBitfield;
 		invalidate();
 	}
-
 }

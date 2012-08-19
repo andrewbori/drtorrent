@@ -18,44 +18,45 @@ public class Tracker {
 	public final static int ERROR_WRONG_CONTENT = 401;
 	
 	private final static int DEFAULT_REQUEST_INTERVAL = 600;
-	private final static int ERROR_REQUEST_INTERVAL = 180;
+	private final static int ERROR_REQUEST_INTERVAL = 300;
 	
 	private final static String LOG_TAG = "Tracker"; 
 	
-	public final static int STATUS_CONNECTING  = 100;
+	public final static int STATUS_UNKNOWN	   = 0;
+	public final static int STATUS_UPDATING    = 100;
 	public final static int STATUS_WORKING     = 200;
-	public final static int STATUS_UNKNOWN     = 400;
-	public final static int STATUS_FAILED      = 500;
+	public final static int STATUS_FAILED      = 400;
 	
 	public static final int EVENT_NOT_SPECIFIED = 0;
     public static final int EVENT_STARTED       = 1;
     public static final int EVENT_STOPPED       = 2;
     public static final int EVENT_COMPLETED     = 3;
 	
+    private static int ID = 0;
+    
+    private int id_;
 	private Torrent torrent_;
 	private String url_;
-	private int status_;
-	private int interval_;
+	private int status_ = STATUS_UNKNOWN;
+	private int interval_ = DEFAULT_REQUEST_INTERVAL;
 	private String trackerId_ = null;
 	private int complete_;
 	private int incomplete_;
 	private long lastRequest_;
 	private int event_ = EVENT_STARTED;
 	
-	private int failCount_;
-
-	public Tracker() {}
+	private int failCount_ = 0;
 	
 	public Tracker(String url, Torrent torrent) {
 		url_ = url;
 		torrent_ = torrent;
-		status_ = STATUS_UNKNOWN;
-		failCount_ = 0;
+		
+		id_ = ++ID;
 	}
 	
 	/** Processes the response of the tracker */
 	public int processResponse(Bencoded responseBencoded) { 
-        if (responseBencoded.type() != Bencoded.BencodedDictionary) {
+        if (responseBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
         	return ERROR_WRONG_CONTENT;
         }
 
@@ -64,15 +65,15 @@ public class Tracker {
 
         // failure reason
         value = response.entryValue("failure reason");
-        if (value != null && (value.type() == Bencoded.BencodedString)) {
+        if (value != null && (value.type() == Bencoded.BENCODED_STRING)) {
             Log.v(LOG_TAG, "[Tracker] Request failed, reason: " + ((BencodedString) value).getStringValue());
             return ERROR_WRONG_CONTENT;
         }
         
         // interval
         value = response.entryValue("interval");
-        if (value != null && (value.type() == Bencoded.BencodedInteger)) {
-            interval_ = ((BencodedInteger) value).getValue();
+        if (value != null && (value.type() == Bencoded.BENCODED_INTEGER)) {
+            interval_ = (int) ((BencodedInteger) value).getValue();
             if (!((interval_ > 0) && (interval_ < 12000))) {
             	interval_ = DEFAULT_REQUEST_INTERVAL;
             }
@@ -80,21 +81,21 @@ public class Tracker {
 
         // complete
         value = response.entryValue("complete");
-        if (value != null && (value.type() == Bencoded.BencodedInteger)) {
-            complete_ = ((BencodedInteger) value).getValue();
+        if (value != null && (value.type() == Bencoded.BENCODED_INTEGER)) {
+            complete_ = (int) ((BencodedInteger) value).getValue();
         }
         
         // incomplete
         value = response.entryValue("incomplete");
-        if (value != null && (value.type() == Bencoded.BencodedInteger)) {
-            incomplete_ = ((BencodedInteger) value).getValue();
+        if (value != null && (value.type() == Bencoded.BENCODED_INTEGER)) {
+            incomplete_ = (int) ((BencodedInteger) value).getValue();
         }
         
         Log.v(LOG_TAG, "seeds/leechers: " + complete_ + "/" + incomplete_);
         
         // tracker id
         value = response.entryValue("tracker id");
-        if (value != null && (value.type() == Bencoded.BencodedString)) {
+        if (value != null && (value.type() == Bencoded.BENCODED_STRING)) {
         	trackerId_ = ((BencodedString) value).getStringValue();            
         }
 
@@ -103,7 +104,7 @@ public class Tracker {
 
         value = response.entryValue("peers");
         // Normal tracker response
-        if (value != null && (value.type() == Bencoded.BencodedList)) {
+        if (value != null && (value.type() == Bencoded.BENCODED_LIST)) {
             BencodedList bencodedPeers = (BencodedList) value;
 
             Log.v(LOG_TAG, "Number of peers received: " + bencodedPeers.count());
@@ -111,7 +112,7 @@ public class Tracker {
             for (int i=0; i<bencodedPeers.count(); i++) {
                 value = bencodedPeers.item(i);
 
-                if (value.type() != Bencoded.BencodedDictionary) {
+                if (value.type() != Bencoded.BENCODED_DICTIONARY) {
                     return ERROR_WRONG_CONTENT;
                 }
 
@@ -119,7 +120,7 @@ public class Tracker {
 
                 // peer id
                 value = bencodedPeer.entryValue("peer id");
-                if (value==null || (value.type() != Bencoded.BencodedString))
+                if (value==null || (value.type() != Bencoded.BENCODED_STRING))
                     continue;
                 String peerId = ((BencodedString) value).getStringValue();
 
@@ -133,16 +134,16 @@ public class Tracker {
 
                 // ip
                 value = bencodedPeer.entryValue("ip");
-                if (value==null || (value.type() != Bencoded.BencodedString))
+                if (value==null || (value.type() != Bencoded.BENCODED_STRING))
                     continue;
                 String ip = ((BencodedString) value).getStringValue();
 
                 // port
                 value = bencodedPeer.entryValue("port");
-                if (value==null || (value.type() != Bencoded.BencodedInteger))
+                if (value==null || (value.type() != Bencoded.BENCODED_INTEGER))
                     continue;
 
-                int port = ((BencodedInteger) value).getValue();
+                int port = (int) ((BencodedInteger) value).getValue();
 
                 Log.v(LOG_TAG, "Peer address: " + ip + ":" + port);                  
 
@@ -156,7 +157,7 @@ public class Tracker {
             }
         }
         // likely a compact response
-        else if (value != null && (value.type() == Bencoded.BencodedString)) {
+        else if (value != null && (value.type() == Bencoded.BENCODED_STRING)) {
             BencodedString bencodedPeers = (BencodedString) value;
 
             if ((bencodedPeers.getValue().length % 6) == 0) {
@@ -258,16 +259,27 @@ public class Tracker {
 	/** Connects to the tracker. */
 	public void connect() {
 		lastRequest_ = System.currentTimeMillis();
-		status_ = STATUS_CONNECTING;
+		status_ = STATUS_UPDATING;
 		(new TrackerConnectionThread()).start();
 	}
 	
 	/** Changes the event and notifies the tracker by connecting to it. */
-	public void changeEvent(int event) {
-		if ((System.currentTimeMillis() - lastRequest_) < 120000 && event == EVENT_NOT_SPECIFIED) return;
+	public void changeEvent(int event, long currentTime) {
+		if (event == EVENT_NOT_SPECIFIED) {
+			if (status_ == STATUS_UPDATING) return;
+			long elapsedTime = (currentTime - lastRequest_) / 1000;
+			
+			if (status_ == STATUS_WORKING && elapsedTime < interval_) return;
+			if (status_ == STATUS_FAILED && elapsedTime < ERROR_REQUEST_INTERVAL) return;
+		}
 		
 		event_ = event;
 		connect();
+	}
+	
+	/** onTimer */
+	public void onTimer(long currentTime) {
+		changeEvent(EVENT_NOT_SPECIFIED, currentTime);
 	}
 	
 	/** Thread that is connecting to the tracker. */ 
@@ -280,20 +292,32 @@ public class Tracker {
 			HttpConnection conn = new HttpConnection(fullUrl);
 			byte[] response = conn.execute();
 			
-			if (event_ != EVENT_STOPPED && response != null) {
-				Bencoded bencoded = Bencoded.parse(response);
-			
-				if (bencoded == null) {
-					status_ = STATUS_FAILED;
-					failCount_++;
-					Log.v(LOG_TAG, "Faild to bencode the response of the tracker.");
-					return;
+			if (response != null) {
+				if (event_ != EVENT_STOPPED) {
+					Bencoded bencoded = Bencoded.parse(response);
+				
+					if (bencoded == null) {
+						status_ = STATUS_FAILED;
+						failCount_++;
+						Log.v(LOG_TAG, "Faild to bencode the response of the tracker.");
+						return;
+					}
+					status_ = STATUS_WORKING;
+					Log.v(LOG_TAG, "Bencoded response processing...");
+					if (processResponse(bencoded) != ERROR_NONE) failCount_++;
+				} else {
+					status_ = STATUS_UNKNOWN;
 				}
-				status_ = STATUS_WORKING;
-				Log.v(LOG_TAG, "Bencoded response processing...");
-				if (processResponse(bencoded) != ERROR_NONE) failCount_++;
+			} else {
+				status_ = STATUS_FAILED;
 			}
+			
+			torrent_.setSeedsLeechers();
 		}
+	}
+	
+	public int getId() {
+		return id_;
 	}
 	
 	public String getUrl() {
@@ -318,6 +342,10 @@ public class Tracker {
 	
 	public long getLastRequest() {
 		return lastRequest_;
+	}
+	
+	public int getRemainingTime() {
+		return interval_ - (int) (System.currentTimeMillis() - lastRequest_) / 1000;
 	}
 	
 	public int getFailCount() {

@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent;
 
+import hu.bute.daai.amorg.drtorrent.activity.TorrentDetailsActivity;
 import hu.bute.daai.amorg.drtorrent.adapter.FileListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.PeerListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.TrackerListAdapter;
@@ -10,10 +11,13 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Parcelable;
@@ -24,6 +28,7 @@ import android.view.View;
 import android.webkit.MimeTypeMap;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -32,15 +37,16 @@ import com.viewpagerindicator.TitleProvider;
 
 public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitleProvider {
 	private TorrentListItem torrent_ = null;
-	private ArrayList<PeerListItem> peers_;
-	private ArrayList<FileListItem> files_;
-	private ArrayList<TrackerListItem> trackers_;
+	
+	private int updateField_ = 0;
+	
 	private PeerListAdapter<PeerListItem> peersAdapter_;
 	private FileListAdapter<FileListItem> filesAdapter_;
 	private TrackerListAdapter<TrackerListItem> trackersAdapter_;
-	private ArrayList<PeerListItem> itemList_ = null;
-	private ArrayList<FileListItem> fileItemList_ = null;
-	private ArrayList<TrackerListItem> trackerItemList_ = null;
+	
+	private ListView lvPeers_ = null;
+	private ListView lvFiles_ = null;
+	private ListView lvTrackers_ = null;
 	
 	private TextView tvName_ = null;
 	private TextView tvStatus_ = null;
@@ -54,9 +60,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	private TextView tvPeers_ = null;
 	private TextView tvElapsedTime_ = null;
 	private TextView tvRemainingTime_ = null;
-	private ListView lvPeers_ = null;
-	private ListView lvFiles_ = null;
-	private ListView lvTrackers_ = null;
+	
 	private Bitfield bitfield_ = null;
 	private Bitfield downloadingBitfield_ = null;
 	
@@ -74,18 +78,15 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 		
 		titles_ = new String[] {
 			context_.getString(R.string.tab_info),
-			context_.getString(R.string.tab_peers), 
-			context_.getString(R.string.tab_pieces),
 			context_.getString(R.string.tab_files),
+			context_.getString(R.string.tab_pieces),
+			context_.getString(R.string.tab_peers),
 			context_.getString(R.string.tab_trackers)
 		};
-
-		peers_ = new ArrayList<PeerListItem>();
-		files_ = new ArrayList<FileListItem>();
-		trackers_ = new ArrayList<TrackerListItem>();
-		peersAdapter_ = new PeerListAdapter<PeerListItem>((Activity) context_, peers_);
-		filesAdapter_ = new FileListAdapter<FileListItem>((Activity) context_, files_);
-		trackersAdapter_ = new TrackerListAdapter<TrackerListItem>((Activity) context_, trackers_);
+		
+		peersAdapter_ = new PeerListAdapter<PeerListItem>((Activity) context_, new ArrayList<PeerListItem>());
+		filesAdapter_ = new FileListAdapter<FileListItem>((Activity) context_, new ArrayList<FileListItem>());
+		trackersAdapter_ = new TrackerListAdapter<TrackerListItem>((Activity) context_, new ArrayList<TrackerListItem>());
 		
 		piecesView_ = new PiecesView(context_);
 	}
@@ -102,7 +103,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	@Override
 	public Object instantiateItem(View pager, int position) {
 		LayoutInflater inflater = (LayoutInflater) this.context_.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-
+		
 		View v = null;
 		switch (position) {
 			case 0:
@@ -112,48 +113,21 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 					tvName_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvName);
 	    			tvStatus_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvStatus);
 	    			tvPercent_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvPercent);
-	    			tvSize_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvSize);
 	    			progress_ = (ProgressBar) infoView_.findViewById(R.id.torrent_details_progress);
-	    			tvDownSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloadSpeed);
-	    			tvUpSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvUploadSpeed);
+	    			tvSize_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvSize);
 	    			tvDownloaded_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloaded);
+	    			tvDownSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloadSpeed);
 	    			tvUploaded_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvUploaded);
+	    			tvUpSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvUploadSpeed);
 	    			tvElapsedTime_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvElapsedTime);
 	    			tvRemainingTime_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvRemainingTime);
 	    			tvPeers_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvPeers);
-	    			//lvPeers_ = null;
 				}
 				
 				v = infoView_;
 	    		if (torrent_ != null) refreshTorrentItem(torrent_, false);
 				break;
 			case 1:
-				if (peersView_ == null) {
-					peersView_ = inflater.inflate(R.layout.list, null);
-					
-					/*tvName_ = null;
-	    			tvStatus_ = null;
-	    			tvPercent_ = null;
-	    			progress_ = null;
-	    			tvDownSpeed_ = null;
-	    			tvUpSpeed_ = null;
-	    			tvDownloaded_ = null;
-	    			tvUploaded_ = null;
-	    			tvElapsedTime_ = null;
-	    			tvRemainingTime_ = null;
-	    			tvPeers_ = null;*/
-					lvPeers_ = (ListView) peersView_.findViewById(R.id.list_listview);
-					lvPeers_.setAdapter(peersAdapter_);
-				}
-				
-				v = peersView_;
-				if (itemList_ != null) refreshPeerList(itemList_);
-    			
-				break;
-			case 2:
-				v = piecesView_;
-				break;
-			case 3:
 				if (filesView_ == null) {
 					filesView_ = inflater.inflate(R.layout.list, null);
 					
@@ -161,11 +135,12 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 					lvFiles_.setAdapter(filesAdapter_);
 					lvFiles_.setOnItemClickListener(new OnItemClickListener() {
 						@Override
-						public void onItemClick(AdapterView<?> arg0, View arg1, int position, long arg3) {
+						public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 							FileListItem item = filesAdapter_.getItem(position);
-							File file = new File(item.getPath());
+							String filePath = item.getPath();
+							File file = new File(filePath);
 							
-			                String extension = MimeTypeMap.getFileExtensionFromUrl(Uri.fromFile(file).toString());
+			                String extension = filePath.substring(filePath.lastIndexOf(".") + 1); // MimeTypeMap.getFileExtensionFromUrl(filePath);
 			                String type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
 			             
 			                Intent intent = new Intent(Intent.ACTION_VIEW);
@@ -173,10 +148,56 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 							context_.startActivity(intent);
 						}
 					});
+					lvFiles_.setOnItemLongClickListener(new OnItemLongClickListener() {
+						@Override
+						public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+							final FileListItem file = filesAdapter_.getItem(position);
+							
+							final CharSequence[] items = {
+								context_.getString(R.string.priority_skip),
+								context_.getString(R.string.priority_low),
+								context_.getString(R.string.priority_normal),
+								context_.getString(R.string.priority_high)
+							};
+
+							AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+							builder.setTitle(file.getName());
+							builder.setSingleChoiceItems(items, file.getPriority(), new DialogInterface.OnClickListener() {
+							    public void onClick(DialogInterface dialog, int priority) {
+							    	file.setPriority(priority);
+							        lvFiles_.invalidateViews();
+							        dialog.cancel();
+							        
+							        FileListItem item = new FileListItem(file);
+							        item.setPriority(priority);
+							        ((TorrentDetailsActivity) context_).changeFilePriority(item);
+							    }
+							});
+							final AlertDialog dialog = builder.create();
+							dialog.show();
+							
+							return true;
+						}
+					});
 				}
 				
 				v = filesView_;
-				if (fileItemList_ != null) refreshFileList(fileItemList_);
+				// if (files_ != null) refreshFileList(files_);
+    			
+				break;
+			case 2:
+				v = piecesView_;
+				break;
+			case 3:
+				if (peersView_ == null) {
+					peersView_ = inflater.inflate(R.layout.list, null);
+
+					lvPeers_ = (ListView) peersView_.findViewById(R.id.list_listview);
+					lvPeers_.setAdapter(peersAdapter_);
+				}
+				
+				v = peersView_;
+				// if (peers_ != null) refreshPeerList(peers_);
 				
 				break;
 			case 4:
@@ -188,7 +209,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 				}
 				
 				v = trackersView_;
-				if (trackerItemList_ != null) refreshTrackerList(trackerItemList_);
+				// if (trackers_ != null) refreshTrackerList(trackers_);
 				
 				break;
 			default:
@@ -197,7 +218,9 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 		if (v != null) {
 			((ViewPager) pager).addView(v, 0);
 		}
-
+		
+		updateTorrent(position);
+		
 		return v;
 	}
 	
@@ -206,13 +229,16 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 		if (tvPeers_ != null) {
 			tvName_.setText(item.getName());
 			tvStatus_.setText(context_.getString(item.getStatus()));
-			tvPercent_.setText(item.getPercent() + " %");
+			
+			DecimalFormat dec = new DecimalFormat("###.#");
+			tvPercent_.setText(dec.format(item.getPercent()).concat(" %"));
+			progress_.setProgress((int) item.getPercent());
+			
 			tvSize_.setText(item.getSize());
-			progress_.setProgress(item.getPercent());
-			tvDownSpeed_.setText(item.getDownloadSpeed());
-			tvUpSpeed_.setText(item.getUploadSpeed());
 			tvDownloaded_.setText(item.getDownloaded());
+			tvDownSpeed_.setText(item.getDownloadSpeed());
 			tvUploaded_.setText(item.getUploaded());
+			tvUpSpeed_.setText(item.getUploadSpeed());
 			tvElapsedTime_.setText(item.getElapsedTime());
 			tvRemainingTime_.setText(item.getRemainingTime());
 			tvPeers_.setText(item.getPeers());
@@ -245,19 +271,12 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	}
 	
 	public void refreshFileList(ArrayList<FileListItem> fileItemList) {
-		boolean foundOld = false;
 		for (int i = 0; i < filesAdapter_.getCount() && i >= 0; i++) {
-			foundOld = false;
 			for (int j = 0; j < fileItemList.size(); j++) {
 				if (filesAdapter_.getItem(i).equals(fileItemList.get(j))) {
-					foundOld = true;
 					filesAdapter_.getItem(i).set(fileItemList.get(j));
 					fileItemList.remove(j);
 				}
-			}
-			if (!foundOld) {
-				filesAdapter_.remove(filesAdapter_.getItem(i));
-				i--;
 			}
 		}
 
@@ -270,19 +289,12 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	}
 	
 	public void refreshTrackerList(ArrayList<TrackerListItem> trackerItemList) {
-		boolean foundOld = false;
 		for (int i = 0; i < trackersAdapter_.getCount() && i >= 0; i++) {
-			foundOld = false;
 			for (int j = 0; j < trackerItemList.size(); j++) {
 				if (trackersAdapter_.getItem(i).equals(trackerItemList.get(j))) {
-					foundOld = true;
 					trackersAdapter_.getItem(i).set(trackerItemList.get(j));
 					trackerItemList.remove(j);
 				}
-			}
-			if (!foundOld) {
-				trackersAdapter_.remove(trackersAdapter_.getItem(i));
-				i--;
 			}
 		}
 
@@ -300,9 +312,22 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 		if (piecesView_ !=  null) piecesView_.updateBitfield(bitfield_, downloadingBitfield_);
 	}
 	
+	public void updateTorrent(int position) {
+		switch (position) {
+			case 0: updateField_ ^=  1; break;
+			case 1: updateField_ ^=  2; break;
+			case 2: updateField_ ^=  4; break;
+			case 3: updateField_ ^=  8; break;
+			case 4: updateField_ ^= 16; break;
+			default: break;
+		}
+		((TorrentDetailsActivity) context_).updateTorrent(updateField_);
+	}
+	
 	@Override
 	public void destroyItem(View pager, int position, Object view) {
 		((ViewPager) pager).removeView((View) view);
+		updateTorrent(position);
 	}
 
 	@Override

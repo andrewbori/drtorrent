@@ -5,8 +5,10 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.network.HttpConnection;
+import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
@@ -22,11 +24,14 @@ public class TorrentManager {
 	public static String DEFAULT_DOWNLOAD_PATH = "/sdcard/Downloads/";
 	
 	private TorrentService torrentService_;
+	private NetworkManager networkManager_;
 	private TorrentSchedulerThread torrentSchedulerThread_;
 	private boolean updateEnabled_;
 	private boolean schedulerEnabled_;
 	private Vector<Torrent> torrents_;
 	private Vector<Torrent> openingTorrents_;
+	
+	private Vector<Peer> incomingPeers_;
 	
 	private static String peerId_;
 	private static int peerKey_;
@@ -44,10 +49,15 @@ public class TorrentManager {
 						if (torrent.isWorking()) {
 							torrent.onTimer();
 							
-							torrentService_.updatePeerList(torrent);
-							if (torrent.isBitfieldChanged()) {
-								torrentService_.updateBitfield(torrent);
-								torrent.setBitfieldChanged(false);
+							if (torrentService_.shouldUpdate(TorrentService.UPDATE_INFO)) torrentService_.updateTorrentItem(torrent);
+							if (torrentService_.shouldUpdate(TorrentService.UPDATE_FILE_LIST)) torrentService_.updateFileList(torrent);
+							if (torrentService_.shouldUpdate(TorrentService.UPDATE_PEER_LIST)) torrentService_.updatePeerList(torrent);
+							if (torrentService_.shouldUpdate(TorrentService.UPDATE_TRACKER_LIST)) torrentService_.updateTrackerList(torrent);
+							if (torrentService_.shouldUpdate(TorrentService.UPDATE_BITFIELD)) {
+								if (torrent.isBitfieldChanged()) {
+									torrentService_.updateBitfield(torrent);
+									torrent.setBitfieldChanged(false);
+								}
 							}
 						}
 					}
@@ -66,17 +76,22 @@ public class TorrentManager {
 		torrentService_ = torrentService;
 		torrents_ = new Vector<Torrent>();
 		openingTorrents_ = new Vector<Torrent>();
+		incomingPeers_ = new Vector<Peer>();
 		generatePeerId();
 		
 		schedulerEnabled_ = true;
 		updateEnabled_ = false;
 		torrentSchedulerThread_ = new TorrentSchedulerThread();
 		torrentSchedulerThread_.start();
+		
+		networkManager_ = new NetworkManager(this);
+		networkManager_.startListening();
 	}
 	
 	/** Shuts down the torrent manager. */
 	public void shutDown() {
 		schedulerEnabled_ = false;
+		networkManager_.stopListening();
 		
 		for (int i = 0; i < torrents_.size(); i++) {
 			Torrent torrent = torrents_.get(i);
@@ -86,6 +101,22 @@ public class TorrentManager {
 		}
 	}
 
+	public void addIncomingConnection(Socket socket) {
+		Peer peer = new Peer(socket, this);
+		peer.connect(socket);
+		//incomingPeers_.addElement(peer);
+	}
+	
+	public boolean attachPeerToTorrent(String infoHash, Peer peer) {
+		Torrent torrent = getTorrent2(infoHash);
+		if (torrent != null) {
+			peer.setTorrent(torrent);
+			torrent.addIncomingPeer(peer);
+			return true;
+		} 
+		return false;
+	}
+	
 	/** Opens a new Torrent file with the given file path. */
 	public void openTorrent(Uri torrentUri) {
 		openTorrent(torrentUri, DEFAULT_DOWNLOAD_PATH);
@@ -236,6 +267,26 @@ public class TorrentManager {
 		}
 
 		return null;
+	}
+	
+	/** Returns whether the manager the given torrent already has. */
+	public Torrent getTorrent2(String infoHash) {
+		Torrent tempTorrent;
+		String tempInfoHash;
+		for (int i = 0; i < torrents_.size(); i++) {
+			tempTorrent = (Torrent) torrents_.elementAt(i);
+			tempInfoHash = tempTorrent.getInfoHashString();
+			if (tempInfoHash != null && tempInfoHash.equals(infoHash)) {
+				return tempTorrent;
+			}
+		}
+
+		return null;
+	}
+	
+	public void changeFilePriority(String infoHash, FileListItem item) {
+		Torrent torrent = getTorrent(infoHash);
+		if (torrent != null ) torrent.changeFilePriority(item.getIndex(), item.getPriority());
 	}
 	
 	public void showTorrentSettings(Torrent torrent) {
