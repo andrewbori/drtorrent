@@ -30,7 +30,7 @@ import android.widget.Toast;
 import com.actionbarsherlock.app.SherlockActivity;
 
 public abstract class TorrentHostActivity extends SherlockActivity {
-	public static final String KEY_INFO_HASH = "infoHash";
+	public static final String KEY_TORRENT_ID = "id";
 	
 	protected static final int MENU_ADD_TORRENT    = 101;
 	protected static final int MENU_START_TORRENT  = 102;
@@ -43,7 +43,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int RESULT_TORRENT_SETTINGS     = 202;
 	
 	protected Activity activity_ = this;
-	protected String infoHash_ = null;
+	protected int torrentId_ = -1;
 	
 	protected Messenger serviceMessenger_ = null;
 	protected final Messenger clientMessenger_ = new Messenger(new IncomingMessageHandler());
@@ -61,7 +61,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
-			infoHash_ = extras.getString(KEY_INFO_HASH);
+			torrentId_ = extras.getInt(KEY_TORRENT_ID, -1);
 		}
 		
 		Intent i = new Intent(activity_, TorrentService.class);
@@ -100,9 +100,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 
 			Message msg = Message.obtain();
 			msg.what = TorrentService.MSG_SUBSCRIBE_CLIENT;
-			if (infoHash_ != null) {
+			if (torrentId_ != -1) {
 				Bundle bundle = new Bundle();
-				bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
+				bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 				msg.setData(bundle);
 			}
 			msg.replyTo = clientMessenger_;
@@ -133,9 +133,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 			if (serviceMessenger_ != null) {
 				Message msg = Message.obtain();
 				msg.what = TorrentService.MSG_UNSUBSCRIBE_CLIENT;
-				if (infoHash_ != null) {
+				if (torrentId_ != -1) {
 					Bundle bundle = new Bundle();
-					bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
+					bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 					msg.setData(bundle);
 				}
 				msg.replyTo = clientMessenger_;

@@ -15,6 +15,7 @@ import java.util.Random;
 import java.util.Vector;
 
 import android.net.Uri;
+import android.os.SystemClock;
 import android.util.Log;
 
 /** Class managing the opened torrents. */
@@ -31,8 +32,6 @@ public class TorrentManager {
 	private Vector<Torrent> torrents_;
 	private Vector<Torrent> openingTorrents_;
 	
-	private Vector<Peer> incomingPeers_;
-	
 	private static String peerId_;
 	private static int peerKey_;
 	
@@ -42,31 +41,34 @@ public class TorrentManager {
 		public void run() {
 			while (schedulerEnabled_) {
 				if (updateEnabled_) {
-					Log.v(LOG_TAG, "Scheduling: " + System.currentTimeMillis());
+					Log.v(LOG_TAG, "Scheduling: " + SystemClock.elapsedRealtime());
 					Torrent torrent = null;
 					for (int i = 0; i < torrents_.size(); i++) {
 						torrent = torrents_.elementAt(i);
 						if (torrent.isWorking()) {
 							torrent.onTimer();
-							
-							if (torrentService_.shouldUpdate(TorrentService.UPDATE_INFO)) torrentService_.updateTorrentItem(torrent);
-							if (torrentService_.shouldUpdate(TorrentService.UPDATE_FILE_LIST)) torrentService_.updateFileList(torrent);
-							if (torrentService_.shouldUpdate(TorrentService.UPDATE_PEER_LIST)) torrentService_.updatePeerList(torrent);
-							if (torrentService_.shouldUpdate(TorrentService.UPDATE_TRACKER_LIST)) torrentService_.updateTrackerList(torrent);
-							if (torrentService_.shouldUpdate(TorrentService.UPDATE_BITFIELD)) {
-								if (torrent.isBitfieldChanged()) {
-									torrentService_.updateBitfield(torrent);
-									torrent.setBitfieldChanged(false);
-								}
-							}
+							updateTorrent(torrent);
 						}
 					}
 					updateEnabled_ = false;
 				}
 				try {
 					sleep(2000);
-				} catch (InterruptedException e) {
-				}
+				} catch (InterruptedException e) {}
+			}
+		}
+	}
+	
+	/** Updates the torrent: info, file list, bitfield, peer list, tracker list. */
+	public void updateTorrent(Torrent torrent) {
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_INFO)) torrentService_.updateTorrentItem(torrent);
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_FILE_LIST)) torrentService_.updateFileList(torrent);
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_PEER_LIST)) torrentService_.updatePeerList(torrent);
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_TRACKER_LIST)) torrentService_.updateTrackerList(torrent);
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_BITFIELD)) {
+			if (torrent.isBitfieldChanged()) {
+				torrentService_.updateBitfield(torrent);
+				torrent.setBitfieldChanged(false);
 			}
 		}
 	}
@@ -76,7 +78,6 @@ public class TorrentManager {
 		torrentService_ = torrentService;
 		torrents_ = new Vector<Torrent>();
 		openingTorrents_ = new Vector<Torrent>();
-		incomingPeers_ = new Vector<Peer>();
 		generatePeerId();
 		
 		schedulerEnabled_ = true;
@@ -100,13 +101,15 @@ public class TorrentManager {
 			i--;
 		}
 	}
-
+	
+	/** Connects to an incoming connection. */
 	public void addIncomingConnection(Socket socket) {
 		Peer peer = new Peer(socket, this);
 		peer.connect(socket);
 		//incomingPeers_.addElement(peer);
 	}
 	
+	/** Attaches a peer to a torrent. */
 	public boolean attachPeerToTorrent(String infoHash, Peer peer) {
 		Torrent torrent = getTorrent2(infoHash);
 		if (torrent != null) {
@@ -178,13 +181,21 @@ public class TorrentManager {
 			showDialog("The torrent is already opened!");
 		} else if (result == Torrent.ERROR_NO_FREE_SIZE) {
 			showDialog("There is not enough free space on the SD card.");
+		} else {
+			showDialog("Error.");
 		}
 	}
 	
+	/** Shows the settings dialog of the torrent (file list). */
+	public void showTorrentSettings(Torrent torrent) {
+		torrentService_.showTorrentSettings(torrent);
+	}
+	
+	/** Sets the settings of the torrent and starts it. */
 	public void setTorrentSettings(TorrentListItem item, ArrayList<FileListItem> fileList) { 
 		for (int i = 0; i < openingTorrents_.size(); i++) {
 			Torrent torrent = openingTorrents_.elementAt(i);
-			if (torrent.getInfoHash().equals(item.getInfoHash())) {
+			if (torrent.getId() == item.getId()) {
 				Vector<File> files = torrent.getFiles();
 				if (fileList.size() == files.size()) {
 					for (int j = 0; j < fileList.size(); j++) {
@@ -192,10 +203,8 @@ public class TorrentManager {
 					}
 					openingTorrents_.remove(torrent);
 					addTorrent(torrent);
-					updateTorrent(torrent);
+					torrentService_.updateTorrentItem(torrent);
 					
-					torrent.setTorrentActivePieces();
-					torrent.checkHash();
 					torrent.start();
 				} else {	
 					openingTorrents_.remove(torrent);
@@ -207,38 +216,31 @@ public class TorrentManager {
 	
 	/** Adds a new torrent to the list of the managed torrents. */
 	public boolean addTorrent(Torrent torrent) {
-		String infoHash = torrent.getInfoHash();
-		boolean found = false;
-		for (int i = 0; i < torrents_.size(); i++) {
-			if (torrents_.get(i).getInfoHash().equals(infoHash)) {
-				found = true;
-				i = torrents_.size();
-			}
-		}
-		
-		if (!found) {
+		if (!hasTorrent(torrent.getInfoHash())) {
 			torrents_.add(torrent);
 			return true;
 		}
-		
 		return false;
 	}
 	
 	/** Starts a torrent. */
-	public void startTorrent(String infoHash) {
-		Torrent torrent = getTorrent(infoHash);
+	public void startTorrent(int torrentId) {
+		Torrent torrent = getTorrent(torrentId);
 		if (torrent != null) torrent.start();
 	}
 	
 	/** Stops a torrent. */
-	public void stopTorrent(String infoHash) {
-		Torrent torrent = getTorrent(infoHash);
-		if (torrent != null) torrent.stop();
+	public void stopTorrent(int torrentId) {
+		Torrent torrent = getTorrent(torrentId);
+		if (torrent != null) {
+			torrent.stop();
+			torrentService_.updateTorrentItem(torrent);
+		}
 	}
 	
 	/** Closes a torrent. */
-	public void closeTorrent(String infoHash) {
-		Torrent torrent = getTorrent(infoHash);
+	public void closeTorrent(int torrentId) {
+		Torrent torrent = getTorrent(torrentId);
 		if (torrent != null) {
 			torrents_.removeElement(torrent);
 			torrentService_.removeTorrentItem(torrent);
@@ -255,6 +257,18 @@ public class TorrentManager {
 	}
 	
 	/** Returns whether the manager the given torrent already has. */
+	public Torrent getTorrent(int torrentId) {
+		Torrent torrent;
+		for (int i = 0; i < torrents_.size(); i++) {
+			torrent = torrents_.elementAt(i);
+			if (torrent.getId() == torrentId) {
+				return torrent;
+			}
+		}
+		return null;
+	}
+	
+	/** Returns whether the manager the given torrent already has. */
 	public Torrent getTorrent(String infoHash) {
 		Torrent tempTorrent;
 		String tempInfoHash;
@@ -265,7 +279,6 @@ public class TorrentManager {
 				return tempTorrent;
 			}
 		}
-
 		return null;
 	}
 	
@@ -280,32 +293,13 @@ public class TorrentManager {
 				return tempTorrent;
 			}
 		}
-
 		return null;
 	}
 	
-	public void changeFilePriority(String infoHash, FileListItem item) {
-		Torrent torrent = getTorrent(infoHash);
+	/** Changes the priority of a file of a torrent. */
+	public void changeFilePriority(int torrentId, FileListItem item) {
+		Torrent torrent = getTorrent(torrentId);
 		if (torrent != null ) torrent.changeFilePriority(item.getIndex(), item.getPriority());
-	}
-	
-	public void showTorrentSettings(Torrent torrent) {
-		torrentService_.showTorrentSettings(torrent);
-	}
-	
-	/** Updates the torrent item. */
-	public void updateTorrent(Torrent torrent) {
-		if (torrents_.contains(torrent)) torrentService_.updateTorrentItem(torrent);
-	}
-	
-	/** Updates the peer item. */
-	public void updatePeer(Torrent torrent, Peer peer) {
-		updatePeer(torrent, peer, false);
-	}
-	
-	/** Updates the peer item. */
-	public void updatePeer(Torrent torrent, Peer peer, boolean isDisconnected) {
-		torrentService_.updatePeerItem(torrent, peer, isDisconnected);
 	}
 	
 	/** Shows a toast with a message. */

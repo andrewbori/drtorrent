@@ -3,7 +3,9 @@ package hu.bute.daai.amorg.drtorrent.network;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -34,6 +36,12 @@ public class HttpConnection {
 			Log.v(LOG_TAG, "Reading the respone from: " + url_);
 			
 			is = response.getEntity().getContent();
+			
+			Header contentEncoding = response.getFirstHeader("Content-Encoding");
+			if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
+				is = new GZIPInputStream(is);
+			}
+
 			baos = new ByteArrayOutputStream();
 			int ch;
             while((ch = is.read()) != -1)

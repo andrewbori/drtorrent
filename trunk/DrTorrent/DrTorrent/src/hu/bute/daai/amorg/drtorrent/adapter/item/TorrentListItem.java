@@ -7,9 +7,10 @@ import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 import java.io.Serializable;
 
 /** Item of the torrent list adapter */
-public class TorrentListItem implements Serializable, Comparable<TorrentListItem> {
+public class TorrentListItem implements Serializable {
 	private static final long serialVersionUID = 1L;
 
+	private int id_;
 	private String infoHash_ = "";
 	private String name_ = "";
 	private double percent_ = 0;
@@ -36,6 +37,7 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	}
 
 	public void set(TorrentListItem item) {
+		this.id_ = item.id_;
 		this.infoHash_ = item.infoHash_;
 		this.name_ = item.name_;
 		this.percent_ = item.percent_;
@@ -51,13 +53,14 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	}
 
 	public void set(Torrent torrent) {
+		this.id_ = torrent.getId();
 		this.infoHash_ = torrent.getInfoHash();
 		this.name_ = torrent.getName();
 		this.percent_ = torrent.getProgressPercent();
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
-		this.size_ = DrTorrentTools.bytesToString(torrent.getSize());
+		this.size_ = DrTorrentTools.bytesToString(torrent.getActiveSize());
 		
 		this.downloaded_ = DrTorrentTools.bytesToString(torrent.getBytesDownloaded());
 		this.downloadSpeed_ = DrTorrentTools.bytesToString(torrent.getDownloadSpeed()).concat("/s");
@@ -69,36 +72,24 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.elapsedTime_ = DrTorrentTools.timeToString(torrent.getElapsedTime(), DrTorrentTools.MSEC, 2);
 	}
 
-	public String getInfoHash() {
-		return infoHash_;
+	public int getId() {
+		return id_;
 	}
 	
-	public void setInfoHash(String infoHash) {
-		this.infoHash_ = infoHash;
-	}
+	/*public String getInfoHash() {
+		return infoHash_;
+	}*/
 
 	public String getName() {
 		return name_;
-	}
-
-	public void setName(String name) {
-		this.name_ = name;
 	}
 
 	public double getPercent() {
 		return percent_;
 	}
 
-	public void setPercent(double percent) {
-		this.percent_ = percent;
-	}
-
 	public int getStatus() {
 		return status_;
-	}
-
-	public void setStatus(int status) {
-		this.status_ = status;
 	}
 	
 	public String getSize() {
@@ -109,40 +100,20 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		return downloaded_;
 	}
 
-	public void setDownloaded(String downloaded) {
-		this.downloaded_ = downloaded;
-	}
-
 	public String getDownloadSpeed() {
 		return downloadSpeed_;
-	}
-
-	public void setDownloadSpeed(String downloadSpeed) {
-		this.downloadSpeed_ = downloadSpeed;
 	}
 
 	public String getUploaded() {
 		return uploaded_;
 	}
 
-	public void setUploaded(String uploaded) {
-		this.uploaded_ = uploaded;
-	}
-	
 	public String getUploadSpeed() {
 		return uploadSpeed_;
 	}
 
-	public void setUploadSpeed(String uploadSpeed) {
-		this.uploadSpeed_ = uploadSpeed;
-	}
-
 	public String getPeers() {
 		return peers_;
-	}
-
-	public void setPeers(String peers) {
-		this.peers_ = peers;
 	}
 
 	public String getElapsedTime() {
@@ -153,10 +124,8 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		return remainingTime_;
 	}
 	
-	public int compareTo(TorrentListItem another) {
-		if (this.name_ != null)
-			return this.infoHash_.toLowerCase().compareTo(another.getInfoHash().toLowerCase());
-		else
-			throw new IllegalArgumentException();
+	@Override
+	public boolean equals(Object other) {
+		return this.id_ == ((TorrentListItem) other).id_;
 	}
 }

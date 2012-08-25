@@ -43,10 +43,10 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		lvTorrent_.setOnItemClickListener(new OnItemClickListener() {
 			public void onItemClick(AdapterView<?> arg0, View arg1, int position, long arg3) {
 				TorrentListItem item = adapter_.getItem(position);
-				String infoHash = item.getInfoHash();
+				int torrentId = item.getId();
 				
 				Intent intent = new Intent(activity_, TorrentDetailsActivity.class);
-				intent.putExtra(KEY_INFO_HASH, infoHash);
+				intent.putExtra(KEY_TORRENT_ID, torrentId);
 				startActivity(intent);
 			}
 		});
@@ -142,6 +142,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			.setIcon(R.drawable.ic_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		menu.add(Menu.NONE, MENU_SHUT_DOWN, Menu.NONE, "Shut down")
+			.setIcon(android.R.drawable.ic_menu_close_clear_cancel)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		return true;
 	}
@@ -170,12 +171,11 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	
 	@Override
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
-		String infoHash = item.getInfoHash();
 		boolean found = false;
 		TorrentListItem tempItem;
 		for (int i = 0; i < adapter_.getCount(); i++) {
 			tempItem = adapter_.getItem(i);
-			if (tempItem.getInfoHash().equals(infoHash)) {
+			if (tempItem.equals(item)) {
 				found = true;
 				if (!isRemoved) {
 					adapter_.getItem(i).set(item);
@@ -198,7 +198,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		for (int i = 0; i < adapter_.getCount(); i++) {
 			foundOld = false;
 			for (int j = 0; j < itemList.size(); j++) {
-				if (adapter_.getItem(i).compareTo(itemList.get(j)) == 0) {
+				if (adapter_.getItem(i).equals(itemList.get(j))) {
 					foundOld = true;
 					adapter_.getItem(i).set(itemList.get(j));
 					itemList.remove(j);

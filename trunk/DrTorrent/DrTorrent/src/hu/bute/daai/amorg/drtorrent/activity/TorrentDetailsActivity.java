@@ -105,7 +105,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
-		bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
+		bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 		msg.setData(bundle);
 		
 		switch (item.getItemId()) {
@@ -153,7 +153,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	public void changeFilePriority(FileListItem item) {
 		Message msg = Message.obtain();
 		Bundle b = new Bundle();
-		b.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash_);
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 		b.putSerializable(TorrentService.MSG_KEY_FILE_ITEM, item);
 		msg.what = TorrentService.MSG_CHANGE_FILE_PRIORITY;
 		msg.setData(b);
