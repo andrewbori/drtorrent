@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import android.os.SystemClock;
+
 public class Block {
 
 	private Piece piece_;
@@ -21,7 +23,7 @@ public class Block {
 	
 	public void setRequested() {
 		isRequested_ = true;
-		requestTime_ = System.currentTimeMillis();
+		requestTime_ = SystemClock.elapsedRealtime();
 	}
 	
 	public void setNotRequested() {
@@ -50,7 +52,7 @@ public class Block {
 	}
 	
 	public long getRequestDelay() {
-		return System.currentTimeMillis() - requestTime_;
+		return SystemClock.elapsedRealtime() - requestTime_;
 	}
 	
 	public int pieceIndex() {

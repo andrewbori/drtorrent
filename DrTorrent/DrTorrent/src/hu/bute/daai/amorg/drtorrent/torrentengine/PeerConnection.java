@@ -12,6 +12,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Vector;
 
+import android.os.SystemClock;
 import android.util.Log;
 
 public class PeerConnection {
@@ -34,7 +35,8 @@ public class PeerConnection {
 	private final static int TIMEOUT_REQUEST        = 1000 * 60;
     private final static int KEEP_ALIVE_INTERVAL    = 1000 * 2 * 55;	// once in every two minutes
     //private final static int MAX_PIECE_REQUESTS     = 5;
-	
+    //private final static int TIMEOUT_BLOCK = 10 * 1000;
+    
 	public final static int STATE_NOT_CONNECTED  = 0;
     public final static int STATE_TCP_CONNECTING = 1;
     public final static int STATE_TCP_CONNECTED  = 2;
@@ -48,8 +50,6 @@ public class PeerConnection {
 	
 	private Peer peer_;							// the peer
 	private Torrent torrent_;					// the torrent
-	private Vector<Block> blocksToDownload_;
-	private Vector<Block> blocksDownloading_;
 	
 	private Vector<Block> blocksToUpload_;
 	
@@ -75,10 +75,6 @@ public class PeerConnection {
 	private int reconnectAfter_;
 	public static int tcpConnectionTimeoutNum_ = 0;
 	
-	private long latestDownloaded_ = 0;
-	private long downloaded_ = 0;
-	private Speed downloadSpeed_;
-	
 	/** Creates a new instance of PeerConnection. */
 	public PeerConnection(Peer peer, Torrent torrent, boolean isIncomingConnection) {
         peer_ = peer;
@@ -89,13 +85,8 @@ public class PeerConnection {
         isPeerInterested_ = false;
         isChoking_ = true;
         isPeerChoking_ = true;
-
-        blocksToDownload_ = new Vector<Block>();
-        blocksDownloading_ = new Vector<Block>();
         
         blocksToUpload_ = new Vector<Block>();
-        
-        downloadSpeed_ = new Speed();
         
         state_ = STATE_NOT_CONNECTED;
         isReadEnabled_ = true;
@@ -140,8 +131,7 @@ public class PeerConnection {
 				break;
 
 			case STATE_PW_CONNECTED:
-				downloadSpeed_.addBytes(downloaded_ - latestDownloaded_, lastTime_);
-				latestDownloaded_ = downloaded_;
+				peer_.calculateSpeed(lastTime_);
 				
 				// Timeout: Because no messages have been received in the recent time
 				if ((elapsedTime_ - latestMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
@@ -170,101 +160,25 @@ public class PeerConnection {
 					sendKeepAliveMessage();
 				}
 				
-				if (blocksToDownload_.size() + blocksDownloading_.size() == 0) {
+				if (peer_.getRequestsCount() == 0) {
 					issueDownload();
+				} else {
+					/*try {
+						if (blocksDownloading_.size() > 1) {
+							Block first = blocksDownloading_.firstElement();
+							if (first.getRequestDelay() > TIMEOUT_BLOCK) {
+								Block last = blocksDownloading_.lastElement();
+								cancelBlock(last);
+								torrent_.cancelBlock(last);
+							}
+						}
+					} catch(Exception e) {}*/
 				}
 
 				break;
 
 			default:
 				break;
-		}
-	}
-
-	public void issueDownload2() {
-		new Thread() {
-			@Override
-			public void run() {
-				issueDownload();
-			}
-		}.start();
-	}
-	
-	/** Issues the download requests. */
-	public synchronized void issueDownload() {
-		if (isPeerChoking()) return;
-		
-		// Get new blocks from the Torrent
-		synchronized (blocksDownloading_) {
-			synchronized (blocksToDownload_) {
-				//while ( (blocksToDownload_.size() + blocksDownloading_.size() < (3 + (blocksRecieved_/3)*2)) && (blocksToDownload_.size() + blocksDownloading_.size()) < 50  ) {
-				// TODO: to find an optimal rate
-				//int number =  getLatestBlocksCount() + 5 - (blocksToDownload_.size() + blocksDownloading_.size());
-				int number;
-				if (getLatestBlocksCount() == 0 && (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty())) number = 3;
-				else number =  (getLatestBlocksCount()) / 4 + 4 - (blocksToDownload_.size() + blocksDownloading_.size());
-				ArrayList<Block> blocks = torrent_.getBlockToDownload(peer_, number);
-				//while (blocksToDownload_.size() + blocksDownloading_.size() < getLatestBlocksCount() + 10) {
-				for (int i = 0; i < blocks.size(); i++) {
-					Block blockToDownload = blocks.get(i);
-					if (blockToDownload != null) {
-						blocksToDownload_.addElement(blockToDownload);
-						Log.v(LOG_TAG, "BLOCK TO DOWNLOAD: " + blockToDownload.pieceIndex() + " - " + blockToDownload.begin());
-					} else
-						break;
-				}
-				//Log.v(LOG_TAG, blocksToDownload_.size() + " issue download from " + peer_.getAddress());
-			}
-		}
-
-		if (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty()) {
-			setInterested(false);
-/*
-			if (ellapsedTime_ > 15) {
-				if (!isPeerInterested()) {
-					//torrentMgr.notifyTorrentObserverMain(torrent_, MTTorrentObserver.EMTMainEventTorrentUploadEnded);
-
-					int closeOrder = ENotSpecified;
-					if (torrent_.isComplete())
-						closeOrder = EDeletePeer;
-
-					close("No needed piecese and peer not interested");
-				} else if (incomingRequests.size() == 0) // wait for possible incoming interested message
-				{
-					close("No pieces need and peer is not interested");
-				}
-			}*/
-		} else {
-			Log.v(LOG_TAG, blocksToDownload_.size() + " issue download from " + peer_.getAddress());
-			setInterested(true);
-
-			synchronized (blocksDownloading_) {
-				synchronized (blocksToDownload_) {
-					if (!isPeerChoking()) {
-						Block block = null;
-						for (int i = 0; i < blocksToDownload_.size(); i++) {
-							block = blocksToDownload_.elementAt(i);
-							if (!isPeerChoking()) sendRequestMessage(block);
-							else break;
-							
-							blocksDownloading_.addElement(block);
-							blocksToDownload_.removeElement(block);
-							i--;
-							block.setRequested();
-							Log.v(LOG_TAG, "Request sent to " + peer_.getAddress());
-						}
-					} 
-					if (isPeerChoking()) {
-						Block block = null;
-						for (int i = 0; i < blocksDownloading_.size(); i++) {
-							block = blocksDownloading_.elementAt(i);
-							blocksToDownload_.addElement(block);
-							blocksDownloading_.removeElement(block);
-							block.setNotRequested();
-						}
-					}
-				}
-			}
 		}
 	}
 	
@@ -279,6 +193,33 @@ public class PeerConnection {
 		}
 	}
 	
+	/** Issues the download requests. */
+	public void issueDownload(){
+		if (!isPeerChoking()) {
+			ArrayList<Block> blocksToDownload = peer_.issueDownload();
+			if (blocksToDownload != null) {
+				setInterested(true);
+				sendRequestMessage(blocksToDownload);
+			}
+		}
+	}
+	
+	/** Writes the byte array to the outputStream_. */
+	private void write(byte buffer[]) throws Exception {
+		try {
+			outputStream_.write(buffer);
+			outputStream_.flush();
+		} catch(Exception e) {}
+	}
+	
+	/** Writes a big-endian integer to the outputStream_.*/
+	private void writeInt(int i) throws Exception {
+		try {
+			outputStream_.writeInt(i);
+			outputStream_.flush();
+		} catch(Exception e) {}
+	}
+	
 	/** Reads data.length bytes from the inputStream_ and puts it into the data array. */
 	private boolean readData(byte [] data) throws Exception {
         try {
@@ -288,19 +229,30 @@ public class PeerConnection {
         	if (e.getMessage() != null) Log.v("AAAAAA", e.getMessage());
         	return false;
         }
-        
         return true;
     }
+	
+	/** 
+	 * Reads a single byte from the inputStream_ and returns it as an integer in the range from 0 to 255. <br>
+	 * Returns -1 if the end of this stream has been reached.
+	 */
+	private int readByte() throws Exception {
+		try {
+			return inputStream_.read();
+		} catch (Exception ex) {
+			close(ERROR_INCREASE_ERROR_COUNTER, "Read error " + ex.getMessage());
+			return -1;
+		}
+	}
     
-    /** Reads an integer from the inputStream_. */
-	public int readInt() {
+    /** Reads a big-endian integer from the inputStream_. */
+	public int readInt() throws Exception {
 		try {
 			return inputStream_.readInt();
 		} catch (Exception ex) {
 			close(ERROR_INCREASE_ERROR_COUNTER, "Read error " + ex.getMessage());
 			return -1;
 		}
-		
 	}
 	
     /** Reads data from the inputStream_. */
@@ -329,7 +281,7 @@ public class PeerConnection {
 							Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
 							// issueDownload();
 						} else {
-							int id = inputStream_.read();		// message ID
+							int id = readByte();		// message ID
 							switch (id) {
 								
 								case MESSAGE_ID_CHOKE:
@@ -399,7 +351,7 @@ public class PeerConnection {
 	
 	/** Reading message: handshake. */
 	private void readHandshakeMessage() throws InterruptedIOException, IOException, Exception {
-		int protLength = inputStream_.read(); 	// pstrlen
+		int protLength = readByte(); 	// pstrlen
 		if (protLength == -1) {
 			close(ERROR_INCREASE_ERROR_COUNTER, "Peer disconnected!");
 			return;
@@ -458,7 +410,7 @@ public class PeerConnection {
 		peer_.resetErrorCounter();
 		setPeerChoking(true);
 
-		cancelBlocks();
+		peer_.cancelBlocks();
 	}
 
 	/** Reading message: unchoke. */
@@ -494,11 +446,10 @@ public class PeerConnection {
 			byte[] bitfield = new byte[bitFieldLength];
 			boolean dataReaded = readData(bitfield);
 			if (dataReaded) {
-				peer_.peerHasPieces(bitfield, torrent_);
+				peer_.peerHasPieces(bitfield);
 				Log.v(LOG_TAG, "Bitfield has been read from " + peer_.getAddress());
 				
 				setInterested(true);
-				issueDownload();
 			} else {
 				close(ERROR_INCREASE_ERROR_COUNTER, "Could not read bitfield!");
 			}
@@ -506,14 +457,13 @@ public class PeerConnection {
 	}
 
 	/** Reading message: have. */
-	private void readHaveMessage() {
+	private void readHaveMessage() throws InterruptedIOException, IOException, Exception {
 		int pieceIndex = readInt();
 
 		if ((pieceIndex >= 0) && (pieceIndex < torrent_.pieceCount())) {
-			peer_.peerHasPiece(pieceIndex, torrent_);
+			peer_.peerHasPiece(pieceIndex);
 
 			setInterested(true);
-			issueDownload();
 		}
 	}
 
@@ -528,63 +478,17 @@ public class PeerConnection {
 
 		Log.v(LOG_TAG, "Recieved PIECE, Index: " + index + " Begin: " + begin + " Length: " + pieceBlockSize);
 
-		Block block = null;
-		Piece piece = null;
-		synchronized (blocksDownloading_) {
-			for (int i = 0; i < blocksDownloading_.size(); i++) {
-				block = blocksDownloading_.elementAt(i);
-				if (block.pieceIndex() == index && block.begin() == begin) {
-					synchronized (block) {
-						if (block.isDownloaded()) {
-							Log.v(LOG_TAG, "This is an already received block.");
-							blocksDownloading_.removeElement(block);
-							block = null;
-							byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
-							readData(pieceBlock);
-							return;
-						}
-						
-						//block.setDownloaded();	// GOOD SET
-						piece = torrent_.getPiece(block.pieceIndex());
-						break;
-					}
-				}
-			}
-		}
-
-		if (piece == null) {
-			Log.v(LOG_TAG, "Unexpected block size: " + pieceBlockSize);
-			if (pieceBlockSize < 0 || pieceBlockSize > Piece.DEFALT_BLOCK_LENGTH) {
-				close("Error: unexpected block.");
-			} else {
-				Log.v(LOG_TAG, "Warning: Unexpected block.");
-				byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
-				readData(pieceBlock);
-			}
+		if (pieceBlockSize < 0 || pieceBlockSize > Piece.DEFALT_BLOCK_LENGTH) {
+			close("Error: unexpected block (invalid size: " + pieceBlockSize + ").");
 		} else {
-			byte[] pieceBlock = new byte[pieceBlockSize];	// block
+			byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
 			boolean successfullRead = readData(pieceBlock);
-
 			if (!successfullRead) {
 				close(ERROR_INCREASE_ERROR_COUNTER, "Reading piece failed!");
 				return;
 			}
 			
-			int appendResult = piece.appendBlock(pieceBlock, block, peer_);
-			
-			blocksDownloading_.removeElement(block);
-			
-			block.setDownloaded();	// GOOD SET
-			torrent_.blockDownloaded(block);
-			pieceBlock = null;
-			
-			if (appendResult != Torrent.ERROR_NONE) {
-				Log.v(LOG_TAG, "Writing file failed!!!!");
-				// close("Writing to piece failed"); // CRITICAL FAULT
-				return;
-			}
-			
-			downloaded_ += pieceBlockSize;
+			peer_.blockDownloaded(index, begin, pieceBlock);
 		}
 		
 		issueDownload();
@@ -642,33 +546,24 @@ public class PeerConnection {
 
 	/** Sending message: handshake. */
 	private void sendHandshakeMessage() {
-		state_ = STATE_PW_HANDSHAKING;
+		changeState(STATE_PW_HANDSHAKING);
         if (torrent_ != null) {
             Log.v(LOG_TAG, "Sending handshake to: " + peer_.getAddress());
             ByteArrayOutputStream baos = null;
             try {
-                if (outputStream_ != null) {
-                    byte[] zeros = {0, 0, 0, 0, 0, 0, 0, 0};
+                byte[] zeros = {0, 0, 0, 0, 0, 0, 0, 0};
 
-                    baos = new ByteArrayOutputStream();
-                    baos.write((byte) MESSAGE_PROTOCOL_ID.length());	// pstrlen:   string length of <pstr>, as a single raw byte 
-                    baos.write(MESSAGE_PROTOCOL_ID.getBytes());			// pstr:      string identifier of the protocol 
-                    baos.write(zeros);									// reserved:  eight (8) reserved bytes. All current implementations use all zeroes.
-                    baos.write(torrent_.getInfoHashByteArray());		// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
-                    baos.write(TorrentManager.getPeerID().getBytes());	// peer_id:   20-byte string used as a unique ID for the client.
-                    outputStream_.write(baos.toByteArray());
-                    outputStream_.flush();
+                baos = new ByteArrayOutputStream();
+                baos.write((byte) MESSAGE_PROTOCOL_ID.length());	// pstrlen:   string length of <pstr>, as a single raw byte 
+                baos.write(MESSAGE_PROTOCOL_ID.getBytes());			// pstr:      string identifier of the protocol 
+                baos.write(zeros);									// reserved:  eight (8) reserved bytes. All current implementations use all zeroes.
+                baos.write(torrent_.getInfoHashByteArray());		// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
+                baos.write(TorrentManager.getPeerID().getBytes());	// peer_id:   20-byte string used as a unique ID for the client.
+                write(baos.toByteArray());
 
-                    Log.v(LOG_TAG, "Handshake sent to: " + peer_.getAddress());
-                } else {
-                    close("Error while sending handshake, outputstream is NULL");
-                }
-            } catch (IOException ex) {
-            	Log.v(LOG_TAG, "Error while sending handshake");
-                close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing");
-            } catch (Exception ex) {
-            	Log.v(LOG_TAG, "Error while sending handshake");
-                close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing");
+                Log.v(LOG_TAG, "Handshake sent to: " + peer_.getAddress());
+            } catch (Exception e) {
+                close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending handshake: " + e.getMessage());
             } finally {
             	try {
 					if (baos != null) baos.close();
@@ -680,19 +575,12 @@ public class PeerConnection {
 	/** Sending message: keep-alive. */
 	public void sendKeepAliveMessage() {
         try {
-            if (outputStream_ != null) {
-            	calculateElapsedTime();
-                latestMessageSentTime_ = elapsedTime_;
-                
-                outputStream_.writeInt(0);
-                outputStream_.flush();
-            } else {
-                close("ERROR, while send keepalive, outputstream is NULL");
-            }
-        } catch (IOException e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing keepalive");
+        	calculateElapsedTime();
+            latestMessageSentTime_ = elapsedTime_;
+            
+            writeInt(0);
         } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing keepalive");
+            close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending keepalive: " + e.getMessage());
         }
     }
 	
@@ -700,24 +588,17 @@ public class PeerConnection {
 	private void sendChokeMessage() {
 		ByteArrayOutputStream baos = null;
         try {
-            if (outputStream_ != null) {
-            	calculateElapsedTime();
-                latestMessageSentTime_ = elapsedTime_;
+        	calculateElapsedTime();
+            latestMessageSentTime_ = elapsedTime_;
 
-                baos = new ByteArrayOutputStream();
-                baos.write(intToByteArray(1));	// len = 1
-                baos.write(MESSAGE_ID_CHOKE);	// id = 0
-                baos.flush();
+            baos = new ByteArrayOutputStream();
+            baos.write(intToByteArray(1));	// len = 1
+            baos.write(MESSAGE_ID_CHOKE);	// id = 0
+            baos.flush();
 
-                outputStream_.write(baos.toByteArray());
-                outputStream_.flush();
-            } else {
-                close("ERROR, while send choke, outputstream is NULL");
-            }
-        } catch (IOException e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing choke");
+            write(baos.toByteArray());
         } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing choke");
+            close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending choke: " + e.getMessage());
         } finally {
         	try {
 				if (baos != null) baos.close();
@@ -729,24 +610,17 @@ public class PeerConnection {
     private void sendUnchokeMessage() {
     	ByteArrayOutputStream baos = null;
         try {
-            if (outputStream_ != null) {
-            	calculateElapsedTime();
-                latestMessageSentTime_ = elapsedTime_;
+        	calculateElapsedTime();
+            latestMessageSentTime_ = elapsedTime_;
 
-                baos = new ByteArrayOutputStream();
-                baos.write(intToByteArray(1));	// len = 1
-                baos.write(MESSAGE_ID_UNCHOKE);	// id = 1
-                baos.flush();
+            baos = new ByteArrayOutputStream();
+            baos.write(intToByteArray(1));	// len = 1
+            baos.write(MESSAGE_ID_UNCHOKE);	// id = 1
+            baos.flush();
 
-                outputStream_.write(baos.toByteArray());
-                outputStream_.flush();
-            } else {
-                close("ERROR, while send unchoke, outputstream is NULL");
-            }
-        } catch (IOException e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing unchoke");
+            write(baos.toByteArray());
         } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing unchoke");
+            close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending unchoke: " + e.getMessage());
         } finally {
         	try {
 				if (baos != null) baos.close();
@@ -758,29 +632,20 @@ public class PeerConnection {
 	private void sendInterestedMessage() {
 		ByteArrayOutputStream baos = null;
 		try {
-			if (outputStream_ != null) {
-				Log.v(LOG_TAG, "Sending interested to: " + peer_.getAddress());
-				calculateElapsedTime();
-				latestMessageSentTime_ = elapsedTime_;
+			Log.v(LOG_TAG, "Sending interested to: " + peer_.getAddress());
+			calculateElapsedTime();
+			latestMessageSentTime_ = elapsedTime_;
 
-				baos = new ByteArrayOutputStream();
-				baos.write(intToByteArray(1));		// len = 1
-				baos.write(MESSAGE_ID_INTERESTED);	// id = 2
-				baos.flush();
+			baos = new ByteArrayOutputStream();
+			baos.write(intToByteArray(1));		// len = 1
+			baos.write(MESSAGE_ID_INTERESTED);	// id = 2
+			baos.flush();
 
-				outputStream_.write(baos.toByteArray());
-				outputStream_.flush();
-				
-				Log.v(LOG_TAG, "Interested sent to: " + peer_.getAddress());
-			} else {
-				close("ERROR, while send interested, outputstream is NULL");
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing interested: " + ex.getMessage());
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing interested: " + ex.getMessage());
+			write(baos.toByteArray());
+			
+			Log.v(LOG_TAG, "Interested sent to: " + peer_.getAddress());
+		} catch (Exception e) {
+			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending interested: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) baos.close();
@@ -792,26 +657,17 @@ public class PeerConnection {
 	private void sendNotInterestedMessage() {
 		ByteArrayOutputStream baos = null;
 		try {
-			if (outputStream_ != null) {
-				calculateElapsedTime();
-				latestMessageSentTime_ = elapsedTime_;
+			calculateElapsedTime();
+			latestMessageSentTime_ = elapsedTime_;
 
-				baos = new ByteArrayOutputStream();
-				baos.write(intToByteArray(1));			// len = 1
-				baos.write(MESSAGE_ID_NOT_INTERESTED);	// id = 3
-				baos.flush();
+			baos = new ByteArrayOutputStream();
+			baos.write(intToByteArray(1));			// len = 1
+			baos.write(MESSAGE_ID_NOT_INTERESTED);	// id = 3
+			baos.flush();
 
-				outputStream_.write(baos.toByteArray());
-				outputStream_.flush();
-			} else {
-				close("ERROR, while send notinterested, outputstream is NULL");
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing notinterested");
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing notinterested");
+			write(baos.toByteArray());
+		} catch (Exception e) {
+			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending notinterested: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) baos.close();
@@ -823,25 +679,18 @@ public class PeerConnection {
 	public void sendHaveMessage(int pieceIndex) {
 		ByteArrayOutputStream baos = null;
 		try {
-			if (outputStream_ != null) {
-				calculateElapsedTime();
-				latestMessageSentTime_ = elapsedTime_;
+			calculateElapsedTime();
+			latestMessageSentTime_ = elapsedTime_;
 
-				baos = new ByteArrayOutputStream();
-				baos.write(intToByteArray(5));			// len = 5
-				baos.write(MESSAGE_ID_HAVE);			// id = 4
-				baos.write(intToByteArray(pieceIndex));	// piece index
-				baos.flush();
+			baos = new ByteArrayOutputStream();
+			baos.write(intToByteArray(5));			// len = 5
+			baos.write(MESSAGE_ID_HAVE);			// id = 4
+			baos.write(intToByteArray(pieceIndex));	// piece index
+			baos.flush();
 
-				outputStream_.write(baos.toByteArray());
-				outputStream_.flush();
-			} else {
-				close("ERROR, while send have, outputstream is NULL");
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+			write(baos.toByteArray());
 		} catch (Exception e) {
-			e.printStackTrace();
+			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending have: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) baos.close();
@@ -854,28 +703,19 @@ public class PeerConnection {
 	    byte[] bitfield = torrent_.getBitfield().data();
 	    ByteArrayOutputStream baos = null;
 	    try {
-	        if (outputStream_ != null) {
-	        	Log.v(LOG_TAG, "Sending bitfield to: " + peer_.getAddress());
-	        	calculateElapsedTime();
-	            latestMessageSentTime_ = elapsedTime_;
-	
-	            baos = new ByteArrayOutputStream();
-	            baos.write(intToByteArray(1 + bitfield.length));	// len = 1 + X
-	            baos.write(MESSAGE_ID_BITFIELD);					// id = 5
-	            baos.write(bitfield);								// bitfield
-	            baos.flush();
-	
-	            outputStream_.write(baos.toByteArray());
-	            outputStream_.flush();                
-	        } else {
-	            close("ERROR, while send bitfield, outputstream is NULL");
-	        }
-	    } catch (IOException ex) {
-	        ex.printStackTrace();
-	        close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing bitfield");
-	    } catch (Exception ex) {
-	        ex.printStackTrace();
-	        close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing bitfield");
+        	Log.v(LOG_TAG, "Sending bitfield to: " + peer_.getAddress());
+        	calculateElapsedTime();
+            latestMessageSentTime_ = elapsedTime_;
+
+            baos = new ByteArrayOutputStream();
+            baos.write(intToByteArray(1 + bitfield.length));	// len = 1 + X
+            baos.write(MESSAGE_ID_BITFIELD);					// id = 5
+            baos.write(bitfield);								// bitfield
+            baos.flush();
+
+            write(baos.toByteArray());
+	    } catch (Exception e) {
+	        close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending bitfield: " + e.getMessage());
 	    } finally {
 	    	try {
 				if (baos != null) baos.close();
@@ -884,34 +724,32 @@ public class PeerConnection {
 	}
 	
 	/** Sending message: request. */
-	private void sendRequestMessage(Block block) {
-		if (block != null) {
+	public void sendRequestMessage(ArrayList<Block> blocks) {
+		if (blocks != null && blocks.size() > 0) {
 			ByteArrayOutputStream baos = null;
 			try {
-				if (outputStream_ != null) {
-					calculateElapsedTime();
-					latestMessageSentTime_ = elapsedTime_;
-					latestRequestTime_ = elapsedTime_;
-
-					baos = new ByteArrayOutputStream();
+				calculateElapsedTime();
+				latestMessageSentTime_ = elapsedTime_;
+				latestRequestTime_ = elapsedTime_;
+				
+				baos = new ByteArrayOutputStream();
+				for (int i = 0; i < blocks.size(); i++) {
+					Block block = blocks.get(i);
+					block.setRequested();
 					baos.write(intToByteArray(13));							// len = 13
 					baos.write(MESSAGE_ID_REQUEST);							// id = 6
 					baos.write(intToByteArray(block.pieceIndex()));			// index: zero-based piece index 
 					baos.write(intToByteArray(block.begin()));				// begin: zero-based byte offset within the piece 
 					baos.write(intToByteArray(block.length()));				// length: requested length
-					baos.flush();
-
-					outputStream_.write(baos.toByteArray());
-					outputStream_.flush();
-
-					Log.v(LOG_TAG, "REQUEST sent: " + block.pieceIndex() + "from: " + block.begin() + " (block length: " + block.length() + ")");
-				} else {
-					close("ERROR, while send request, outputstream is NULL");
+					
+					Log.v(LOG_TAG, "REQUEST sent: " + block.pieceIndex() + " - " + block.begin() + " (length: " + block.length() + ")");
 				}
-			} catch (IOException e) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing request");
+				baos.flush();
+
+				write(baos.toByteArray());
+				Log.v(LOG_TAG, blocks.size() + " REQUESTS HAVE BEEN SENT.");
 			} catch (Exception e) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing request");
+				close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending request: " + e.getMessage());
 			} finally {
 	        	try {
 					if (baos != null) baos.close();
@@ -940,31 +778,24 @@ public class PeerConnection {
 			
 			ByteArrayOutputStream baos = null;
 			try {
-				if (outputStream_ != null) {
-					calculateElapsedTime();
-					latestMessageSentTime_ = elapsedTime_;
-					
-					baos = new ByteArrayOutputStream();
-					baos.write(intToByteArray(9 + block.length()));	// len = 9 + X
-					baos.write(MESSAGE_ID_PIECE);					// id = 7
-					baos.write(intToByteArray(block.pieceIndex()));	// index
-					baos.write(intToByteArray(block.begin()));		// begin
-					baos.write(blockBytes);							// block
-					baos.flush();
+				calculateElapsedTime();
+				latestMessageSentTime_ = elapsedTime_;
+				
+				baos = new ByteArrayOutputStream();
+				baos.write(intToByteArray(9 + block.length()));	// len = 9 + X
+				baos.write(MESSAGE_ID_PIECE);					// id = 7
+				baos.write(intToByteArray(block.pieceIndex()));	// index
+				baos.write(intToByteArray(block.begin()));		// begin
+				baos.write(blockBytes);							// block
+				baos.flush();
 
-					outputStream_.write(baos.toByteArray());
-					outputStream_.flush();
+				write(baos.toByteArray());
 
-					torrent_.updateBytesUploaded(block.length());
+				torrent_.updateBytesUploaded(block.length());
 
-					// Log.v(LOG_TAG, "Piece sent to " + peer_.getAddress());
-				} else {
-					close("ERROR, while send piece, outputstream is NULL");
-				}
-			} catch (IOException ex) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing piece " + ex.getMessage());
-			} catch (Exception ex) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing piece(e) " + ex.getMessage());
+				// Log.v(LOG_TAG, "Piece sent to " + peer_.getAddress());
+			} catch (Exception e) {
+				close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending piece: " + e.getMessage());
 			} finally {
 	        	try {
 					if (baos != null) baos.close();
@@ -974,32 +805,25 @@ public class PeerConnection {
 	}
 
 	/** Sending message: cancel. */
-	private void sendCancelMessage(Block block) {
+	public void sendCancelMessage(Block block) {
 		ByteArrayOutputStream baos = null;
 		try {
-			if (outputStream_ != null) {
-				calculateElapsedTime();
-				latestMessageSentTime_ = elapsedTime_;
-				
-				baos = new ByteArrayOutputStream();
-				baos.write(intToByteArray(13));							// len = 13
-				baos.write(MESSAGE_ID_CANCEL);							// id = cancel
-				baos.write(intToByteArray(block.pieceIndex()));			// index
-				baos.write(intToByteArray(block.begin()));				// begin
-				baos.write(intToByteArray(block.length()));				// length
-				baos.flush();
-	
-				outputStream_.write(baos.toByteArray());
-				outputStream_.flush();
-	
-				Log.v(LOG_TAG, "Cancel block index: " + block.pieceIndex() + " begin: " + block.begin() + " length: " + block.length());
-			} else {
-				close("ERROR, while send piece, outputstream is NULL");
-			}
-		} catch (IOException e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing cancel message");
+			calculateElapsedTime();
+			latestMessageSentTime_ = elapsedTime_;
+			
+			baos = new ByteArrayOutputStream();
+			baos.write(intToByteArray(13));							// len = 13
+			baos.write(MESSAGE_ID_CANCEL);							// id = cancel
+			baos.write(intToByteArray(block.pieceIndex()));			// index
+			baos.write(intToByteArray(block.begin()));				// begin
+			baos.write(intToByteArray(block.length()));				// length
+			baos.flush();
+
+			write(baos.toByteArray());
+
+			Log.v(LOG_TAG, "Cancel block index: " + block.pieceIndex() + " begin: " + block.begin() + " length: " + block.length());		
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while writing cancel message");
+			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending cancel message: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) baos.close();
@@ -1016,6 +840,7 @@ public class PeerConnection {
 	public void close(int order, String reason) {
 		if (state_ != STATE_CLOSING && state_ != STATE_NOT_CONNECTED) {
 			Log.v(LOG_TAG, "Closing connection. Reason: " + reason);
+			
 			changeState(STATE_CLOSING);
 			
 			isReadEnabled_ = false;		// Stop reading the socket
@@ -1038,12 +863,8 @@ public class PeerConnection {
 
 			changeState(STATE_NOT_CONNECTED);
 			
-			// Notify the torrent that the downloading blocks won't be received
-			cancelBlocks();
-			
 			// Notify the torrent about the disconnection of the peer
-			torrent_.peerDisconnected(peer_);
-			if (isPeerInterested()) torrent_.peerNotInterested(peer_);
+			peer_.disconnected();
 			
 			try {
 				if (connectThread_ != null && connectThread_.isAlive()) connectThread_.interrupt();
@@ -1127,26 +948,6 @@ public class PeerConnection {
 		}
 	}
 	
-	/** Notifies the torrent that the downloading blocks won't be received. */
-	public void cancelBlocks() {
-		synchronized (blocksToDownload_) {
-			if (blocksToDownload_ != null && !blocksToDownload_.isEmpty()) {
-				for (int i = 0; i < blocksToDownload_.size(); i++) {
-					torrent_.cancelBlock(blocksToDownload_.elementAt(i));
-				}
-				blocksToDownload_.removeAllElements();
-			}
-		}
-		synchronized (blocksDownloading_) {
-			if (blocksDownloading_ != null && !blocksDownloading_.isEmpty()) {
-				for (int i = 0; i < blocksDownloading_.size(); i++) {
-					torrent_.cancelBlock(blocksDownloading_.elementAt(i));
-				}
-				blocksDownloading_.removeAllElements();
-			}
-		}
-	}
-	
 	/** Changes the state of the connection. */
 	public void changeState(int state) {
 		state_ = state;
@@ -1157,6 +958,7 @@ public class PeerConnection {
 	/** Sets the torrent that this peer is sharing. */
 	public void setTorrent(Torrent torrent) {
 		torrent_ = torrent;
+		
 	}
 	
 	/** Returns the connections state. */
@@ -1183,35 +985,6 @@ public class PeerConnection {
 	public boolean isPeerInterested() {
 		return isPeerInterested_;
 	}
-	
-	/** Returns whether the peer requested the block or not. */
-	public boolean hasBlock(Block block) {
-		return blocksDownloading_.contains(block) || blocksToDownload_.contains(block);
-	}
-	
-	/** Cancels the request of the given block. */
-	public void cancelBlock(Block block) {
-		synchronized (blocksDownloading_) {
-			synchronized (blocksToDownload_) {
-				if (blocksToDownload_.contains(block)) {
-					blocksToDownload_.removeElement(block);
-				} else if (blocksDownloading_.contains(block)) {
-					sendCancelMessage(block);
-					blocksDownloading_.removeElement(block);
-				}
-			}
-		}
-	}
-	
-	/** Returns the number of requests have been sent to the peer. */
-	public int getRequestsCount() {
-		return blocksDownloading_.size();
-	}
-	
-	/** Returns the number of requests have not been sent to the peer yet. */
-	public int getRequestsToSendCount() {
-		return blocksToDownload_.size();
-	}
     
 	/** Thread that connects to the peer. */
 	private class ConnectThread extends Thread {
@@ -1223,7 +996,7 @@ public class PeerConnection {
 		
 		@Override
 		public void run() {
-			state_ = STATE_TCP_CONNECTING;
+			changeState(STATE_TCP_CONNECTING);
 			try {
 				if (!isIncomingConnection_) {
 					Log.v(LOG_TAG, "Connecting to: " + destination_);
@@ -1238,8 +1011,7 @@ public class PeerConnection {
 					} catch (IOException e1) {}
 					socket_ = null;
 				}
-				Log.v(LOG_TAG, "Failed to connect to: " + destination_);
-				close("Timeout: Failed to connect to" + destination_);
+				close("Timeout: Failed to connect to " + destination_);
 			}
 			
 			if (socket_ != null) startDownloading();
@@ -1254,48 +1026,23 @@ public class PeerConnection {
             inputStream_ = new DataInputStream(socket_.getInputStream());
             outputStream_ = new DataOutputStream(socket_.getOutputStream());
         } catch(IOException ex) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Opening streams failed - " + ex.getMessage());
-            Log.v(LOG_TAG, "Opening streams failed on: " + peer_.getAddress() + " | " + ex.getMessage());
+            close(ERROR_INCREASE_ERROR_COUNTER, "Opening streams failed on: " + peer_.getAddress() + " | " + ex.getMessage());
             return;
         }
 
         if (!isIncomingConnection_) sendHandshakeMessage();
-        else state_ = STATE_PW_HANDSHAKING;
-
-        calculateElapsedTime();
-        elapsedTime_ = 0;
+        else changeState(STATE_PW_HANDSHAKING);
         
         read();
 	}
 	
-	/** Returns the count of downloaded bytes. */
-	public long getDownloaded() {
-		return downloaded_;
-	}
-	
-	/** Returns the download speed. */
-	public int getDownloadSpeed() {
-		//return downloadSpeed_.getSpeed();
-		return (int) (downloadSpeed_.getBytes() / Speed.TIME_INTERVAL);
-	}
-	
-	/** Returns the block speed. */
-	public int getBlockSpeed() {
-		return (int) (getDownloadSpeed() / Piece.DEFALT_BLOCK_LENGTH);
-	}
-	
-	/** Returns the count of the latest downloaded blocks. */
-	public int getLatestBlocksCount() {
-		return (int) (downloadSpeed_.getBytes() / Piece.DEFALT_BLOCK_LENGTH);
+	private void calculateElapsedTime() {
+		long currentTime = SystemClock.elapsedRealtime();
+		elapsedTime_ += (int) (currentTime - lastTime_);
+		lastTime_ = currentTime;
 	}
 	
 	public boolean isConnected() {
 		return (state_ == STATE_PW_CONNECTED);
-	}
-	
-	private void calculateElapsedTime() {
-		long currentTime = System.currentTimeMillis();
-		elapsedTime_ += (int) (currentTime - lastTime_);
-		lastTime_ = currentTime;
 	}
 }

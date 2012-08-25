@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import hu.bute.daai.amorg.drtorrent.R;
+
 public class File {
 	public static final int STATUS_NOT_DOWNLOADED = 0;
     public static final int STATUS_DOWNLOADING    = 1;
@@ -41,10 +43,12 @@ public class File {
 					if (piece.checkHash()) {
 						torrent_.pieceDownloaded(piece, true);
 					}
+					torrent_.addCheckedBytes(piece.size());
 				}
 			} else {
 				break;
 			}
+			if (torrent_.getStatus() == R.string.status_stopped) return;
 		}
     }
     

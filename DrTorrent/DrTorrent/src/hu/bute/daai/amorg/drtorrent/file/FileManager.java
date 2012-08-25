@@ -95,6 +95,12 @@ public class FileManager {
 	public int writeFile(String filePath, long filePosition, byte[] block, int offset, int length) {
 		RandomAccessFile file = null;
 		try {
+			if (!fileExists(filePath)) {
+				String dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+				File dir = new File(dirPath);
+				dir.mkdirs();
+			}
+			
 			file = new RandomAccessFile(filePath, "rw");
 			file.seek(filePosition);
 			file.write(block, offset, length);

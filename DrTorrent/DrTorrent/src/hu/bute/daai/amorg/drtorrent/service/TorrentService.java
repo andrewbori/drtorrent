@@ -73,8 +73,8 @@ public class TorrentService extends Service {
 	public final static int UPDATE_TRACKER_LIST = 16;	// 0b00010000
 	
 	public final static String MSG_KEY_FILEPATH         	= "a";
-	public final static String MSG_KEY_TORRENT_INFOHASH	    = "b";
-	public final static String MSG_KEY_TORRENT_OLD_INFOHASH = "c";
+	//public final static String MSG_KEY_TORRENT_INFOHASH	    = "b";
+	public final static String MSG_KEY_TORRENT_ID		    = "c";
 	public final static String MSG_KEY_TORRENT_UPDATE 		= "d";
 	public final static String MSG_KEY_TORRENT_ITEM     	= "e";
 	public final static String MSG_KEY_TORRENT_LIST     	= "f";
@@ -97,7 +97,8 @@ public class TorrentService extends Service {
 
 	private Messenger clientAll_;
 	private Messenger clientSingle_;
-	private String clientSingleInfoHash_;
+	//private String clientSingleInfoHash_;
+	private int clientSingleTorrentId_ = -1;
 	private int clientSingleUpdateField_ = 0;
 
 	private Vector<TorrentListItem> torrents_; // only for sending message
@@ -155,18 +156,18 @@ public class TorrentService extends Service {
 		@Override
 		public void handleMessage(Message msg) {
 			Bundle bundleMsg = msg.getData();
-			String infoHash = null;
+			int torrentId = -1;
 
 			switch (msg.what) {
 
 				case MSG_SUBSCRIBE_CLIENT:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
-					subscribeClient(msg.replyTo, infoHash);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID, -1);
+					subscribeClient(msg.replyTo, torrentId);
 					break;
 
 				case MSG_UNSUBSCRIBE_CLIENT:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
-					unSubscribeClient(msg.replyTo, infoHash);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID, -1);
+					unSubscribeClient(msg.replyTo, torrentId);
 					break;
 					
 				case MSG_UPDATE_TORRENT:
@@ -174,9 +175,9 @@ public class TorrentService extends Service {
 					break;
 					
 				case MSG_CHANGE_FILE_PRIORITY:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
 					FileListItem item = (FileListItem) bundleMsg.getSerializable(TorrentService.MSG_KEY_FILE_ITEM);
-					(new ChangeFilePriorityThread(infoHash, item)).start();
+					(new ChangeFilePriorityThread(torrentId, item)).start();
 					break;
 
 				case MSG_OPEN_TORRENT:
@@ -192,18 +193,18 @@ public class TorrentService extends Service {
 					break;
 					
 				case MSG_START_TORRENT:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
-					startTorrent(infoHash);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					startTorrent(torrentId);
 					break;
 
 				case MSG_STOP_TORRENT:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
-					stopTorrent(infoHash);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					stopTorrent(torrentId);
 					break;
 
 				case MSG_CLOSE_TORRENT:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
-					closeTorrent(infoHash);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					closeTorrent(torrentId);
 					break;
 
 				case MSG_SEND_TORRENT_LIST:
@@ -211,9 +212,8 @@ public class TorrentService extends Service {
 					break;
 
 				case MSG_SEND_TORRENT_ITEM:
-					infoHash = bundleMsg.getString(MSG_KEY_TORRENT_INFOHASH);
-					sendTorrentItem(msg.replyTo, infoHash);
-					sendPeerList(msg.replyTo, infoHash);
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					sendTorrentItem(msg.replyTo, torrentId);
 					break;
 					
 				case MSG_SHUT_DOWN:
@@ -227,34 +227,34 @@ public class TorrentService extends Service {
 	}
 
 	/** Subscribes client to the given torrent. */
-	private void subscribeClient(Messenger messenger, String infoHash) {
-		if (infoHash != null) {
+	private void subscribeClient(Messenger messenger, int torrentId) {
+		if (torrentId != -1) {
 			//Log.v(LOG_TAG, clients.size() + " Client subscried to the following torrent: " + infoHash);
-			Log.v(LOG_TAG, " Client subscried to the following torrent: " + infoHash);
+			Log.v(LOG_TAG, " Client subscried to the following torrent: " + torrentId);
 			clientAll_ = null;
-			clientSingleInfoHash_ = infoHash;
+			clientSingleTorrentId_ = torrentId;
 			clientSingle_ = messenger;
-			sendTorrentItem(messenger, infoHash);
-			sendPeerList(messenger, infoHash);
-			sendTrackerList(messenger, infoHash);
-			sendFileList(messenger, infoHash);
-			updateBitfield(torrentManager_.getTorrent(infoHash));
+			sendTorrentItem(messenger, torrentId);
+			sendPeerList(messenger, torrentId);
+			sendTrackerList(messenger, torrentId);
+			sendFileList(messenger, torrentId);
+			updateBitfield(torrentManager_.getTorrent(torrentId));
 		} else {
 			//Log.v(LOG_TAG, clientsAll_.size() + " Client subscribed to the Torrent Service.");
 			Log.v(LOG_TAG, " Client subscribed to the Torrent Service.");
 			clientSingle_ = null;
-			clientSingleInfoHash_ = "";
+			clientSingleTorrentId_ = -1;
 			clientAll_ = messenger;
 			sendTorrentList(messenger);
 		}
 	}
 	
 	/** Unsubscribes client from the given torrent. */
-	private void unSubscribeClient(Messenger messenger, String infoHash) {
-		if (infoHash != null) {
-			Log.v(LOG_TAG, "Client unsubscribed from the following torrent: " + infoHash);
+	private void unSubscribeClient(Messenger messenger, int torrentId) {
+		if (torrentId != -1) {
+			Log.v(LOG_TAG, "Client unsubscribed from the following torrent: " + torrentId);
 			clientSingle_ = null;
-			clientSingleInfoHash_ = "";
+			clientSingleTorrentId_ = -1;
 			clientSingleUpdateField_ = 0;
 			
 		} else {
@@ -301,18 +301,18 @@ public class TorrentService extends Service {
 	}
 
 	/** Starts a torrent. */
-	private void startTorrent(String infoHash) {
-		(new StartTorrentThread(infoHash)).start();
+	private void startTorrent(int torrentId) {
+		(new StartTorrentThread(torrentId)).start();
 	}
 	
 	/** Stops a torrent. */
-	private void stopTorrent(String infoHash) {
-		torrentManager_.stopTorrent(infoHash);
+	private void stopTorrent(int torrentId) {
+		torrentManager_.stopTorrent(torrentId);
 	}
 	
 	/** Closes a torrent. */
-	private void closeTorrent(String infoHash) {
-		torrentManager_.closeTorrent(infoHash);
+	private void closeTorrent(int torrentId) {
+		torrentManager_.closeTorrent(torrentId);
 	}
 	
 	public void showTorrentSettings(Torrent torrent) {
@@ -331,13 +331,13 @@ public class TorrentService extends Service {
 			msg.what = MSG_SEND_TORRENT_SETTINGS;
 			msg.setData(bundle);
 
-			sendMessage(msg, null);
+			sendMessage(msg, -1);
 		}
 	}
 	
 	/** Torrent changed */
 	public void updateTorrentItem(Torrent torrent) {
-		String infoHash = torrent.getInfoHash();	
+		int torrentId = torrent.getId();
 		
 		// Searching the torrent item
 		TorrentListItem item = null;
@@ -345,7 +345,7 @@ public class TorrentService extends Service {
 		TorrentListItem tempTorrent;
 		for (int i = 0; i < torrents_.size(); i++) {
 			tempTorrent = torrents_.elementAt(i);
-			if (tempTorrent.getInfoHash().equals(infoHash)) {
+			if (tempTorrent.getId() == torrentId) {
 				item = torrents_.elementAt(i);
 				item.set(torrent);
 				i = torrents_.size();
@@ -360,7 +360,7 @@ public class TorrentService extends Service {
 			torrents_.add(item);
 		}
 		
-		if (clientAll_ == null && (!clientSingleInfoHash_.equals(infoHash) || clientSingle_ == null)) return;
+		if (clientAll_ == null && (clientSingleTorrentId_ != torrentId || clientSingle_ == null)) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -368,24 +368,24 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_TORRENT_ITEM;
 		msg.setData(bundle);
 
-		sendMessage(msg, infoHash);
+		sendMessage(msg, torrentId);
 	}
 	
 	/** Torrent deleted */
 	public void removeTorrentItem(Torrent torrent) {
-		String infoHash = torrent.getInfoHash();	
+		int torrentId = torrent.getId();	
 
 		// Searching the torrent item
 		TorrentListItem item = null;
 		for (int i = 0; i < torrents_.size(); i++) {
 			item = torrents_.elementAt(i);
-			if (item.getInfoHash().equals(infoHash)) {
+			if (item.getId() == torrentId) {
 				torrents_.remove(i);
 				break;
 			}
 		}
 		
-		if (clientAll_ == null && (!clientSingleInfoHash_.equals(infoHash) || clientSingle_ == null)) return;
+		if (clientAll_ == null && (clientSingleTorrentId_ != torrentId || clientSingle_ == null)) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -393,12 +393,12 @@ public class TorrentService extends Service {
 		bundle.putBoolean(MSG_KEY_IS_REMOVED, true);
 		msg.what = MSG_SEND_TORRENT_ITEM;
 		msg.setData(bundle);
-		sendMessage(msg, null);
+		sendMessage(msg, -1);
 	}
 	
 	/** FileList changed. */
 	public void updateFileList(Torrent torrent) {
-		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		Vector<File> files = torrent.getFiles();
 		ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
@@ -417,28 +417,12 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_FILE_LIST;
 		msg.setData(bundle);
 
-		sendMessage(msg, torrent.getInfoHash());
-	}
-	
-	/** Peer changed. */
-	public void updatePeerItem(Torrent torrent, Peer peer, boolean isDisconnected) {
-		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
-		
-		PeerListItem peerListItem = new PeerListItem(peer);
-		
-		Message msg = Message.obtain();
-		Bundle bundle = new Bundle();
-		bundle.putSerializable(MSG_KEY_PEER_ITEM, peerListItem);
-		bundle.putBoolean(MSG_KEY_IS_DISCONNECTED, isDisconnected);
-		msg.what = MSG_SEND_PEER_ITEM;
-		msg.setData(bundle);
-
-		sendMessage(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getId());
 	}
 	
 	/** Peer list changed. */
 	public void updatePeerList(Torrent torrent) {
-		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -453,12 +437,12 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_PEER_LIST;
 		msg.setData(bundle);
 
-		sendMessage(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getId());
 	}
 	
 	/** Peer list changed. */
 	public void updateTrackerList(Torrent torrent) {
-		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -473,12 +457,12 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_TRACKER_LIST;
 		msg.setData(bundle);
 
-		sendMessage(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getId());
 	}
 	
 	/** Bitfield changed. */
 	public void updateBitfield(Torrent torrent) {
-		if (!clientSingleInfoHash_.equals(torrent.getInfoHash()) || clientSingle_ == null) return;
+		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		
 		Bundle bundle = new Bundle();
@@ -489,7 +473,7 @@ public class TorrentService extends Service {
 		msg.what = MSG_SEND_BITFIELD;
 		msg.setData(bundle);
 
-		sendMessage(msg, torrent.getInfoHash());
+		sendMessage(msg, torrent.getId());
 	}
 	
 	/** Shows a toast with a message. */
@@ -500,7 +484,7 @@ public class TorrentService extends Service {
 		msg.what = MSG_SHOW_TOAST;
 		msg.setData(bundle);
 		
-		sendMessage(msg, null);
+		sendMessage(msg, -1);
 	}
 	
 	/** Shows a dialog with a message. */
@@ -511,7 +495,7 @@ public class TorrentService extends Service {
 		msg.what = MSG_SHOW_DIALOG;
 		msg.setData(bundle);
 		
-		sendMessage(msg, null);
+		sendMessage(msg, -1);
 	}
 	
 	/** Shows a progress dialog with a message. */
@@ -522,7 +506,7 @@ public class TorrentService extends Service {
 		msg.what = MSG_SHOW_PROGRESS;
 		msg.setData(bundle);
 		
-		sendMessage(msg, null);
+		sendMessage(msg, -1);
 	}
 	
 	/** Hides the progress dialog. */
@@ -530,7 +514,7 @@ public class TorrentService extends Service {
 		Message msg = Message.obtain();
 		msg.what = MSG_HIDE_PROGRESS;
 		
-		sendMessage(msg, null);
+		sendMessage(msg, -1);
 	}
 	
 	/** Returns true if the given field should be updated. <br>
@@ -547,13 +531,13 @@ public class TorrentService extends Service {
 	}
 
 	/** Sends an optional torrent to a client. */
-	private void sendTorrentItem(Messenger messenger, String infoHash) {
+	private void sendTorrentItem(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
 		TorrentListItem item = null;
 		for (int i = 0; i < torrents_.size(); i++) {
-			if (torrents_.elementAt(i).getInfoHash().equals(infoHash)) {
+			if (torrents_.elementAt(i).getId() == torrentId) {
 				item = new TorrentListItem(torrents_.elementAt(i));
 				i = torrents_.size();
 			}
@@ -571,11 +555,11 @@ public class TorrentService extends Service {
 	}
 	
 	/** Sends an optional torrent's peer list to a client. */
-	private void sendPeerList(Messenger messenger, String infoHash) {
+	private void sendPeerList(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
-		Torrent torrent = torrentManager_.getTorrent(infoHash);
+		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		Vector<Peer> peers = torrent.getConnectedPeers();
 		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
 		for (int i = 0; i < peers.size(); i++) {
@@ -594,11 +578,11 @@ public class TorrentService extends Service {
 	}
 	
 	/** Sends an optional torrent's file list to a client. */
-	private void sendFileList(Messenger messenger, String infoHash) {
+	private void sendFileList(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
-		Torrent torrent = torrentManager_.getTorrent(infoHash);
+		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		Vector<File> files = torrent.getFiles();
 		ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
 		for (int i = 0; i < files.size(); i++) {
@@ -617,11 +601,11 @@ public class TorrentService extends Service {
 	}
 	
 	/** Sends an optional torrent's tracker list to a client. */
-	private void sendTrackerList(Messenger messenger, String infoHash) {
+	private void sendTrackerList(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
-		Torrent torrent = torrentManager_.getTorrent(infoHash);
+		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		Vector<Tracker> trackers = torrent.getTrackers();
 		ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
 		for (int i = 0; i < trackers.size(); i++) {
@@ -654,12 +638,12 @@ public class TorrentService extends Service {
 	}
 	
 	// Sends a message to the subscribed client
-	private void sendMessage(Message msg, String infoHash) {
+	private void sendMessage(Message msg, int torrentId) {
 		Messenger messenger = null;
 		if (clientAll_ != null) {
 			messenger = clientAll_;
 		}
-		if (clientSingle_ != null && clientSingleInfoHash_.equals(infoHash)) {
+		if (clientSingle_ != null && clientSingleTorrentId_ == torrentId) {
 			messenger = clientSingle_;
 		}
 		if (messenger != null) {
@@ -708,30 +692,30 @@ public class TorrentService extends Service {
 	/** Thread class for open and read a torrent file */
 	private class StartTorrentThread extends Thread {
 
-		private String infoHash_;
+		private int torrentId_;
 		
-		public StartTorrentThread(String infoHash) {
-			infoHash_ = infoHash;
+		public StartTorrentThread(int torrentId) {
+			torrentId_ = torrentId;
 		}
 		
 		@Override
 		public void run() {
-			torrentManager_.startTorrent(infoHash_);
+			torrentManager_.startTorrent(torrentId_);
 		}
 	}
 	
 	private class ChangeFilePriorityThread extends Thread {
-		private String infoHash_;
+		private int torrentId_;
 		private FileListItem item_;
 		
-		public ChangeFilePriorityThread(String infoHash, FileListItem item) {
-			this.infoHash_ = infoHash;
+		public ChangeFilePriorityThread(int torrentId, FileListItem item) {
+			this.torrentId_ = torrentId;
 			this.item_ = item;
 		}
 		
 		@Override
 		public void run() {
-			torrentManager_.changeFilePriority(infoHash_, item_);
+			torrentManager_.changeFilePriority(torrentId_, item_);
 		}
 	}
 	

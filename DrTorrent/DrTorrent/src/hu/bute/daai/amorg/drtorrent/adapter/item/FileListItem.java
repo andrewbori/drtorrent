@@ -46,33 +46,16 @@ public class FileListItem implements Serializable {
 		return index_;
 	}
 	
-	public void setIndex(int index) {
-		this.index_ = index;
-	}
-	
-
 	public String getPath() {
 		return path_;
-	}
-	
-	public void setPath(String path) {
-		this.path_ = path;
 	}
 	
 	public String getName() {
 		return name_;
 	}
 	
-	public void setName(String name) {
-		this.name_ = name;
-	}
-	
 	public String getSize() {
 		return size_;
-	}
-	
-	public void setSize(String size) {
-		this.size_ = size;
 	}
 	
 	public int getPriority() {

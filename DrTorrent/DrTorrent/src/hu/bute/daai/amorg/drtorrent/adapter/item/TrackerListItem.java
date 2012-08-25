@@ -58,49 +58,29 @@ public class TrackerListItem implements Serializable  {
 		this.time_ = item.time_;
 		this.peers_ = item.peers_;
 	}
+
+	public int getId() {
+		return id_;
+	}
 	
 	public String getAddress() {
 		return address_;
-	}
-
-	public void setAddress(String address) {
-		this.address_ = address;
 	}
 
 	public int getStatus() {
 		return status_;
 	}
 
-	public void setStatus(int status) {
-		this.status_ = status;
-	}
-
 	public String getTime() {
 		return time_;
-	}
-
-	public void setTime(String time) {
-		this.time_ = time;
-	}
-
-	public int getId() {
-		return id_;
-	}
-
-	public void setId(int id) {
-		this.id_ = id;
-	}
-	
-	@Override
-	public boolean equals(Object other) {
-		return this.id_ == ((TrackerListItem) other).id_;
 	}
 
 	public String getPeers() {
 		return peers_;
 	}
-
-	public void setPeers(String peers) {
-		this.peers_ = peers;
+	
+	@Override
+	public boolean equals(Object other) {
+		return this.id_ == ((TrackerListItem) other).id_;
 	}
 }

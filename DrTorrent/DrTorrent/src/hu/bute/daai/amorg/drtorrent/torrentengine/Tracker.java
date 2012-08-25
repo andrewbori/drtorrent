@@ -8,6 +8,7 @@ import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedList;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.network.HttpConnection;
 import hu.bute.daai.amorg.drtorrent.network.UrlEncoder;
+import android.os.SystemClock;
 import android.util.Log;
 
 
@@ -229,7 +230,7 @@ public class Tracker {
         	.append("&uploaded=").append(torrent_.getBytesUploaded())
         	.append("&downloaded=").append(torrent_.getBytesDownloaded())
         	.append("&left=").append(torrent_.getBytesLeft())            
-        	.append("&numwant=50")
+        	//.append("&numwant=50")
         	.append("&compact=1");	// it seems that some trackers support only compact responses
 
         // if connection's event is specified
@@ -258,28 +259,22 @@ public class Tracker {
 	
 	/** Connects to the tracker. */
 	public void connect() {
-		lastRequest_ = System.currentTimeMillis();
+		lastRequest_ = SystemClock.elapsedRealtime();
 		status_ = STATUS_UPDATING;
 		(new TrackerConnectionThread()).start();
 	}
 	
 	/** Changes the event and notifies the tracker by connecting to it. */
-	public void changeEvent(int event, long currentTime) {
-		if (event == EVENT_NOT_SPECIFIED) {
-			if (status_ == STATUS_UPDATING) return;
-			long elapsedTime = (currentTime - lastRequest_) / 1000;
-			
-			if (status_ == STATUS_WORKING && elapsedTime < interval_) return;
-			if (status_ == STATUS_FAILED && elapsedTime < ERROR_REQUEST_INTERVAL) return;
-		}
-		
+	public void changeEvent(int event) {
 		event_ = event;
 		connect();
 	}
 	
 	/** onTimer */
-	public void onTimer(long currentTime) {
-		changeEvent(EVENT_NOT_SPECIFIED, currentTime);
+	public void onTimer() {
+		if (status_ != STATUS_UPDATING && getRemainingTime() < 0) {
+			changeEvent(EVENT_NOT_SPECIFIED);
+		}
 	}
 	
 	/** Thread that is connecting to the tracker. */ 
@@ -292,8 +287,8 @@ public class Tracker {
 			HttpConnection conn = new HttpConnection(fullUrl);
 			byte[] response = conn.execute();
 			
-			if (response != null) {
-				if (event_ != EVENT_STOPPED) {
+			if (event_ != EVENT_STOPPED) {
+				if (response != null) {
 					Bencoded bencoded = Bencoded.parse(response);
 				
 					if (bencoded == null) {
@@ -306,10 +301,11 @@ public class Tracker {
 					Log.v(LOG_TAG, "Bencoded response processing...");
 					if (processResponse(bencoded) != ERROR_NONE) failCount_++;
 				} else {
-					status_ = STATUS_UNKNOWN;
+					status_ = STATUS_FAILED;
+					interval_ = ERROR_REQUEST_INTERVAL;
 				}
 			} else {
-				status_ = STATUS_FAILED;
+				status_ = STATUS_UNKNOWN;
 			}
 			
 			torrent_.setSeedsLeechers();
@@ -345,7 +341,7 @@ public class Tracker {
 	}
 	
 	public int getRemainingTime() {
-		return interval_ - (int) (System.currentTimeMillis() - lastRequest_) / 1000;
+		return interval_ - (int) (SystemClock.elapsedRealtime() - lastRequest_) / 1000;
 	}
 	
 	public int getFailCount() {
