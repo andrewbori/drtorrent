@@ -402,6 +402,11 @@ public class Piece {
 		return isHashChecked_;
 	}
 	
+	/** Sets the hash of the piece checked. */
+	public void setHashChecked() {
+		isHashChecked_ = true;
+	}
+	
 	/** Adds a peer to the list of the peers that gave the blocks of this piece. */
 	public void addPeer(Peer peer) {
 		if (!peers_.contains(peer)) peers_.addElement(peer);

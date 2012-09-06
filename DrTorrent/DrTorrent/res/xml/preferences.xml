@@ -12,7 +12,6 @@
         android:defaultValue="36400"
         android:inputType="number" 
         android:dialogTitle="@string/preferences_port"
-        android:summary="@string/preferences_port_sum"
         android:title="@string/preferences_port" />
     
     <EditTextPreference
@@ -20,7 +19,19 @@
         android:defaultValue="20"
         android:inputType="number" 
         android:dialogTitle="@string/preferences_connections"
-        android:summary="@string/preferences_connections_sum"
         android:title="@string/preferences_connections" />
 
+    <EditTextPreference
+        android:key="download_speed"
+        android:defaultValue="0"
+        android:inputType="number"
+        android:dialogTitle="@string/preferences_download_speed"
+        android:title="@string/preferences_download_speed" />
+    <EditTextPreference
+        android:key="upload_speed"
+        android:defaultValue="0"
+        android:inputType="number"
+        android:dialogTitle="@string/preferences_upload_speed"
+        android:title="@string/preferences_upload_speed" />
+    
 </PreferenceScreen>

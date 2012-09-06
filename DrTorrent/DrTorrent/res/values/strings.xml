@@ -35,9 +35,7 @@
 	<string name="preferences_streaming">Streaming mode</string>
 	<string name="preferences_streaming_sum">Download the content continuously</string>
 	<string name="preferences_port">P2P Port</string>
-	<string name="preferences_port_sum">P2P protocol port</string>
-	<string name="preferences_connections">Connections</string>
-	<string name="preferences_connections_sum">Maximum number of connected peers per torrent</string>
+	<string name="preferences_connections">Connections per torrent</string>
 	<string name="all">All</string>
 	<string name="priority">"Priority: "</string>
 	<string name="priority_normal">normal</string>
@@ -48,4 +46,6 @@
 	<string name="working">working</string>
 	<string name="failed">failed</string>
 	<string name="empty_field"></string>
+	<string name="preferences_download_speed">Download speed limit</string>
+	<string name="preferences_upload_speed">Upload speed limit</string>
 </resources>
