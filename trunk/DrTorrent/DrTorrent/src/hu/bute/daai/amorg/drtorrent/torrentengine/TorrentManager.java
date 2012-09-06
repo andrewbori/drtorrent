@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
@@ -9,10 +10,15 @@ import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
 import java.net.Socket;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 import java.util.Vector;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.net.Uri;
 import android.os.SystemClock;
@@ -39,6 +45,7 @@ public class TorrentManager {
 	class TorrentSchedulerThread extends Thread {
 		@Override
 		public void run() {
+			startUp();
 			while (schedulerEnabled_) {
 				if (updateEnabled_) {
 					Log.v(LOG_TAG, "Scheduling: " + SystemClock.elapsedRealtime());
@@ -89,17 +96,46 @@ public class TorrentManager {
 		networkManager_.startListening();
 	}
 	
-	/** Shuts down the torrent manager. */
+	/** Starts the torrent manager, loads its previously saved state. */
+	public void startUp() {
+		JSONArray jsonArray = new JSONArray();
+		try {
+			String content = torrentService_.loadState();
+			Log.v(LOG_TAG, content);
+			jsonArray = new JSONArray(content);
+		} catch (Exception e) {
+			Log.v(LOG_TAG, "Error while startup: " + e.getMessage());
+		}
+		for (int i = 0; i < jsonArray.length(); i++) {
+			JSONObject json = null;
+			String infoHash = "";
+			try {
+				json = jsonArray.getJSONObject(i);
+				infoHash = json.getString("InfoHash");
+			} catch (JSONException e) {
+				Log.v(LOG_TAG, e.getMessage());
+			}
+			Log.v(LOG_TAG, infoHash);
+			openTorrent(infoHash, json);
+		}
+
+	}
+	
+	/** Shuts down the torrent manager, saves its current state. */
 	public void shutDown() {
 		schedulerEnabled_ = false;
 		networkManager_.stopListening();
 		
+		JSONArray jsonArray = new JSONArray();
 		for (int i = 0; i < torrents_.size(); i++) {
 			Torrent torrent = torrents_.get(i);
+			jsonArray.put(torrent.getJSON());
 			torrent.stop();
+			
 			torrents_.removeElementAt(i);
 			i--;
 		}
+		torrentService_.saveState(jsonArray.toString());
 	}
 	
 	/** Connects to an incoming connection. */
@@ -118,6 +154,40 @@ public class TorrentManager {
 			return true;
 		} 
 		return false;
+	}
+	
+	/** Opens saved torrent. */
+	public void openTorrent(String infoHash, JSONObject json) {
+		byte[] torrentContent = torrentService_.loadTorrentContent(infoHash);
+		
+		if (torrentContent == null) return;
+
+		Log.v(LOG_TAG, "Bencoding saved torrent: " + infoHash);
+		Bencoded bencoded = null;
+		try {
+			bencoded = Bencoded.parse(torrentContent);
+		} catch (Exception e) {
+			Log.v(LOG_TAG, "Error occured while processing the saved torrent file: " + e.getMessage());
+			return;
+		}
+		
+		final Torrent newTorrent = new Torrent(this, infoHash, DEFAULT_DOWNLOAD_PATH);
+		int result = newTorrent.processBencodedTorrent(bencoded);
+		if (result == Torrent.ERROR_NONE) {								// No error.
+			if (newTorrent.setJSON(json)) {
+				addTorrent(newTorrent);
+				torrentService_.updateTorrentItem(newTorrent);
+				if (newTorrent.getStatus() != R.string.status_stopped) {
+					new Thread() {
+						public void run() {
+							newTorrent.start();
+						};
+					}.start();
+				}
+			}
+		} else {
+			Log.v(LOG_TAG, "Error occured while processing the saved torrent file");
+		}
 	}
 	
 	/** Opens a new Torrent file with the given file path. */
@@ -172,6 +242,7 @@ public class TorrentManager {
 		int result = newTorrent.processBencodedTorrent(bencoded);
 		hideProgress();
 		if (result == Torrent.ERROR_NONE) {									// No error.
+			torrentService_.saveTorrentContent(newTorrent.getInfoHashString(), torrentContent);
 			openingTorrents_.add(newTorrent);
 			showTorrentSettings(newTorrent);
 			//newTorrent.start();

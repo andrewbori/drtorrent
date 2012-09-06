@@ -54,7 +54,7 @@ public class TorrentListItem implements Serializable {
 
 	public void set(Torrent torrent) {
 		this.id_ = torrent.getId();
-		this.infoHash_ = torrent.getInfoHash();
+		this.infoHash_ = torrent.getInfoHashString();
 		this.name_ = torrent.getName();
 		this.percent_ = torrent.getProgressPercent();
 		this.status_ = torrent.getStatus();
@@ -76,9 +76,9 @@ public class TorrentListItem implements Serializable {
 		return id_;
 	}
 	
-	/*public String getInfoHash() {
+	public String getInfoHash() {
 		return infoHash_;
-	}*/
+	}
 
 	public String getName() {
 		return name_;

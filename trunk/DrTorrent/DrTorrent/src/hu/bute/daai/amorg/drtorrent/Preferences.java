@@ -14,15 +14,44 @@ public class Preferences {
 		preferences_ = PreferenceManager.getDefaultSharedPreferences(context);
 	}
 	
+	/** Returns whether the streaming is enabled or not. */
 	public static boolean isStreamingMode() {
 		return preferences_.getBoolean("streaming", false);
 	}
 	
+	/** Returns the P2P port. */
 	public static int getPort() {
-		return Integer.valueOf(preferences_.getString("port", "34400"));
+		try {
+			return Integer.valueOf(preferences_.getString("port", "34400"));
+		} catch (Exception e) {
+			return 0;
+		}
 	}
 	
+	/** Returns the number of the maximum connected peers per torrent. */
 	public static int getMaxConnectedPeers() {
-		return Integer.valueOf(preferences_.getString("connections", "20"));
+		try {
+			return Integer.valueOf(preferences_.getString("connections", "20"));
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+	
+	/** Returns the download speed limit. */
+	public static int getDownloadSpeedLimit() {
+		try {
+			return Integer.valueOf(preferences_.getString("download_speed",  "0"));
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+	
+	/** Returns the upload speed limit. */
+	public static int getUploadSpeedLimit() {
+		try {
+			return Integer.valueOf(preferences_.getString("upload_speed",  "0"));
+		} catch (Exception e) {
+			return 0;
+		}
 	}
 }

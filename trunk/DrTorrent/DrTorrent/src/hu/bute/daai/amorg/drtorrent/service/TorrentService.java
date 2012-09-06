@@ -13,8 +13,13 @@ import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Tracker;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Vector;
@@ -40,7 +45,8 @@ import android.util.Log;
 public class TorrentService extends Service {
 	private final static String LOG_TAG           = "TorrentService";
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
-
+	private final static String STATE_FILE		  = "state.json";
+	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
 	public final static int MSG_STOP_TORRENT        	 = 103;
@@ -128,9 +134,10 @@ public class TorrentService extends Service {
 		
 		Preferences.set(context_);
 		
+		torrents_ = new Vector<TorrentListItem>();
 		torrentManager_ = new TorrentManager(this);
 		schedulerHandler.postDelayed(schedulerRunnable, 1000);
-		torrents_ = new Vector<TorrentListItem>();
+		
 	}
 
 	@Override
@@ -293,6 +300,55 @@ public class TorrentService extends Service {
 	private void shutDown() {
 		torrentManager_.shutDown();
 		stopSelf();
+	}
+	
+	/** Saves the manager's state. */
+	public void saveState(String state)  {
+		try {
+			FileOutputStream fos = openFileOutput(STATE_FILE, Context.MODE_PRIVATE);
+			fos.write(state.getBytes());
+			fos.close();
+		} catch (Exception e) {}
+	}
+	
+	/** Loads the manager's state. */
+	public String loadState() {
+		try {
+			FileInputStream fis = openFileInput(STATE_FILE);
+			StringBuffer buffer = new StringBuffer();
+			int ch;
+			while ((ch = fis.read()) != -1) {
+				buffer.append((char)ch);
+			}
+			return buffer.toString();
+		} catch (Exception e) {
+			Log.v(LOG_TAG, e.getMessage());
+			return null;
+		}
+		
+	}
+	
+	public void saveTorrentContent(String infoHash, byte[] content) {
+		try {
+			FileOutputStream fos = openFileOutput(infoHash + ".torrent", Context.MODE_PRIVATE);
+			fos.write(content);
+			fos.close();
+		} catch (Exception e) {}
+	}
+	
+	public byte[] loadTorrentContent(String infoHash) {
+		try {
+			FileInputStream fis = openFileInput(infoHash + ".torrent");
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			int ch;
+			while ((ch = fis.read()) != -1) {
+				baos.write(ch);
+			}
+			return baos.toByteArray();
+		} catch (Exception e) {
+			Log.v(LOG_TAG, "Error while loading saved torrent: " + infoHash);
+			return null;
+		}
 	}
 
 	/** Opens a torrent file with its given file path. */

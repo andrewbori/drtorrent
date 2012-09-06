@@ -119,19 +119,21 @@ public class Tracker {
 
                 BencodedDictionary bencodedPeer = (BencodedDictionary) value;
 
+                String peerId = null;
                 // peer id
                 value = bencodedPeer.entryValue("peer id");
                 if (value==null || (value.type() != Bencoded.BENCODED_STRING))
-                    continue;
-                String peerId = ((BencodedString) value).getStringValue();
-
-                Log.v(LOG_TAG, "Processing peer id: " + peerId);
-                if (peerId.length() != 20)
-                    continue;
-
-                // got back our own address
-                if (peerId.equals(TorrentManager.getPeerID()))
-                    continue;
+                {} else {
+	                peerId = ((BencodedString) value).getStringValue();
+	
+	                Log.v(LOG_TAG, "Processing peer id: " + peerId);
+	                if (peerId.length() != 20)
+	                    continue;
+	
+	                // got back our own address
+	                if (peerId.equals(TorrentManager.getPeerID()))
+	                    continue;
+                }
 
                 // ip
                 value = bencodedPeer.entryValue("ip");
@@ -143,7 +145,6 @@ public class Tracker {
                 value = bencodedPeer.entryValue("port");
                 if (value==null || (value.type() != Bencoded.BENCODED_INTEGER))
                     continue;
-
                 int port = (int) ((BencodedInteger) value).getValue();
 
                 Log.v(LOG_TAG, "Peer address: " + ip + ":" + port);                  
