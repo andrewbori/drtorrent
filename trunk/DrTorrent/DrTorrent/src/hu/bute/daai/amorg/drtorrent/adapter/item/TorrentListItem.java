@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
@@ -60,16 +60,16 @@ public class TorrentListItem implements Serializable {
 		this.status_ = torrent.getStatus();
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
-		this.size_ = DrTorrentTools.bytesToString(torrent.getActiveSize());
+		this.size_ = Tools.bytesToString(torrent.getActiveSize());
 		
-		this.downloaded_ = DrTorrentTools.bytesToString(torrent.getBytesDownloaded());
-		this.downloadSpeed_ = DrTorrentTools.bytesToString(torrent.getDownloadSpeed()).concat("/s");
+		this.downloaded_ = Tools.bytesToString(torrent.getBytesDownloaded());
+		this.downloadSpeed_ = Tools.bytesToString(torrent.getDownloadSpeed()).concat("/s");
 		
-		this.uploaded_ = DrTorrentTools.bytesToString(torrent.getBytesUploaded());
-		this.uploadSpeed_ = DrTorrentTools.bytesToString(torrent.getUploadSpeed()).concat("/s");
+		this.uploaded_ = Tools.bytesToString(torrent.getBytesUploaded());
+		this.uploadSpeed_ = Tools.bytesToString(torrent.getUploadSpeed()).concat("/s");
 		
-		this.remainingTime_ = DrTorrentTools.timeToString(torrent.getRemainingTime(), DrTorrentTools.MSEC, 2);
-		this.elapsedTime_ = DrTorrentTools.timeToString(torrent.getElapsedTime(), DrTorrentTools.MSEC, 2);
+		this.remainingTime_ = Tools.timeToString(torrent.getRemainingTime(), Tools.MSEC, 2);
+		this.elapsedTime_ = Tools.timeToString(torrent.getElapsedTime(), Tools.MSEC, 2);
 	}
 
 	public int getId() {

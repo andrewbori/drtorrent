@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.torrentengine.File;
 
@@ -30,7 +30,7 @@ public class FileListItem implements Serializable {
 		index_ = file.index();
 		path_ = file.getFullPath();
 		name_ = file.getRelativePath();
-		size_ = DrTorrentTools.bytesToString(file.getDownloadedSize()).concat("/").concat(DrTorrentTools.bytesToString(file.getSize()));
+		size_ = Tools.bytesToString(file.getDownloadedSize()).concat("/").concat(Tools.bytesToString(file.getSize()));
 		priority_ = file.getPriority();
 	}
 	

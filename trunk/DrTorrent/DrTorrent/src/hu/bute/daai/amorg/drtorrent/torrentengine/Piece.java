@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
 import java.io.ByteArrayOutputStream;
@@ -271,7 +271,7 @@ public class Piece {
 			
 			Log.v(LOG_TAG, SHA1.resultToString(hash_));
 			Log.v(LOG_TAG, SHA1.resultToString(hash));
-			if (DrTorrentTools.byteArrayEqual(hash_, hash)) return true;
+			if (Tools.byteArrayEqual(hash_, hash)) return true;
 		} catch (Exception e) {
 		} finally {
 			try {
