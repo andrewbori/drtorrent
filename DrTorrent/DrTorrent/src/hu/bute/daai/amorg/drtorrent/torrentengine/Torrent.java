@@ -1,8 +1,8 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
 import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedInteger;
@@ -13,7 +13,6 @@ import hu.bute.daai.amorg.drtorrent.file.FileManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Vector;
 
 import org.apache.http.util.ByteArrayBuffer;
@@ -22,7 +21,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.os.SystemClock;
-import android.provider.MediaStore.Files;
 import android.util.Log;
 
 /** Class representing a torrent. */
@@ -47,7 +45,6 @@ public class Torrent {
 
 	private int status_ = R.string.status_stopped;
 
-	private String announce_;
 	private String infoHash_;
 	private String infoHashString_;
 	private byte[] infoHashByteArray_;
@@ -97,10 +94,7 @@ public class Torrent {
 	private Vector<Peer> connectedPeers_;
 	private Vector<Peer> notConnectedPeers_;
 	private Vector<Peer> interestedPeers_;
-	private Vector<Vector<Tracker>> trackerList_;
 	private Vector<Tracker> trackers_;
-	private Vector<String> announceList_;
-	private int trackerRequestInterval;
 
 	private boolean isEndGame_ = false;
 
@@ -152,20 +146,13 @@ public class Torrent {
 		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING)
 			return ERROR_WRONG_CONTENT;
 
-		announce_ = ((BencodedString) tempBencoded).getStringValue();
-		/* tracker_ = new Tracker(announce_, this); */
-		// trackerList_ = new Vector<Vector<Tracker>>();
+		String announce = ((BencodedString) tempBencoded).getStringValue();
 		trackers_ = new Vector<Tracker>();
-		// Vector<Tracker> tempTrackers = new Vector<Tracker>();
-		// trackerList_.addElement(tempTrackers);
-		// tempTrackers.addElement(new Tracker(announce_, this));
-		trackers_.addElement(new Tracker(announce_, this));
+		addTracker(announce);
 
 		// announce-list
 		tempBencoded = torrent.entryValue("announce-list");
 		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_LIST) {
-			// announceList_ = new Vector<String>();
-			// trackerList_.removeAllElements();
 			trackers_.removeAllElements();
 
 			BencodedList parseAnnounceLists = (BencodedList) tempBencoded;
@@ -173,23 +160,15 @@ public class Torrent {
 				tempBencoded = parseAnnounceLists.item(i);
 				if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_LIST) {
 					BencodedList announces = (BencodedList) tempBencoded;
-					// tempTrackers = new Vector<Tracker>();
-					// trackerList_.addElement(tempTrackers);
 					for (int j = 0; j < announces.count(); j++) {
 						tempBencoded = announces.item(j);
 						if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING) {
-							String tempAnnounceURL = ((BencodedString) tempBencoded).getStringValue();
-							Log.v(LOG_TAG, tempAnnounceURL);
-							if (!tempAnnounceURL.startsWith("udp")) {
-								// announceList_.addElement(tempAnnounceURL);
-								// tempTrackers.addElement(new
-								// Tracker(tempAnnounceURL, this));
-								trackers_.addElement(new Tracker(tempAnnounceURL, this));
-							}
+							String announceURL = ((BencodedString) tempBencoded).getStringValue();
+							Log.v(LOG_TAG, announceURL);
+							addTracker(announceURL);
 						}
 					}
 					Log.v(LOG_TAG, "----------------------");
-					// VectorSorter.shuffle(tmp);
 				}
 			}
 		}
@@ -331,7 +310,7 @@ public class Torrent {
 			pieces_.addElement(piece);
 			downloadablePieces_.addElement(piece);
 		}
-		Log.v(LOG_TAG, "Pieces: " + pieceCount + " size: " + DrTorrentTools.bytesToString(pieceLength_));
+		Log.v(LOG_TAG, "Pieces: " + pieceCount + " size: " + Tools.bytesToString(pieceLength_));
 
 		bitfield_ = new Bitfield(pieces_.size(), false);
 		downloadingBitfield_ = new Bitfield(pieces_.size(), false);
@@ -926,6 +905,17 @@ public class Torrent {
 
 		return ERROR_NONE;
 	}
+	
+	/** Adds a new tracker to the list of the trackers. */
+	public void addTracker(String url) {
+		if (!hasTracker(url)) {
+			if (!url.startsWith("udp")) {
+				trackers_.addElement(new TrackerHttp(url, this));
+			} else {
+				trackers_.addElement(new TrackerUdp(url, this));
+			}
+		}
+	}
 
 	/** Adds an incoming peer to the array of (connected) peers. */
 	public void addIncomingPeer(Peer peer) {
@@ -933,15 +923,23 @@ public class Torrent {
 		connectedPeers_.addElement(peer);
 	}
 
-	/**
-	 * Returns whether there is a peer with the given IP and port in the list of
-	 * peers or not.
-	 */
+	/** Returns whether there is a peer with the given IP and port in the list of peers or not. */
 	public boolean hasPeer(String address, int port) {
 		Peer tempPeer;
 		for (int i = 0; i < peers_.size(); i++) {
 			tempPeer = peers_.elementAt(i);
 			if (tempPeer.getAddress().equals(address) && tempPeer.getPort() == port)
+				return true;
+		}
+		return false;
+	}
+	
+	/** Returns whether there is a tracker with the given URL in the list of trackers or not. */
+	public boolean hasTracker(String url) {
+		Tracker tracker;
+		for (int i = 0; i < trackers_.size(); i++) {
+			tracker = trackers_.elementAt(i);
+			if (tracker.getUrl().equals(url))
 				return true;
 		}
 		return false;

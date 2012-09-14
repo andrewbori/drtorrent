@@ -9,7 +9,7 @@
         android:id="@+id/list_item_tracker_tvUrl"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="http://tracker.bittorrent.com:80/announce" 
+        android:text="http://tracker.bittorrent.com/announce" 
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true" />
     
@@ -26,7 +26,7 @@
         android:id="@+id/list_item_tracker_tvPeers"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingLeft="2dp"
+        android:paddingLeft="4dp"
         android:text="(0/0)"
         android:layout_below="@+id/list_item_tracker_tvUrl"
         android:layout_toRightOf="@+id/list_item_tracker_tvStatus" />

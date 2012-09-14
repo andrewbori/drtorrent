@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
 
 import java.io.Serializable;
@@ -37,8 +37,8 @@ public class PeerListItem implements Serializable {
 		id_ = peer.getId();
 		address_ = peer.getAddressPort();
 		requests_ = peer.getRequestsCount() + "";
-		downloadSpeed_ = DrTorrentTools.bytesToString(peer.getDownloadSpeed()) + "/s";
-		downloaded_ = DrTorrentTools.bytesToString(peer.getDownloaded());
+		downloadSpeed_ = Tools.bytesToString(peer.getDownloadSpeed()) + "/s";
+		downloaded_ = Tools.bytesToString(peer.getDownloaded());
 		percent_ = peer.getPercent() + " %";
 	}
 	

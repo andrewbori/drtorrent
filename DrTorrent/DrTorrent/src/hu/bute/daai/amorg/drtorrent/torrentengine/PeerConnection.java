@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
 import java.io.ByteArrayOutputStream;
@@ -281,7 +281,7 @@ public class PeerConnection {
 							Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
 							// issueDownload();
 						} else {
-							int id = readByte();		// message ID
+							int id = readByte();				// message ID
 							switch (id) {
 								
 								case MESSAGE_ID_CHOKE:
@@ -351,17 +351,17 @@ public class PeerConnection {
 	
 	/** Reading message: handshake. */
 	private void readHandshakeMessage() throws InterruptedIOException, IOException, Exception {
-		int protLength = readByte(); 	// pstrlen
+		int protLength = readByte(); 					// pstrlen
 		if (protLength == -1) {
 			close(ERROR_INCREASE_ERROR_COUNTER, "Peer disconnected!");
 			return;
 		}
 
-		int handshakeLength = protLength + 48; // 49-1 because protLength has been read
+		int handshakeLength = protLength + 48; 			// 49-1 because protLength has been read
 		byte[] handshake = new byte[handshakeLength];
 		readData(handshake);
 
-		byte[] protocolId = new byte[protLength]; // pstr
+		byte[] protocolId = new byte[protLength]; 		// pstr
 		System.arraycopy(handshake, 0, protocolId, 0, protLength);
 
 		if (!MESSAGE_PROTOCOL_ID.equals(new String(protocolId))) {
@@ -373,7 +373,7 @@ public class PeerConnection {
 		System.arraycopy(handshake, 27, infoHash, 0, 20);
 
 		if (!isIncomingConnection_) {
-			if (!DrTorrentTools.byteArrayEqual(torrent_.getInfoHashByteArray(), infoHash)) {
+			if (!Tools.byteArrayEqual(torrent_.getInfoHashByteArray(), infoHash)) {
 				close(ERROR_DELETE_PEER, "Torrent infohash doesn't match!");
 				return;
 			}
@@ -592,8 +592,8 @@ public class PeerConnection {
             latestMessageSentTime_ = elapsedTime_;
 
             baos = new ByteArrayOutputStream();
-            baos.write(intToByteArray(1));	// len = 1
-            baos.write(MESSAGE_ID_CHOKE);	// id = 0
+            baos.write(Tools.int32ToByteArray(1));	// len = 1
+            baos.write(MESSAGE_ID_CHOKE);			// id = 0
             baos.flush();
 
             write(baos.toByteArray());
@@ -614,8 +614,8 @@ public class PeerConnection {
             latestMessageSentTime_ = elapsedTime_;
 
             baos = new ByteArrayOutputStream();
-            baos.write(intToByteArray(1));	// len = 1
-            baos.write(MESSAGE_ID_UNCHOKE);	// id = 1
+            baos.write(Tools.int32ToByteArray(1));	// len = 1
+            baos.write(MESSAGE_ID_UNCHOKE);			// id = 1
             baos.flush();
 
             write(baos.toByteArray());
@@ -637,8 +637,8 @@ public class PeerConnection {
 			latestMessageSentTime_ = elapsedTime_;
 
 			baos = new ByteArrayOutputStream();
-			baos.write(intToByteArray(1));		// len = 1
-			baos.write(MESSAGE_ID_INTERESTED);	// id = 2
+			baos.write(Tools.int32ToByteArray(1));	// len = 1
+			baos.write(MESSAGE_ID_INTERESTED);		// id = 2
 			baos.flush();
 
 			write(baos.toByteArray());
@@ -661,7 +661,7 @@ public class PeerConnection {
 			latestMessageSentTime_ = elapsedTime_;
 
 			baos = new ByteArrayOutputStream();
-			baos.write(intToByteArray(1));			// len = 1
+			baos.write(Tools.int32ToByteArray(1));	// len = 1
 			baos.write(MESSAGE_ID_NOT_INTERESTED);	// id = 3
 			baos.flush();
 
@@ -683,9 +683,9 @@ public class PeerConnection {
 			latestMessageSentTime_ = elapsedTime_;
 
 			baos = new ByteArrayOutputStream();
-			baos.write(intToByteArray(5));			// len = 5
-			baos.write(MESSAGE_ID_HAVE);			// id = 4
-			baos.write(intToByteArray(pieceIndex));	// piece index
+			baos.write(Tools.int32ToByteArray(5));			// len = 5
+			baos.write(MESSAGE_ID_HAVE);					// id = 4
+			baos.write(Tools.int32ToByteArray(pieceIndex));	// piece index
 			baos.flush();
 
 			write(baos.toByteArray());
@@ -708,9 +708,9 @@ public class PeerConnection {
             latestMessageSentTime_ = elapsedTime_;
 
             baos = new ByteArrayOutputStream();
-            baos.write(intToByteArray(1 + bitfield.length));	// len = 1 + X
-            baos.write(MESSAGE_ID_BITFIELD);					// id = 5
-            baos.write(bitfield);								// bitfield
+            baos.write(Tools.int32ToByteArray(1 + bitfield.length));	// len = 1 + X
+            baos.write(MESSAGE_ID_BITFIELD);							// id = 5
+            baos.write(bitfield);										// bitfield
             baos.flush();
 
             write(baos.toByteArray());
@@ -736,11 +736,11 @@ public class PeerConnection {
 				for (int i = 0; i < blocks.size(); i++) {
 					Block block = blocks.get(i);
 					block.setRequested();
-					baos.write(intToByteArray(13));							// len = 13
-					baos.write(MESSAGE_ID_REQUEST);							// id = 6
-					baos.write(intToByteArray(block.pieceIndex()));			// index: zero-based piece index 
-					baos.write(intToByteArray(block.begin()));				// begin: zero-based byte offset within the piece 
-					baos.write(intToByteArray(block.length()));				// length: requested length
+					baos.write(Tools.int32ToByteArray(13));						// len = 13
+					baos.write(MESSAGE_ID_REQUEST);								// id = 6
+					baos.write(Tools.int32ToByteArray(block.pieceIndex()));		// index: zero-based piece index 
+					baos.write(Tools.int32ToByteArray(block.begin()));			// begin: zero-based byte offset within the piece 
+					baos.write(Tools.int32ToByteArray(block.length()));			// length: requested length
 					
 					Log.v(LOG_TAG, "REQUEST sent: " + block.pieceIndex() + " - " + block.begin() + " (length: " + block.length() + ")");
 				}
@@ -782,11 +782,11 @@ public class PeerConnection {
 				latestMessageSentTime_ = elapsedTime_;
 				
 				baos = new ByteArrayOutputStream();
-				baos.write(intToByteArray(9 + block.length()));	// len = 9 + X
-				baos.write(MESSAGE_ID_PIECE);					// id = 7
-				baos.write(intToByteArray(block.pieceIndex()));	// index
-				baos.write(intToByteArray(block.begin()));		// begin
-				baos.write(blockBytes);							// block
+				baos.write(Tools.int32ToByteArray(9 + block.length()));	// len = 9 + X
+				baos.write(MESSAGE_ID_PIECE);							// id = 7
+				baos.write(Tools.int32ToByteArray(block.pieceIndex()));	// index
+				baos.write(Tools.int32ToByteArray(block.begin()));		// begin
+				baos.write(blockBytes);									// block
 				baos.flush();
 
 				write(baos.toByteArray());
@@ -812,11 +812,11 @@ public class PeerConnection {
 			latestMessageSentTime_ = elapsedTime_;
 			
 			baos = new ByteArrayOutputStream();
-			baos.write(intToByteArray(13));							// len = 13
-			baos.write(MESSAGE_ID_CANCEL);							// id = cancel
-			baos.write(intToByteArray(block.pieceIndex()));			// index
-			baos.write(intToByteArray(block.begin()));				// begin
-			baos.write(intToByteArray(block.length()));				// length
+			baos.write(Tools.int32ToByteArray(13));						// len = 13
+			baos.write(MESSAGE_ID_CANCEL);								// id = cancel
+			baos.write(Tools.int32ToByteArray(block.pieceIndex()));		// index
+			baos.write(Tools.int32ToByteArray(block.begin()));			// begin
+			baos.write(Tools.int32ToByteArray(block.length()));			// length
 			baos.flush();
 
 			write(baos.toByteArray());
@@ -871,24 +871,6 @@ public class PeerConnection {
 			} catch (Exception e) {}
 		}
 	}
-    
-    /** Converts an integer value to byte array (four byte big-endian value). */
-    public byte[] intToByteArray(int value) {
-        return new byte[] {
-	        (byte)(value >>> 24),
-	        (byte)(value >>> 16),
-	        (byte)(value >>> 8),
-	        (byte) value
-        };
-	}
-    
-    /** Converts a byte array (four byte big-endian value) to an integer value. */
-    public int byteArrayToInt(byte [] array) {
-        return (array[0] << 24) +
-              ((array[1] & 0xFF) << 16) +
-              ((array[2] & 0xFF) << 8) +
-               (array[3] & 0xFF);
-    }
 
     /** Sets our chocking state. */
 	public void setChoking(boolean choking) {

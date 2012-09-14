@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.coding.bencode;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -68,7 +68,7 @@ public class BencodedDictionary extends Bencoded {
 		for (int i = 0; i < entries_.size(); i++) {
 			BencodedDictionaryEntry current = (BencodedDictionaryEntry) entries_.elementAt(i);
 
-			if (DrTorrentTools.byteArrayEqual(current.getKey().getValue(), key)) {
+			if (Tools.byteArrayEqual(current.getKey().getValue(), key)) {
 				return current.getValue();
 			}
 		}

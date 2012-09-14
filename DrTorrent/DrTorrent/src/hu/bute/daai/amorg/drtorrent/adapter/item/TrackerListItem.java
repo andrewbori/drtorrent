@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.DrTorrentTools;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Tracker;
 
@@ -35,12 +35,12 @@ public class TrackerListItem implements Serializable  {
 				break;
 			case Tracker.STATUS_WORKING:
 				status_ = R.string.working; 
-				time_ = DrTorrentTools.timeToString(tracker.getRemainingTime(), DrTorrentTools.SEC, 2);
+				time_ = Tools.timeToString(tracker.getRemainingTime(), Tools.SEC, 2);
 				peers_ = "(" + tracker.getComplete() + "/" + tracker.getIncomplete() + ")";
 				break;
 			case Tracker.STATUS_FAILED:
 				status_ = R.string.failed;
-				time_ = DrTorrentTools.timeToString(tracker.getRemainingTime(), DrTorrentTools.SEC, 2);
+				time_ = Tools.timeToString(tracker.getRemainingTime(), Tools.SEC, 2);
 				peers_ = "";
 				break;
 			default:
