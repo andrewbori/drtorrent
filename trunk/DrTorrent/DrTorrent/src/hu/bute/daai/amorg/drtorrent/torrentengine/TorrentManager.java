@@ -10,7 +10,6 @@ import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
 import java.net.Socket;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
@@ -21,6 +20,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.net.Uri;
+import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -28,25 +28,26 @@ import android.util.Log;
 public class TorrentManager {
 	private final static String LOG_TAG = "TorrentManager";
 	
-	public static String DEFAULT_DOWNLOAD_PATH = "/sdcard/Downloads/";
+	public static String DEFAULT_DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getPath() + "/Downloads/";
 	
 	private TorrentService torrentService_;
 	private NetworkManager networkManager_;
 	private TorrentSchedulerThread torrentSchedulerThread_;
-	private boolean updateEnabled_;
-	private boolean schedulerEnabled_;
+	private boolean updateEnabled_ = false;
 	private Vector<Torrent> torrents_;
 	private Vector<Torrent> openingTorrents_;
 	
 	private static String peerId_;
 	private static int peerKey_;
 	
+	private boolean isSchedulerEnabled_ = true;
+	
 	/** Thread that schedules the torrents. */
 	class TorrentSchedulerThread extends Thread {
 		@Override
 		public void run() {
 			startUp();
-			while (schedulerEnabled_) {
+			while (isSchedulerEnabled_) {
 				if (updateEnabled_) {
 					Log.v(LOG_TAG, "Scheduling: " + SystemClock.elapsedRealtime());
 					Torrent torrent = null;
@@ -54,8 +55,8 @@ public class TorrentManager {
 						torrent = torrents_.elementAt(i);
 						if (torrent.isWorking()) {
 							torrent.onTimer();
-							updateTorrent(torrent);
 						}
+						updateTorrent(torrent);
 					}
 					updateEnabled_ = false;
 				}
@@ -68,7 +69,7 @@ public class TorrentManager {
 	
 	/** Updates the torrent: info, file list, bitfield, peer list, tracker list. */
 	public void updateTorrent(Torrent torrent) {
-		if (torrentService_.shouldUpdate(TorrentService.UPDATE_INFO)) torrentService_.updateTorrentItem(torrent);
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_SOMETING)) torrentService_.updateTorrentItem(torrent);
 		if (torrentService_.shouldUpdate(TorrentService.UPDATE_FILE_LIST)) torrentService_.updateFileList(torrent);
 		if (torrentService_.shouldUpdate(TorrentService.UPDATE_PEER_LIST)) torrentService_.updatePeerList(torrent);
 		if (torrentService_.shouldUpdate(TorrentService.UPDATE_TRACKER_LIST)) torrentService_.updateTrackerList(torrent);
@@ -87,13 +88,27 @@ public class TorrentManager {
 		openingTorrents_ = new Vector<Torrent>();
 		generatePeerId();
 		
-		schedulerEnabled_ = true;
-		updateEnabled_ = false;
+		networkManager_ = new NetworkManager(this);
 		torrentSchedulerThread_ = new TorrentSchedulerThread();
 		torrentSchedulerThread_.start();
-		
-		networkManager_ = new NetworkManager(this);
+		updateEnabled_ = false;
+	}
+	
+	/** Enables the Torrent Manager. */
+	public void enable() {
 		networkManager_.startListening();
+		
+		for (int i = 0; i < torrents_.size(); i++) {
+			Torrent torrent = torrents_.elementAt(i);
+			if (torrent.isWorking()) {
+				torrent.resume();
+			}
+		}
+	}
+	
+	/** Disables the Torrent Manager. */
+	public void disable() {
+		networkManager_.stopListening();
 	}
 	
 	/** Starts the torrent manager, loads its previously saved state. */
@@ -118,12 +133,11 @@ public class TorrentManager {
 			Log.v(LOG_TAG, infoHash);
 			openTorrent(infoHash, json);
 		}
-
 	}
 	
 	/** Shuts down the torrent manager, saves its current state. */
 	public void shutDown() {
-		schedulerEnabled_ = false;
+		isSchedulerEnabled_ = false;
 		networkManager_.stopListening();
 		
 		JSONArray jsonArray = new JSONArray();
@@ -142,13 +156,12 @@ public class TorrentManager {
 	public void addIncomingConnection(Socket socket) {
 		Peer peer = new Peer(socket, this);
 		peer.connect(socket);
-		//incomingPeers_.addElement(peer);
 	}
 	
 	/** Attaches a peer to a torrent. */
 	public boolean attachPeerToTorrent(String infoHash, Peer peer) {
 		Torrent torrent = getTorrent2(infoHash);
-		if (torrent != null) {
+		if (torrent != null && torrent.isConnected()) {
 			peer.setTorrent(torrent);
 			torrent.addIncomingPeer(peer);
 			return true;
@@ -327,7 +340,7 @@ public class TorrentManager {
 		return false;
 	}
 	
-	/** Returns whether the manager the given torrent already has. */
+	/** Returns a torrent by its ID. */
 	public Torrent getTorrent(int torrentId) {
 		Torrent torrent;
 		for (int i = 0; i < torrents_.size(); i++) {
@@ -339,7 +352,7 @@ public class TorrentManager {
 		return null;
 	}
 	
-	/** Returns whether the manager the given torrent already has. */
+	/** Returns a torrent by its info hash. */
 	public Torrent getTorrent(String infoHash) {
 		Torrent tempTorrent;
 		String tempInfoHash;
@@ -353,14 +366,14 @@ public class TorrentManager {
 		return null;
 	}
 	
-	/** Returns whether the manager the given torrent already has. */
-	public Torrent getTorrent2(String infoHash) {
+	/** Returns a torrent by its info hash string. */
+	public Torrent getTorrent2(String infoHashString) {
 		Torrent tempTorrent;
 		String tempInfoHash;
 		for (int i = 0; i < torrents_.size(); i++) {
 			tempTorrent = (Torrent) torrents_.elementAt(i);
 			tempInfoHash = tempTorrent.getInfoHashString();
-			if (tempInfoHash != null && tempInfoHash.equals(infoHash)) {
+			if (tempInfoHash != null && tempInfoHash.equals(infoHashString)) {
 				return tempTorrent;
 			}
 		}
@@ -412,7 +425,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR0001-";
+        peerId_ = "-DR0100-";
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }
@@ -421,9 +434,9 @@ public class TorrentManager {
         Log.v(LOG_TAG, "PeerKey: " + peerKey_);
 	}
 
-
+	/** Activates the scheduler thread to update the UI. */
 	public void update() {
 		updateEnabled_ = true;
-		torrentSchedulerThread_.interrupt();
+		if (torrentSchedulerThread_ != null) torrentSchedulerThread_.interrupt();
 	}
 }

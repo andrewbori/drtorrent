@@ -16,6 +16,7 @@ public class TorrentListItem implements Serializable {
 	private double percent_ = 0;
 	private int status_ = R.string.status_stopped;
 	private String size_ = "0 B";
+	private String ready_ = "0 B";
 	private String downloaded_ = "0 B";
 	private String downloadSpeed_ = "0 B/s";
 	private String uploaded_ = "0 B";
@@ -43,6 +44,7 @@ public class TorrentListItem implements Serializable {
 		this.percent_ = item.percent_;
 		this.status_ = item.status_;
 		this.size_ = item.size_;
+		this.ready_ = item.ready_;
 		this.downloaded_ = item.downloaded_;
 		this.downloadSpeed_ = item.downloadSpeed_;
 		this.uploaded_ = item.uploaded_;
@@ -61,6 +63,7 @@ public class TorrentListItem implements Serializable {
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
 		this.size_ = Tools.bytesToString(torrent.getActiveSize());
+		this.ready_ = Tools.bytesToString(torrent.getActiveDownloadedSize());
 		
 		this.downloaded_ = Tools.bytesToString(torrent.getBytesDownloaded());
 		this.downloadSpeed_ = Tools.bytesToString(torrent.getDownloadSpeed()).concat("/s");
@@ -96,6 +99,10 @@ public class TorrentListItem implements Serializable {
 		return size_;
 	}
 
+	public String getReady() {
+		return ready_;
+	}
+	
 	public String getDownloaded() {
 		return downloaded_;
 	}

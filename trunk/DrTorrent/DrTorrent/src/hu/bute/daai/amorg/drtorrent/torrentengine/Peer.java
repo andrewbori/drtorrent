@@ -36,6 +36,7 @@ public class Peer {
 	private long downloaded_ = 0;
 	private Speed downloadSpeed_ = null;
 	
+	private int tcpTimeoutCount_ = 0;
 	private long disconnectionTime_ = 0;
 	
 	public Peer(String address, int port, String peerId, int piecesCount) {
@@ -98,8 +99,8 @@ public class Peer {
 			/*if (getLatestBlocksCount() == 0 && (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty())) number = 1;
 			else number =  (getLatestBlocksCount()) / 4 + 2 - (blocksToDownload_.size() + blocksDownloading_.size());*/
 			if (getLatestBlocksCount() == 0 && (blocksDownloading_.isEmpty())) number = 3;
-			else number =  (int) (getBlockSpeed() * 1.5) - blocksDownloading_.size();
-			if (number < blocksDownloading_.size() * 0.1) return null;
+			else number =  (int) (getBlockSpeed() * 3.0) - blocksDownloading_.size();
+			if (number < blocksDownloading_.size() * 0.2) return null;
 			
 			ArrayList<Block> blocksToDownload = torrent_.getBlockToDownload(this, number);
 			/*for (int i = 0; i < blocksToDownload.size(); i++) {
@@ -269,8 +270,8 @@ public class Peer {
 	}
 	
 	/** Returns the block speed. */
-	public int getBlockSpeed() {
-		return (int) (getDownloadSpeed() / Piece.DEFALT_BLOCK_LENGTH);
+	public double getBlockSpeed() {
+		return (double) getDownloadSpeed() / (double) Piece.DEFALT_BLOCK_LENGTH;
 	}
 	
 	/** Returns the count of the latest downloaded blocks. */
@@ -333,5 +334,18 @@ public class Peer {
 			failedPieceCount_++;
 			if (failedPieceCount_ >= 5) connection_.close("POOR CONNECTION!!!");
 		}
+	}
+	
+	public void incTcpTimeoutCount() {
+		tcpTimeoutCount_++;
+	}
+	
+	public void resetTcpTimeoutCount() {
+		tcpTimeoutCount_ = 0;
+		disconnectionTime_ = 0;
+	}
+	
+	public int getTcpTimeoutCount() {
+		return tcpTimeoutCount_;
 	}
 }

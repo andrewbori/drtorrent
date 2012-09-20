@@ -52,6 +52,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	private TextView tvStatus_ = null;
 	private TextView tvPercent_ = null;
 	private TextView tvSize_ = null;
+	private TextView tvReady_ = null;
 	private ProgressBar progress_ = null;
 	private TextView tvDownSpeed_ = null;
 	private TextView tvUpSpeed_ = null;
@@ -115,6 +116,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	    			tvPercent_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvPercent);
 	    			progress_ = (ProgressBar) infoView_.findViewById(R.id.torrent_details_progress);
 	    			tvSize_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvSize);
+	    			tvReady_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvReady);
 	    			tvDownloaded_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloaded);
 	    			tvDownSpeed_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloadSpeed);
 	    			tvUploaded_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvUploaded);
@@ -235,6 +237,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 			progress_.setProgress((int) item.getPercent());
 			
 			tvSize_.setText(item.getSize());
+			tvReady_.setText(item.getReady());
 			tvDownloaded_.setText(item.getDownloaded());
 			tvDownSpeed_.setText(item.getDownloadSpeed());
 			tvUploaded_.setText(item.getUploaded());

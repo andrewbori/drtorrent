@@ -35,12 +35,12 @@ public class File {
     }
     
     /** Checks the hash of pieces that contain parts of the file. */
-    public void checkHash() {
+    public void checkHash(boolean shouldCheck) {
     	for (int i = begin_; i < torrent_.pieceCount(); i++) {
 			Piece piece = torrent_.getPiece(i);
 			if (piece.hasFile(this)) {
 				if (!piece.isHashChecked()) {
-					if (piece.checkHash()) {
+					if (shouldCheck && piece.checkHash()) {
 						torrent_.pieceDownloaded(piece, true);
 					}
 					torrent_.addCheckedBytes(piece.size());
@@ -79,7 +79,7 @@ public class File {
     }
     
     public void setPriority(int priority) {
-    	if (priority_ == PRIORITY_SKIP && priority > 0) checkHash();
+    	if (priority_ == PRIORITY_SKIP && priority > 0) checkHash(true);
     	priority_ = priority;
     	isChanged_ = true;
     }

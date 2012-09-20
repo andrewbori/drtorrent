@@ -6,6 +6,7 @@ import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import java.io.ByteArrayOutputStream;
 import java.util.Vector;
 
+import android.text.InputFilter.LengthFilter;
 import android.util.Log;
 
 /** This class represents a piece of a torrent. */
@@ -18,6 +19,7 @@ public class Piece {
 	private byte[] hash_;
 	private int index_;
 	private int size_;
+	private int downloaded_;
 	private Vector<FileFragment> fragments_;
 	private int priority_ = File.PRIORITY_NORMAL;
 	private int numberOfPeersHaveThis_ = 0;
@@ -44,6 +46,7 @@ public class Piece {
 		hash_ = hash;
 		index_ = index;
 		size_ = length;
+		downloaded_ = 0;
 		fragments_ = new Vector<FileFragment>();
 	}
 	
@@ -158,6 +161,7 @@ public class Piece {
 			if (!downloadedBlocks_.contains(block)) {
 				downloadedBlocks_.addElement(block);
 				torrent_.updateBytesDownloaded(data.length);
+				downloaded_ += data.length;
 			}
 
 			// If the piece is complete...
@@ -271,7 +275,10 @@ public class Piece {
 			
 			Log.v(LOG_TAG, SHA1.resultToString(hash_));
 			Log.v(LOG_TAG, SHA1.resultToString(hash));
-			if (Tools.byteArrayEqual(hash_, hash)) return true;
+			if (Tools.byteArrayEqual(hash_, hash)) {
+				downloaded_ = size_;
+				return true;
+			}
 		} catch (Exception e) {
 		} finally {
 			try {
@@ -281,6 +288,7 @@ public class Piece {
 			}
 		}
 		
+		downloaded_ = 0;
 		return false;
 	}
 
@@ -355,10 +363,12 @@ public class Piece {
 		return false;
 	}
 	
-	public void addFilesDownloadedBytes() {
+	public void addFilesDownloadedBytes(boolean isPositive) {
 		for (int j = 0; j < fragments_.size(); j++) {
 			FileFragment fragment = fragments_.get(j);
-			fragment.file().addDownloadedBytes(fragment.length());
+			
+			if (isPositive) fragment.file().addDownloadedBytes(fragment.length());
+			else 		    fragment.file().addDownloadedBytes(-fragment.length());
 		}
 	}
 	
@@ -387,6 +397,11 @@ public class Piece {
 		return size_;
 	}
 	
+	/** Returns the downloaded size. */
+	public int downloaded() {
+		return downloaded_;
+	}
+	
 	/** Returns whether the piece has been requested or not. */
 	public boolean isRequested() {
 		return isRequested_;
@@ -397,14 +412,16 @@ public class Piece {
 		return isComplete_;
 	}
 	
+	/** Sets the piece complete. */
+	public void setComplete() {
+		isComplete_ = true;
+		isHashChecked_ = true;
+		downloaded_ = size_;
+	}
+	
 	/** Returns whether the hash is already checked or not. */
 	public boolean isHashChecked() {
 		return isHashChecked_;
-	}
-	
-	/** Sets the hash of the piece checked. */
-	public void setHashChecked() {
-		isHashChecked_ = true;
 	}
 	
 	/** Adds a peer to the list of the peers that gave the blocks of this piece. */

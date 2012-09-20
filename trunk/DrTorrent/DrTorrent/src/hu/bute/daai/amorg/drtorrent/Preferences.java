@@ -19,6 +19,11 @@ public class Preferences {
 		return preferences_.getBoolean("streaming", false);
 	}
 	
+	/** Returns whether the download is enabled only over WiFi or not. */
+	public static boolean isOnlyWiFi() {
+		return preferences_.getBoolean("only_wifi", true);
+	}
+	
 	/** Returns the P2P port. */
 	public static int getPort() {
 		try {

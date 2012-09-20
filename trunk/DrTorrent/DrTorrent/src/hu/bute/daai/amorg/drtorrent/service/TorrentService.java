@@ -13,15 +13,10 @@ import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Tracker;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.Vector;
 
 import android.app.Notification;
@@ -30,6 +25,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -42,7 +38,7 @@ import android.os.RemoteException;
 import android.util.Log;
 
 /** Torrent service. */
-public class TorrentService extends Service {
+public class TorrentService extends Service implements NetworkStateListener {
 	private final static String LOG_TAG           = "TorrentService";
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
@@ -77,6 +73,7 @@ public class TorrentService extends Service {
 	public final static int UPDATE_BITFIELD     =  4;	// 0b00000100
 	public final static int UPDATE_PEER_LIST    =  8;	// 0b00001000
 	public final static int UPDATE_TRACKER_LIST = 16;	// 0b00010000
+	public final static int UPDATE_SOMETING 	= 31;	// 0b00011111
 	
 	public final static String MSG_KEY_FILEPATH         	= "a";
 	//public final static String MSG_KEY_TORRENT_INFOHASH	    = "b";
@@ -100,6 +97,7 @@ public class TorrentService extends Service {
 	private final Messenger serviceMessenger_ = new Messenger(new IncomingMessageHandler());
 
 	private TorrentManager torrentManager_;
+	private NetworkStateReceiver networkStateReceiver_;
 
 	private Messenger clientAll_;
 	private Messenger clientSingle_;
@@ -108,36 +106,24 @@ public class TorrentService extends Service {
 	private int clientSingleUpdateField_ = 0;
 
 	private Vector<TorrentListItem> torrents_; // only for sending message
+	
+	private boolean isWifiConnected_ = false;
+	private boolean isMobileNetConnected_ = false;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
 
 		context_ = getApplicationContext();
-		hasNetworkConnection();
-	
-		try {
-			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
-                NetworkInterface intf = en.nextElement();
-                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
-                    InetAddress inetAddress = enumIpAddr.nextElement();
-                    if (!inetAddress.isLoopbackAddress()) {
-                    	Log.v(LOG_TAG, inetAddress.getHostName() + ": " + inetAddress.getHostAddress());
-                    }
-                }
-            }
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		showNotification();
-		
 		Preferences.set(context_);
+		showNotification();
 		
 		torrents_ = new Vector<TorrentListItem>();
 		torrentManager_ = new TorrentManager(this);
 		schedulerHandler.postDelayed(schedulerRunnable, 1000);
-		
+		networkStateReceiver_ = new NetworkStateReceiver();
+		networkStateReceiver_.setOnNetworkStateListener(this);
+		registerReceiver(networkStateReceiver_, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 	}
 
 	@Override
@@ -153,6 +139,7 @@ public class TorrentService extends Service {
 
 	@Override
 	public void onDestroy() {
+		unregisterReceiver(networkStateReceiver_);
 		hideNotification();
 		
 		super.onDestroy();
@@ -784,32 +771,24 @@ public class TorrentService extends Service {
 			schedulerHandler.postDelayed(schedulerRunnable, 1000);
 		}
 	};
-	
-	public boolean hasNetworkConnection() {
-		boolean haveConnectedWifi = false;
-		boolean haveConnectedMobile = false;
 
-		ConnectivityManager cm = (ConnectivityManager) context_.getSystemService(Context.CONNECTIVITY_SERVICE);
-		NetworkInfo[] netInfo = cm.getAllNetworkInfo();
-		for (NetworkInfo ni : netInfo) {
-			if (ni.getTypeName().equalsIgnoreCase("WIFI")) {
-				if (ni.isConnected()) {
-					haveConnectedWifi = true;
-					Log.v("WIFI CONNECTION ", "AVAILABLE");
-				} else {
-					Log.v("WIFI CONNECTION ", "NOT AVAILABLE");
-				}
-			}
-			if (ni.getTypeName().equalsIgnoreCase("MOBILE")) {
-				if (ni.isConnected()) {
-					haveConnectedMobile = true;
-					Log.v("MOBILE INTERNET CONNECTION ", "AVAILABLE");
-				} else {
-					Log.v("MOBILE INTERNET CONNECTION ", "NOT AVAILABLE");
-				}
-			}
+	@Override
+	public void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
+		boolean oldState = isWifiConnected_ || isMobileNetConnected_;
+		
+		if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
+			isWifiConnected_ = !noConnectivity;
+			Log.v(LOG_TAG, "Has connection? WIFI CONNECTION " + !noConnectivity);
+		} else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
+			isMobileNetConnected_ = !noConnectivity;
+			Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION");
+		} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION " + !noConnectivity);
+		
+		boolean newState = isWifiConnected_ || isMobileNetConnected_;
+		if (oldState != newState) {
+			if (newState) torrentManager_.enable();
+			else torrentManager_.disable();
 		}
-		return haveConnectedWifi || haveConnectedMobile;
 	}
 
 	
