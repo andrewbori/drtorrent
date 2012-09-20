@@ -6,6 +6,12 @@
         android:defaultValue="false"
         android:summary="@string/preferences_streaming_sum"
         android:title="@string/preferences_streaming" />
+    
+    <CheckBoxPreference
+        android:key="wifi_only"
+        android:defaultValue="true"
+        android:summary="@string/only_wifi_sum"
+        android:title="@string/only_wifi" />
 
     <EditTextPreference
         android:key="port"

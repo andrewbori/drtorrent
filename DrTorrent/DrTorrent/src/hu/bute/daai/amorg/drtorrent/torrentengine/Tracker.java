@@ -113,6 +113,11 @@ public abstract class Tracker {
 		return lastRequest_;
 	}
 	
+	/** Resets the time of the last request. */
+	public void resetLastRequest() {
+		lastRequest_ = 0;
+	}
+	
 	/** Returns the remaining time (in seconds) until the next announce. */
 	public int getRemainingTime() {
 		return interval_ - (int) (SystemClock.elapsedRealtime() - lastRequest_) / 1000;

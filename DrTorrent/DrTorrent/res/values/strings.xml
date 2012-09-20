@@ -48,4 +48,7 @@
 	<string name="empty_field"></string>
 	<string name="preferences_download_speed">Download speed limit</string>
 	<string name="preferences_upload_speed">Upload speed limit</string>
+	<string name="only_wifi">Only WiFi</string>
+	<string name="only_wifi_sum">Download over WiFi only</string>
+	<string name="ready">Ready:</string>
 </resources>

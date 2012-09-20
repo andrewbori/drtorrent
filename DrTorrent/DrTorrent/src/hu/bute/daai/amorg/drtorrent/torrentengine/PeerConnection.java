@@ -72,8 +72,6 @@ public class PeerConnection {
 	private int latestRequestTime_ = 0;
 	private int latestMessageReceivedTime_ = 0;
 	private int latestMessageSentTime_ = 0;
-	private int reconnectAfter_;
-	public static int tcpConnectionTimeoutNum_ = 0;
 	
 	/** Creates a new instance of PeerConnection. */
 	public PeerConnection(Peer peer, Torrent torrent, boolean isIncomingConnection) {
@@ -112,20 +110,19 @@ public class PeerConnection {
 	public void onTimer() {
 		
 		calculateElapsedTime();
-		
-		if (reconnectAfter_ > 0) reconnectAfter_--;
 
 		switch (state_) {
 			
 			case STATE_TCP_CONNECTING:
 				if (elapsedTime_ > TIMEOUT_TCP_CONNECTION) {
-					tcpConnectionTimeoutNum_++;
+					peer_.incTcpTimeoutCount();
 					close(ERROR_INCREASE_ERROR_COUNTER, "Timeout while trying to connect.");
 				}
 				break;
 
 			case STATE_PW_HANDSHAKING:
 				if (elapsedTime_ > TIMEOUT_HANDSHAKE) {
+					//pwConnectionTimeoutCount_++;
 					close(ERROR_INCREASE_ERROR_COUNTER, "Handshake timeout (no data received).");
 				}
 				break;
@@ -135,6 +132,7 @@ public class PeerConnection {
 				
 				// Timeout: Because no messages have been received in the recent time
 				if ((elapsedTime_ - latestMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
+					//pwConnectionTimeoutCount_++;
 					close(ERROR_INCREASE_ERROR_COUNTER, "General timeout (no data received)");
 					break;
 				}
@@ -145,6 +143,7 @@ public class PeerConnection {
 					 peer_.setHadRequestTimeout(true);
 					 close(EIncreaseErrorCounter, "Request timeout"); break; }
 					 */
+					//pwConnectionTimeoutCount_++;
 					close(ERROR_INCREASE_ERROR_COUNTER, "Request timeout");
 					break;
 					
@@ -162,17 +161,6 @@ public class PeerConnection {
 				
 				if (peer_.getRequestsCount() == 0) {
 					issueDownload();
-				} else {
-					/*try {
-						if (blocksDownloading_.size() > 1) {
-							Block first = blocksDownloading_.firstElement();
-							if (first.getRequestDelay() > TIMEOUT_BLOCK) {
-								Block last = blocksDownloading_.lastElement();
-								cancelBlock(last);
-								torrent_.cancelBlock(last);
-							}
-						}
-					} catch(Exception e) {}*/
 				}
 
 				break;
@@ -993,6 +981,7 @@ public class PeerConnection {
 					} catch (IOException e1) {}
 					socket_ = null;
 				}
+				peer_.incTcpTimeoutCount();
 				close("Timeout: Failed to connect to " + destination_);
 			}
 			
@@ -1008,12 +997,14 @@ public class PeerConnection {
             inputStream_ = new DataInputStream(socket_.getInputStream());
             outputStream_ = new DataOutputStream(socket_.getOutputStream());
         } catch(IOException ex) {
+        	peer_.incTcpTimeoutCount();
             close(ERROR_INCREASE_ERROR_COUNTER, "Opening streams failed on: " + peer_.getAddress() + " | " + ex.getMessage());
             return;
         }
-
+        
         if (!isIncomingConnection_) sendHandshakeMessage();
         else changeState(STATE_PW_HANDSHAKING);
+        peer_.resetTcpTimeoutCount();
         
         read();
 	}
