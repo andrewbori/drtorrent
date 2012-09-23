@@ -525,8 +525,9 @@ public class Torrent {
 	
 	/** Resumes the torrent when network connection is established. */
 	public void resume() {
-		for (int i = 0; i < peers_.size(); i++) {
-			Peer peer = peers_.elementAt(i);
+		Log.v(LOG_TAG, "Resuming...");
+		for (int i = 0; i < notConnectedPeers_.size(); i++) {
+			Peer peer = notConnectedPeers_.elementAt(i);
 			peer.resetTcpTimeoutCount();
 		}
 		
@@ -1006,7 +1007,6 @@ public class Torrent {
 	public void updateBytesDownloaded(int bytes) {
 		if (bytes >= 0) {
 			downloadedSize_ += bytes;
-			latestBytesDownloaded_ += bytes;
 		}
 		
 		activeDownloadedSize_ += bytes;
@@ -1231,11 +1231,10 @@ public class Torrent {
 
 	/** Sets the count of leechers & seeds. */
 	public void setSeedsLeechers() {
-		Vector<Tracker> trackers = getTrackers();
 		int seeds = 0;
 		int leechers = 0;
-		for (int i = 0; i < trackers.size(); i++) {
-			Tracker tracker = trackers.elementAt(i);
+		for (int i = 0; i < trackers_.size(); i++) {
+			Tracker tracker = trackers_.elementAt(i);
 			if (tracker.getComplete() > seeds)
 				seeds = tracker.getComplete();
 			if (tracker.getIncomplete() > leechers)
@@ -1257,11 +1256,6 @@ public class Torrent {
 
 	/** Returns the array of the trackers of the torrent. */
 	public Vector<Tracker> getTrackers() {
-		/*
-		 * Vector<Tracker> trackers = new Vector<Tracker>();
-		 * trackers.add(tracker_); for (int i = 0; i < trackerList_.size(); i++)
-		 * { trackers.addAll(trackerList_.get(i)); }
-		 */
 		return trackers_;
 	}
 

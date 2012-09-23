@@ -4,7 +4,7 @@ import java.util.Vector;
 
 /** Class for download/upload speed measurement. */
 public class Speed {
-	public static int TIME_INTERVAL = 5;
+	public static int TIME_INTERVAL = 7;
 	
 	private Vector<Long> bytes_ = null;
 	private Vector<Long> seconds_ = null;
