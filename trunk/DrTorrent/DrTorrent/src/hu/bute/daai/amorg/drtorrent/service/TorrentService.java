@@ -73,10 +73,9 @@ public class TorrentService extends Service implements NetworkStateListener {
 	public final static int UPDATE_BITFIELD     =  4;	// 0b00000100
 	public final static int UPDATE_PEER_LIST    =  8;	// 0b00001000
 	public final static int UPDATE_TRACKER_LIST = 16;	// 0b00010000
-	public final static int UPDATE_SOMETING 	= 31;	// 0b00011111
+	public final static int UPDATE_SOMETHING 	= 31;	// 0b00011111
 	
 	public final static String MSG_KEY_FILEPATH         	= "a";
-	//public final static String MSG_KEY_TORRENT_INFOHASH	    = "b";
 	public final static String MSG_KEY_TORRENT_ID		    = "c";
 	public final static String MSG_KEY_TORRENT_UPDATE 		= "d";
 	public final static String MSG_KEY_TORRENT_ITEM     	= "e";
@@ -101,7 +100,6 @@ public class TorrentService extends Service implements NetworkStateListener {
 
 	private Messenger clientAll_;
 	private Messenger clientSingle_;
-	//private String clientSingleInfoHash_;
 	private int clientSingleTorrentId_ = -1;
 	private int clientSingleUpdateField_ = 0;
 
@@ -128,7 +126,6 @@ public class TorrentService extends Service implements NetworkStateListener {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		// TODO Auto-generated method stub
 		return super.onStartCommand(intent, flags, startId);
 	}
 
@@ -289,7 +286,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		stopSelf();
 	}
 	
-	/** Saves the manager's state. */
+	/** Saves the state of the manager. */
 	public void saveState(String state)  {
 		try {
 			FileOutputStream fos = openFileOutput(STATE_FILE, Context.MODE_PRIVATE);
@@ -298,7 +295,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		} catch (Exception e) {}
 	}
 	
-	/** Loads the manager's state. */
+	/** Loads the saved state of the manager. */
 	public String loadState() {
 		try {
 			FileInputStream fis = openFileInput(STATE_FILE);
@@ -315,6 +312,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		
 	}
 	
+	/** Saves the content of a torrent file. */
 	public void saveTorrentContent(String infoHash, byte[] content) {
 		try {
 			FileOutputStream fos = openFileOutput(infoHash + ".torrent", Context.MODE_PRIVATE);
@@ -323,6 +321,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		} catch (Exception e) {}
 	}
 	
+	/** Loads the content of a torrent file. */
 	public byte[] loadTorrentContent(String infoHash) {
 		try {
 			FileInputStream fis = openFileInput(infoHash + ".torrent");
@@ -358,6 +357,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		torrentManager_.closeTorrent(torrentId);
 	}
 	
+	/** Shows the torrent's settings dialog. */
 	public void showTorrentSettings(Torrent torrent) {
 		if (clientAll_ != null) {
 			Message msg = Message.obtain();
@@ -378,7 +378,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Torrent changed */
+	/** Torrent changed. */
 	public void updateTorrentItem(Torrent torrent) {
 		int torrentId = torrent.getId();
 		
@@ -414,7 +414,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		sendMessage(msg, torrentId);
 	}
 	
-	/** Torrent deleted */
+	/** Torrent deleted. */
 	public void removeTorrentItem(Torrent torrent) {
 		int torrentId = torrent.getId();	
 
@@ -560,20 +560,21 @@ public class TorrentService extends Service implements NetworkStateListener {
 		sendMessage(msg, -1);
 	}
 	
-	/** Returns true if the given field should be updated. <br>
+	/** Returns whether the given field should be updated or not. <br>
 	 * <br>
 	 *  MSG_UPDATE_INFO		    =  1;	// 0b00000001 <br>
 	 *  MSG_UPDATE_FILE_LIST    =  2;	// 0b00000010 <br>
 	 *	MSG_UPDATE_BITFIELD     =  4;	// 0b00000100 <br>
 	 *	MSG_UPDATE_PEER_LIST    =  8;	// 0b00001000 <br>
 	 *	MSG_UPDATE_TRACKER_LIST = 16;	// 0b00010000 <br>
+	 *	MSG_UPDATE_SOMETHING	= 31;	// 0b00011111 <br>
 	 * 
 	 */
 	public boolean shouldUpdate(int updateField) {
-		return (updateField == UPDATE_INFO && clientAll_ != null) || ((clientSingleUpdateField_ & updateField) != 0);
+		return (updateField == UPDATE_SOMETHING && clientAll_ != null) || ((clientSingleUpdateField_ & updateField) != 0);
 	}
 
-	/** Sends an optional torrent to a client. */
+	/** Sends a torrent to the subscribed client. */
 	private void sendTorrentItem(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -597,7 +598,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Sends an optional torrent's peer list to a client. */
+	/** Sends the peer list to the subscribed client. */
 	private void sendPeerList(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -620,7 +621,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Sends an optional torrent's file list to a client. */
+	/** Sends the file list to the subscribed client. */
 	private void sendFileList(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -643,7 +644,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Sends an optional torrent's tracker list to a client. */
+	/** Sends the tracker list to the subscribed client. */
 	private void sendTrackerList(Messenger messenger, int torrentId) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -665,7 +666,8 @@ public class TorrentService extends Service implements NetworkStateListener {
 			Log.v(LOG_TAG, LOG_ERROR_SENDING);
 		}
 	}
-	/** Sends the actual torrent list to a client. */
+	
+	/** Sends the actual torrent list to the subscribed client. */
 	private void sendTorrentList(Messenger messenger) {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
@@ -680,7 +682,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	// Sends a message to the subscribed client
+	/** Sends a message to the subscribed client. */
 	private void sendMessage(Message msg, int torrentId) {
 		Messenger messenger = null;
 		if (clientAll_ != null) {
@@ -698,7 +700,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Thread class for open and read a torrent file */
+	/** Thread for opening and reading a torrent file. */
 	private class OpenTorrentThread extends Thread {
 
 		private Uri torrentUri_;
@@ -715,7 +717,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Thread class for set the settings of the torrent (download path, files to download etc.). */
+	/** Thread for setting a torrent (download path, files to download etc.). */
 	private class SetTorrentThread extends Thread {
 
 		private TorrentListItem item_;
@@ -732,7 +734,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	/** Thread class for open and read a torrent file */
+	/** Thread for starting a torrent. */
 	private class StartTorrentThread extends Thread {
 
 		private int torrentId_;
@@ -747,6 +749,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
+	/** Thread for changing the priority of a file. */
 	private class ChangeFilePriorityThread extends Thread {
 		private int torrentId_;
 		private FileListItem item_;
@@ -772,6 +775,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	};
 
+	/** Called when the network state changes. */
 	@Override
 	public void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
 		boolean oldState = isWifiConnected_ || isMobileNetConnected_;
@@ -790,6 +794,4 @@ public class TorrentService extends Service implements NetworkStateListener {
 			else torrentManager_.disable();
 		}
 	}
-
-	
 }

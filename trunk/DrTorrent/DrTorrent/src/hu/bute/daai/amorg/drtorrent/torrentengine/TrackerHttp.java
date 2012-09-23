@@ -12,7 +12,7 @@ import hu.bute.daai.amorg.drtorrent.network.UrlEncoder;
 import android.util.Log;
 
 public class TrackerHttp extends Tracker {
-	private static final String LOG_TAG = "TrackerTcp";
+	private static final String LOG_TAG = "TrackerHttp";
 	
 	/** Constructor of the tracker with its URL and running torrent. */
 	public TrackerHttp(String url, Torrent torrent) {

@@ -69,7 +69,7 @@ public class TorrentManager {
 	
 	/** Updates the torrent: info, file list, bitfield, peer list, tracker list. */
 	public void updateTorrent(Torrent torrent) {
-		if (torrentService_.shouldUpdate(TorrentService.UPDATE_SOMETING)) torrentService_.updateTorrentItem(torrent);
+		if (torrentService_.shouldUpdate(TorrentService.UPDATE_SOMETHING)) torrentService_.updateTorrentItem(torrent);
 		if (torrentService_.shouldUpdate(TorrentService.UPDATE_FILE_LIST)) torrentService_.updateFileList(torrent);
 		if (torrentService_.shouldUpdate(TorrentService.UPDATE_PEER_LIST)) torrentService_.updatePeerList(torrent);
 		if (torrentService_.shouldUpdate(TorrentService.UPDATE_TRACKER_LIST)) torrentService_.updateTrackerList(torrent);
