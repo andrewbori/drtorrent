@@ -51,4 +51,11 @@
 	<string name="only_wifi">Only WiFi</string>
 	<string name="only_wifi_sum">Download over WiFi only</string>
 	<string name="ready">Ready:</string>
+	<string name="start">Start</string>
+	<string name="stop">Stop</string>
+	<string name="remove">Remove</string>
+	<string name="remove_dialog_title">Do you really want to remove it?</string>
+	<string name="yes">Yes</string>
+	<string name="no">No</string>
+	<string name="exit_dialog_title">Do you really want to exit?</string>
 </resources>

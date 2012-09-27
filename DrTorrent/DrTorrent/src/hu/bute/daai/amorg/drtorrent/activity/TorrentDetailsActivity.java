@@ -11,6 +11,8 @@ import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
 import java.util.ArrayList;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Message;
@@ -103,7 +105,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	public boolean onMenuItemSelected(int featureId, MenuItem item) {
 		super.onMenuItemSelected(featureId, item);
 		
-		Message msg = Message.obtain();
+		final Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 		msg.setData(bundle);
@@ -124,13 +126,30 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				break;
 				
 			case MENU_DELETE_TORRENT:
-				msg.what = TorrentService.MSG_CLOSE_TORRENT;
-				try {
-					serviceMessenger_.send(msg);
-				} catch (RemoteException e) {}
-				Intent intent = new Intent(this, DrTorrentActivity.class);
-	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-	            startActivity(intent);	            
+				
+				
+				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+				builder.setMessage(getString(R.string.remove_dialog_title)).
+				setPositiveButton(getString(R.string.yes), new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						msg.what = TorrentService.MSG_CLOSE_TORRENT;
+						try {
+							serviceMessenger_.send(msg);
+						} catch (RemoteException e) {}
+						Intent intent = new Intent(context_, DrTorrentActivity.class);
+			            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+			            startActivity(intent);
+					}
+				}).
+				setNegativeButton(getString(R.string.no), new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.cancel();
+					}
+				}).
+				create().show();
+            
 				break;
 		}
 		return true;

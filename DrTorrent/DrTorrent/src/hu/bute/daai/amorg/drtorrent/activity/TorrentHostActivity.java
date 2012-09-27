@@ -42,7 +42,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int RESULT_FILEBROWSER_ACTIVITY = 201;
 	protected static final int RESULT_TORRENT_SETTINGS     = 202;
 	
-	protected Activity activity_ = this;
+	protected Activity context_ = this;
 	protected int torrentId_ = -1;
 	
 	protected Messenger serviceMessenger_ = null;
@@ -64,10 +64,10 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 			torrentId_ = extras.getInt(KEY_TORRENT_ID, -1);
 		}
 		
-		Intent i = new Intent(activity_, TorrentService.class);
+		Intent i = new Intent(context_, TorrentService.class);
 		startService(i);
 
-		AlertDialog.Builder builder = new AlertDialog.Builder(activity_);
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 		builder.setCancelable(false)
 		       .setPositiveButton("OK", new DialogInterface.OnClickListener() {
 		           public void onClick(DialogInterface dialog, int id) {
@@ -76,7 +76,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 		       });
 		dialog_ = builder.create();
 
-		progressDialog_ = new ProgressDialog(activity_);
+		progressDialog_ = new ProgressDialog(context_);
 	}
 
 	@Override
@@ -159,7 +159,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 			switch (msg.what) {
 				case TorrentService.MSG_SHOW_TOAST:
 					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
-					Toast.makeText(activity_, message, Toast.LENGTH_SHORT).show();
+					Toast.makeText(context_, message, Toast.LENGTH_SHORT).show();
 					break;
 					
 				case TorrentService.MSG_SHOW_DIALOG:

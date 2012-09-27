@@ -10,14 +10,18 @@ import java.io.File;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
@@ -45,10 +49,74 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				TorrentListItem item = adapter_.getItem(position);
 				int torrentId = item.getId();
 				
-				Intent intent = new Intent(activity_, TorrentDetailsActivity.class);
+				Intent intent = new Intent(context_, TorrentDetailsActivity.class);
 				intent.putExtra(KEY_TORRENT_ID, torrentId);
 				startActivity(intent);
 			}
+		});
+		
+		lvTorrent_.setOnItemLongClickListener(new OnItemLongClickListener() {
+			@Override
+			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+				final TorrentListItem torrent = torrents_.get(position);
+				
+				CharSequence[] items = null;
+				if (torrent.getStatus() == R.string.status_stopped) {
+					items = new CharSequence[] { getString(R.string.start), getString(R.string.remove) };
+				} else {
+					items = new CharSequence[] { getString(R.string.stop), getString(R.string.remove) };
+				}
+				
+				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+				builder.setTitle(torrent.getName()).
+				setItems(items, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						final Message msg = Message.obtain();
+						Bundle bundle = new Bundle();
+						bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrent.getId());
+						msg.setData(bundle);
+						
+						switch (which) {
+							case 0:
+								if (torrent.getStatus() == R.string.status_stopped) msg.what = TorrentService.MSG_START_TORRENT;
+								else msg.what = TorrentService.MSG_STOP_TORRENT;
+								try {
+									serviceMessenger_.send(msg);
+								} catch (RemoteException e) {}
+								break;
+								
+							case 1:
+								AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+								builder.setTitle(torrent.getName()).
+								setMessage(getString(R.string.remove_dialog_title)).
+								setPositiveButton(getString(R.string.yes), new DialogInterface.OnClickListener() {
+									@Override
+									public void onClick(DialogInterface dialog, int which) {
+										msg.what = TorrentService.MSG_CLOSE_TORRENT;
+										try {
+											serviceMessenger_.send(msg);
+										} catch (RemoteException e) {}
+									}
+								}).
+								setNegativeButton(getString(R.string.no), new DialogInterface.OnClickListener() {
+									@Override
+									public void onClick(DialogInterface dialog, int which) {
+										dialog.cancel();
+									}
+								}).
+								create().show();
+								
+								break;
+						}
+						
+					}
+				}).
+				create().show();
+				
+				return true;
+			}
+			
 		});
 	}
 
@@ -125,12 +193,26 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	
 	/** Shuts down the application. */
 	protected void shutDown() {
-		Message msg = Message.obtain();
-		msg.what = TorrentService.MSG_SHUT_DOWN;
-		try {
-			serviceMessenger_.send(msg);
-		} catch (Exception e) {}
-		finish();
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+		builder.setMessage(getString(R.string.exit_dialog_title)).
+		setPositiveButton(getString(R.string.yes), new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				Message msg = Message.obtain();
+				msg.what = TorrentService.MSG_SHUT_DOWN;
+				try {
+					serviceMessenger_.send(msg);
+				} catch (Exception e) {}
+				finish();
+			}
+		}).
+		setNegativeButton(getString(R.string.no), new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
+			}
+		}).
+		create().show();
 	}
 
 	@Override
