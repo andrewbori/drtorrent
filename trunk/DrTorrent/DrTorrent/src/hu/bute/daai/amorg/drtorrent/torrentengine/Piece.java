@@ -6,7 +6,6 @@ import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import java.io.ByteArrayOutputStream;
 import java.util.Vector;
 
-import android.text.InputFilter.LengthFilter;
 import android.util.Log;
 
 /** This class represents a piece of a torrent. */

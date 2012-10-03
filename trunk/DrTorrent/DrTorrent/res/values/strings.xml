@@ -58,4 +58,11 @@
 	<string name="yes">Yes</string>
 	<string name="no">No</string>
 	<string name="exit_dialog_title">Do you really want to exit?</string>
+	<string name="menu_add_tracker">Add tracker</string>
+	<string name="ok">Ok</string>
+	<string name="cancel">Cancel</string>
+	<string name="tracker_remove_message">Do you want to remove this tracker?</string>
+	<string name="menu_add_peer">Add peer</string>
+	<string name="ip_address">IP address:</string>
+	<string name="port">Port:</string>
 </resources>

@@ -15,6 +15,9 @@ import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Vector;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.http.util.ByteArrayBuffer;
 import org.json.JSONArray;
@@ -23,6 +26,7 @@ import org.json.JSONObject;
 
 import android.os.SystemClock;
 import android.util.Log;
+import android.webkit.URLUtil;
 
 /** Class representing a torrent. */
 public class Torrent {
@@ -93,6 +97,8 @@ public class Torrent {
 	private Vector<Tracker> trackers_;
 
 	private boolean isEndGame_ = false;
+	
+	private ThreadPoolExecutor peerTPE_ = null;
 
 	/** Constructor with the manager and the torrent file as a parameter. */
 	public Torrent(TorrentManager torrentManager, String filePath, String downloadPath) {
@@ -137,14 +143,13 @@ public class Torrent {
 		BencodedDictionary torrent = (BencodedDictionary) torrentBencoded;
 		Bencoded tempBencoded = null;
 
+		trackers_ = new Vector<Tracker>();
 		// announce
 		tempBencoded = torrent.entryValue("announce");
-		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING)
-			return ERROR_WRONG_CONTENT;
-
-		String announce = ((BencodedString) tempBencoded).getStringValue();
-		trackers_ = new Vector<Tracker>();
-		addTracker(announce);
+		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING) {
+			String announce = ((BencodedString) tempBencoded).getStringValue();
+			addTracker(announce);
+		}
 
 		// announce-list
 		tempBencoded = torrent.entryValue("announce-list");
@@ -501,6 +506,14 @@ public class Torrent {
 
 			lastOptimisticUnchokingTime_ = lastUnchokingTime_ = 0;
 
+			peerTPE_ = new ThreadPoolExecutor(
+					Preferences.getMaxConnectedPeers(), Preferences.getMaxConnectedPeers(),
+					10, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(5)
+			);
+			/*blockTPE_ = new ThreadPoolExecutor(
+					20, 100, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20)
+			);*/
+			
 			notConnectedPeers_ = new Vector<Peer>();
 
 			for (int i = 0; i < peers_.size(); i++) {
@@ -556,6 +569,9 @@ public class Torrent {
 			connectedPeers_ = new Vector<Peer>();
 			notConnectedPeers_ = new Vector<Peer>();
 			interestedPeers_ = new Vector<Peer>();
+			
+			peerTPE_.shutdown();
+			peerTPE_ = null;
 		}
 		lastTime_ = 0;
 		status_ = R.string.status_stopped;
@@ -624,7 +640,8 @@ public class Torrent {
 							connectedPeers_.addElement(peer);
 							notConnectedPeers_.removeElement(peer);
 							i--;
-							peer.connect(this);
+							Runnable command = peer.connect(this);
+							peerTPE_.execute(command);
 						}
 					}
 				}
@@ -930,14 +947,29 @@ public class Torrent {
 	/** Adds a new tracker to the list of the trackers. */
 	public void addTracker(String url) {
 		if (!hasTracker(url)) {
-			if (!url.startsWith("udp")) {
-				trackers_.addElement(new TrackerHttp(url, this));
-			} else {
-				trackers_.addElement(new TrackerUdp(url, this));
+			if (url.startsWith("http://")) {
+				if (URLUtil.isValidUrl(url)) {
+					trackers_.addElement(new TrackerHttp(url, this));
+				}
+			} else if (url.startsWith("udp://")) {
+				if (URLUtil.isValidUrl("http" + url.substring(3))) {
+					trackers_.addElement(new TrackerUdp(url, this));
+				}
 			}
 		}
 	}
 
+	/** Removes the given tracker from the tracker list. */
+	public void removeTracker(int trackerId) {
+		for (int i = 0; i < trackers_.size(); i++) {
+			Tracker tracker = trackers_.elementAt(i);
+			if (tracker.getId() == trackerId) {
+				trackers_.removeElement(tracker);
+				return;
+			}
+		}
+	}
+	
 	/** Adds an incoming peer to the array of (connected) peers. */
 	public void addIncomingPeer(Peer peer) {
 		peers_.addElement(peer);
@@ -1285,7 +1317,7 @@ public class Torrent {
 		downloadingBitfield_.setChanged(isChanged);
 	}
 
-	/** Returns information of the downloading progress in JSON. */
+	/** Returns information of the torrent in JSON. */
 	public JSONObject getJSON() {
 		JSONObject json = new JSONObject();
 
@@ -1310,6 +1342,12 @@ public class Torrent {
 			json.put("Uploaded", uploadedSize_);
 			json.put("Downloaded", downloadedSize_);
 			json.put("IsFirstStart", isFirstStart_);
+			
+			JSONArray trackers = new JSONArray();
+			for (Tracker tracker : trackers_) {
+				trackers.put(tracker.getUrl());
+			}
+			json.put("Trackers", trackers);
 		} catch (JSONException e) {
 			Log.v(LOG_TAG, e.getMessage());
 		}
@@ -1317,6 +1355,7 @@ public class Torrent {
 		return json;
 	}
 	
+	/** Sets the torrent from JSON. */
 	public boolean setJSON(JSONObject json) {
 		try {
 			JSONArray filePriorities = json.getJSONArray("FilePriorities");
@@ -1325,7 +1364,6 @@ public class Torrent {
 					files_.get(i).setPriority(filePriorities.getInt(i));
 				}
 			}
-			
 			setTorrentActivePieces();
 			
 			JSONArray bitfield = json.getJSONArray("Bitfield");
@@ -1349,6 +1387,14 @@ public class Torrent {
 			uploadedSize_ = json.getLong("Uploaded");
 			isFirstStart_ = json.getBoolean("IsFirstStart");
 			status_ = json.getInt("Status");
+			
+			JSONArray trackers = json.getJSONArray("Trackers");
+			trackers_ = new Vector<Tracker>();
+			for (int i = 0; i < trackers.length(); i++) {
+				String trackerUrl = trackers.getString(i);
+				addTracker(trackerUrl);
+			}
+			
 		} catch (JSONException e) {
 			Log.v(LOG_TAG, e.getMessage());
 			return false;

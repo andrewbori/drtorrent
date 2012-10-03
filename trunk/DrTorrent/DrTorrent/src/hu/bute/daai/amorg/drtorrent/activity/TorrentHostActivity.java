@@ -36,6 +36,8 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int MENU_START_TORRENT  = 102;
 	protected static final int MENU_STOP_TORRENT   = 103;
 	protected static final int MENU_DELETE_TORRENT = 104;
+	protected static final int MENU_ADD_TRACKER    = 105;
+	protected static final int MENU_ADD_PEER 	   = 106;
 	protected static final int MENU_SETTINGS       = 111;
 	protected static final int MENU_SHUT_DOWN      = 112;
 	
