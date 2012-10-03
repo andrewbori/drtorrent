@@ -25,12 +25,13 @@ public class HttpConnection {
 	
 	/** Executes the GET request and returns the response as a byte array. */
 	public byte[] execute() {
-		HttpClient client = new DefaultHttpClient();
-		HttpGet get = new HttpGet(url_);
 		InputStream is = null;
 		ByteArrayOutputStream baos = null;
 		
 		try {
+			HttpClient client = new DefaultHttpClient();
+			HttpGet get = new HttpGet(url_);
+			
 			Log.v(LOG_TAG, "Connecting to: " + url_);
 			HttpResponse response = client.execute(get);
 			Log.v(LOG_TAG, "Reading the respone from: " + url_);
@@ -53,8 +54,12 @@ public class HttpConnection {
 
 		} catch (IOException e) {
 			message_ = e.getMessage();
-			Log.v(LOG_TAG, "Exception: " + message_);
+			Log.v(LOG_TAG, "IOException: " + message_);
 			return null;
+		} catch (Exception e) {
+			message_ = e.getMessage();
+			Log.v(LOG_TAG, "Exception: " + message_);
+			return null;	
 		} finally {
 			try {
 				if (is != null) is.close();

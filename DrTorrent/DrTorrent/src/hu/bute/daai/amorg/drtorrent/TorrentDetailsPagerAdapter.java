@@ -129,6 +129,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 				v = infoView_;
 	    		if (torrent_ != null) refreshTorrentItem(torrent_, false);
 				break;
+				
 			case 1:
 				if (filesView_ == null) {
 					filesView_ = inflater.inflate(R.layout.list, null);
@@ -187,9 +188,11 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 				// if (files_ != null) refreshFileList(files_);
     			
 				break;
+				
 			case 2:
 				v = piecesView_;
 				break;
+				
 			case 3:
 				if (peersView_ == null) {
 					peersView_ = inflater.inflate(R.layout.list, null);
@@ -202,18 +205,47 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 				// if (peers_ != null) refreshPeerList(peers_);
 				
 				break;
+				
 			case 4:
 				if (trackersView_ == null) {
 					trackersView_ = inflater.inflate(R.layout.list, null);
 					
 					lvTrackers_ = (ListView) trackersView_.findViewById(R.id.list_listview);
 					lvTrackers_.setAdapter(trackersAdapter_);
+					lvTrackers_.setOnItemLongClickListener(new OnItemLongClickListener() {
+						@Override
+						public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+							final TrackerListItem item = trackersAdapter_.getItem(position);
+							
+							AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+							builder.setTitle(item.getAddress()).
+							setMessage(R.string.tracker_remove_message).
+							setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									((TorrentDetailsActivity) context_).removeTracker(item.getId());
+									trackersAdapter_.remove(item);
+									dialog.cancel();
+								}
+							}).
+							setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {	
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									dialog.cancel();
+								}
+							}).
+							create().show();
+							
+							return true;
+						}
+					});
 				}
 				
 				v = trackersView_;
 				// if (trackers_ != null) refreshTrackerList(trackers_);
 				
 				break;
+				
 			default:
 		}
 

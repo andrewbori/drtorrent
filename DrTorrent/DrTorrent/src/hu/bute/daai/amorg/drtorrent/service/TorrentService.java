@@ -47,6 +47,10 @@ public class TorrentService extends Service implements NetworkStateListener {
 	public final static int MSG_START_TORRENT       	 = 102;
 	public final static int MSG_STOP_TORRENT        	 = 103;
 	public final static int MSG_CLOSE_TORRENT       	 = 104;
+	public final static int MSG_ADD_TRACKER 				 = 105;
+	public final static int MSG_REMOVE_TACKER 			 = 106;
+	public final static int MSG_ADD_PEER 				 = 107;
+	public final static int MSG_REMOVE_PEER 			 = 108;
 	public final static int MSG_SUBSCRIBE_CLIENT    	 = 201;
 	public final static int MSG_UNSUBSCRIBE_CLIENT  	 = 202;
 	public final static int MSG_UPDATE_TORRENT			 = 203;
@@ -90,6 +94,10 @@ public class TorrentService extends Service implements NetworkStateListener {
 	public final static String MSG_KEY_TRACKER_LIST     	= "n";
 	public final static String MSG_KEY_MESSAGE 				= "o";
 	public final static String MSG_KEY_IS_DISCONNECTED		= "p";
+	public final static String MSG_KEY_TRACKER_URL			= "q";
+	public final static String MSG_KEY_TRACKER_ID			= "r";
+	public final static String MSG_KEY_PEER_IP				= "s";
+	public final static String MSG_KEY_PEER_PORT			= "t";
 	
 	private Context context_;
 	
@@ -173,7 +181,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 
 				case MSG_OPEN_TORRENT:
 					Uri torrentUri = bundleMsg.getParcelable(MSG_KEY_FILEPATH);
-					openTorrent(torrentUri);
+					(new OpenTorrentThread(torrentUri)).start();
 					break;
 
 				case MSG_SEND_TORRENT_SETTINGS:
@@ -185,19 +193,38 @@ public class TorrentService extends Service implements NetworkStateListener {
 					
 				case MSG_START_TORRENT:
 					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					startTorrent(torrentId);
+					(new StartTorrentThread(torrentId)).start();
 					break;
 
 				case MSG_STOP_TORRENT:
 					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					stopTorrent(torrentId);
+					torrentManager_.stopTorrent(torrentId);
 					break;
 
 				case MSG_CLOSE_TORRENT:
 					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					closeTorrent(torrentId);
+					torrentManager_.closeTorrent(torrentId);
 					break;
-
+				
+				case MSG_ADD_PEER:
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					String ip = bundleMsg.getString(MSG_KEY_PEER_IP);
+					int port = bundleMsg.getInt(MSG_KEY_PEER_PORT);
+					torrentManager_.addPeer(torrentId, ip, port);
+					break;
+					
+				case MSG_ADD_TRACKER:
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					String trackerUrl = bundleMsg.getString(MSG_KEY_TRACKER_URL);
+					torrentManager_.addTracker(torrentId, trackerUrl);
+					break;
+					
+				case MSG_REMOVE_TACKER:
+					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+					int trackerId = bundleMsg.getInt(MSG_KEY_TRACKER_ID);
+					torrentManager_.removeTracker(torrentId, trackerId);
+					break;
+					
 				case MSG_SEND_TORRENT_LIST:
 					sendTorrentList(msg.replyTo);
 					break;
@@ -337,26 +364,6 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 
-	/** Opens a torrent file with its given file path. */
-	private void openTorrent(Uri torrentUri) {
-		(new OpenTorrentThread(torrentUri)).start();
-	}
-
-	/** Starts a torrent. */
-	private void startTorrent(int torrentId) {
-		(new StartTorrentThread(torrentId)).start();
-	}
-	
-	/** Stops a torrent. */
-	private void stopTorrent(int torrentId) {
-		torrentManager_.stopTorrent(torrentId);
-	}
-	
-	/** Closes a torrent. */
-	private void closeTorrent(int torrentId) {
-		torrentManager_.closeTorrent(torrentId);
-	}
-	
 	/** Shows the torrent's settings dialog. */
 	public void showTorrentSettings(Torrent torrent) {
 		if (clientAll_ != null) {

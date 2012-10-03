@@ -59,11 +59,11 @@ public class Peer {
 	}
 	
 	/** Connects to the peer. */
-	public void connect(Torrent torrent) {
+	public Runnable connect(Torrent torrent) {
 		downloadSpeed_ = new Speed();
 		torrent_ = torrent;
 		if (connection_ == null) connection_ = new PeerConnection(this, torrent, false);
-		connection_.connect();
+		return connection_.connect();
 	}
 	
 	public void connect(Socket socket) {
@@ -116,7 +116,7 @@ public class Peer {
 		}
 	}
 	
-	public void blockDownloaded(int index, int begin, byte[] data) {
+	public void blockDownloaded(int index, int begin, final byte[] data) {
 		downloaded_ += data.length;
 		
 		Block block = null;
@@ -151,6 +151,7 @@ public class Peer {
 		} else {
 			Log.v(LOG_TAG, "Warning: Unexpected block.");
 		}
+		connection_.issueDownload();
 	}
 	
 	public void calculateSpeed(long time) {

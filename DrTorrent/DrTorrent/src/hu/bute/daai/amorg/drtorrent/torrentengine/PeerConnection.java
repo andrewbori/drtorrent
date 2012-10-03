@@ -91,12 +91,13 @@ public class PeerConnection {
     }
 	
 	/** Connects to the peer (including the peer wire connection). */
-	public void connect() {
+	public Runnable connect() {
 		isIncomingConnection_ = false;
 		
 		String destination = peer_.getAddress() + ":" + peer_.getPort();
 		connectThread_ = new ConnectThread(destination);
-		connectThread_.start();
+		return connectThread_;
+		//connectThread_.start();
 	}
 	
 	public void connect(Socket socket) {
@@ -182,7 +183,7 @@ public class PeerConnection {
 	}
 	
 	/** Issues the download requests. */
-	public void issueDownload(){
+	public synchronized void issueDownload(){
 		if (!isPeerChoking()) {
 			ArrayList<Block> blocksToDownload = peer_.issueDownload();
 			if (blocksToDownload != null) {
@@ -478,8 +479,6 @@ public class PeerConnection {
 			
 			peer_.blockDownloaded(index, begin, pieceBlock);
 		}
-		
-		issueDownload();
 	}
 
 	/** Reading message: request. */

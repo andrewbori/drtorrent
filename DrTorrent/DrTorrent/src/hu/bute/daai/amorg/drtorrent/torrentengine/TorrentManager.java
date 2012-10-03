@@ -331,7 +331,31 @@ public class TorrentManager {
 			torrent.stop();
 		}
 	}
+	
+	/** Adds a peer to the torrent. */
+	public void addPeer(int torrentId, String address, int port) {
+		Torrent torrent = getTorrent(torrentId);
+		if (torrent != null) {
+			torrent.addPeer(address, port, null);
+		}
+	}
+	
+	/** Adds a tracker to the torrent. */
+	public void addTracker(int torrentId, String trackerUrl) {
+		Torrent torrent = getTorrent(torrentId);
+		if (torrent != null) {
+			torrent.addTracker(trackerUrl);
+		}
+	}
 
+	/** Removes a tracker from the torrent. */
+	public void removeTracker(int torrentId, int trackerId) {
+		Torrent torrent = getTorrent(torrentId);
+		if (torrent != null) {
+			torrent.removeTracker(trackerId);
+		}
+	}
+	
 	/** Returns whether the manager the given torrent already has. */
 	public boolean hasTorrent(String infoHash) {
 		if (getTorrent(infoHash) != null)

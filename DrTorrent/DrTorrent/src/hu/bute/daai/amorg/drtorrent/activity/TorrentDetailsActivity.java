@@ -18,6 +18,10 @@ import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.v4.view.ViewPager;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
 
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
@@ -43,7 +47,6 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
         indicator.setViewPager(viewPager);
 	}
 	
-	
 	@Override
 	protected void onStart() {
 		super.onStart();
@@ -52,6 +55,20 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
+		createMenu(menu);
+		
+		return true;
+	}
+	
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		menu.clear();
+		createMenu(menu);
+
+		return true;
+	}
+	
+	protected void createMenu(Menu menu) {
 		if (!isStopped_) {
 			menu.add(Menu.NONE, MENU_STOP_TORRENT, 0, R.string.menu_stop)
 				.setIcon(R.drawable.ic_pause)
@@ -62,29 +79,16 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		}
 		menu.add(Menu.NONE, MENU_DELETE_TORRENT, 1, R.string.menu_delete)
-			.setIcon(R.drawable.ic_start)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
-
-		return true;
-	}
-	
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu) {
-		menu.clear();
-		if (!isStopped_) {
-			menu.add(Menu.NONE, MENU_STOP_TORRENT, 0, R.string.menu_stop)
-				.setIcon(R.drawable.ic_pause)
-				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-		} else {
-			menu.add(Menu.NONE, MENU_START_TORRENT, 0, R.string.menu_start)
-			.setIcon(R.drawable.ic_play)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-		}
-		menu.add(Menu.NONE, MENU_DELETE_TORRENT, 1, R.string.menu_delete)
 			.setIcon(R.drawable.ic_delete)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
 
-		return true;
+		menu.add(Menu.NONE, MENU_ADD_PEER, 2, R.string.menu_add_peer)
+			.setIcon(R.drawable.ic_add)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		
+		menu.add(Menu.NONE, MENU_ADD_TRACKER, 3, R.string.menu_add_tracker)
+			.setIcon(R.drawable.ic_add)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 	}
 
 	@Override
@@ -106,7 +110,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		super.onMenuItemSelected(featureId, item);
 		
 		final Message msg = Message.obtain();
-		Bundle bundle = new Bundle();
+		final Bundle bundle = new Bundle();
 		bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 		msg.setData(bundle);
 		
@@ -126,11 +130,9 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				break;
 				
 			case MENU_DELETE_TORRENT:
-				
-				
 				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
-				builder.setMessage(getString(R.string.remove_dialog_title)).
-				setPositiveButton(getString(R.string.yes), new DialogInterface.OnClickListener() {
+				builder.setMessage(R.string.remove_dialog_title).
+				setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						msg.what = TorrentService.MSG_CLOSE_TORRENT;
@@ -142,7 +144,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			            startActivity(intent);
 					}
 				}).
-				setNegativeButton(getString(R.string.no), new DialogInterface.OnClickListener() {
+				setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.cancel();
@@ -150,6 +152,74 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				}).
 				create().show();
             
+				break;
+				
+			case MENU_ADD_PEER:
+				builder = new AlertDialog.Builder(context_);
+				builder.setTitle(R.string.menu_add_peer);
+				
+				LayoutInflater inflater = (LayoutInflater) context_.getSystemService(LAYOUT_INFLATER_SERVICE);
+				View layout = inflater.inflate(R.layout.dialog_add_peer, (ViewGroup) findViewById(R.id.dialog_add_peer_root));
+				builder.setView(layout);
+				final EditText etAddress = (EditText) layout.findViewById(R.id.dialog_add_peer_ip);
+				final EditText etPort = (EditText) layout.findViewById(R.id.dialog_add_peer_port);
+				
+				builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {	
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						try {
+							String address = etAddress.getText().toString();
+							int port = Integer.valueOf(etPort.getText().toString());
+							if ((address != null && address.length() > 0) && (port > 0 && port <= 65535)) {
+								msg.what = TorrentService.MSG_ADD_PEER;
+								bundle.putString(TorrentService.MSG_KEY_PEER_IP, address);
+								bundle.putInt(TorrentService.MSG_KEY_PEER_PORT, port);
+								try {
+									serviceMessenger_.send(msg);
+								} catch (RemoteException e) {}
+							}
+						} catch (Exception e) {}
+						dialog.cancel();
+					}
+				}).
+				setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {	
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.cancel();
+					}
+				}).
+				create().show();
+				break;
+				
+			case MENU_ADD_TRACKER:
+				builder = new AlertDialog.Builder(context_);
+				builder.setTitle(R.string.menu_add_tracker);
+				
+				final EditText etTrackerUrl = new EditText(context_);
+				etTrackerUrl.setHint("udp://...");
+				builder.setView(etTrackerUrl);
+				
+				builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {	
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						String url = etTrackerUrl.getText().toString();
+						if (url != null && url.length() > 0) {
+							msg.what = TorrentService.MSG_ADD_TRACKER;
+							bundle.putString(TorrentService.MSG_KEY_TRACKER_URL, url);
+							try {
+								serviceMessenger_.send(msg);
+							} catch (RemoteException e) {}
+						}
+						dialog.cancel();
+					}
+				}).
+				setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {	
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.cancel();
+					}
+				}).
+				create().show();
 				break;
 		}
 		return true;
@@ -175,6 +245,19 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 		b.putSerializable(TorrentService.MSG_KEY_FILE_ITEM, item);
 		msg.what = TorrentService.MSG_CHANGE_FILE_PRIORITY;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+	
+	/** Removes a tracker from the tracker list. */
+	public void removeTracker(int trackerId) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
+		b.putInt(TorrentService.MSG_KEY_TRACKER_ID, trackerId);
+		msg.what = TorrentService.MSG_REMOVE_TACKER;
 		msg.setData(b);
 		try {
 			serviceMessenger_.send(msg);
