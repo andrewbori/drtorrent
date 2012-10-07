@@ -401,6 +401,14 @@ public class Piece {
 		return downloaded_;
 	}
 	
+	/** Returns whether the piece can be downloaded or not. It depends on whether the associated files are created or not. */
+	public boolean canDownload() {
+		for (FileFragment fragment : fragments_) {
+			if (!fragment.isCreated()) return false;
+		}
+		return true;
+	}
+	
 	/** Returns whether the piece has been requested or not. */
 	public boolean isRequested() {
 		return isRequested_;

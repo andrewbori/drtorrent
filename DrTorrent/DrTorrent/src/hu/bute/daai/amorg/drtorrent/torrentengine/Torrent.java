@@ -103,7 +103,7 @@ public class Torrent {
 	/** Constructor with the manager and the torrent file as a parameter. */
 	public Torrent(TorrentManager torrentManager, String filePath, String downloadPath) {
 		torrentManager_ = torrentManager;
-		fileManager_ = new FileManager();
+		fileManager_ = new FileManager(this);
 		downloadFolder_ = downloadPath;
 
 		torrentFilePath_ = filePath;
@@ -396,8 +396,19 @@ public class Torrent {
 	/** Changes the priority of the given file. */
 	public void changeFilePriority(int index, int priority) {
 		if (index >= 0 && index < files_.size()) {
-			File file = files_.elementAt(index);
+			final File file = files_.elementAt(index);
 			if (file.getPriority() != priority) {
+				if (priority > File.PRIORITY_SKIP) {
+					if (fileManager_.addFile(file)) {
+						(new Thread(){
+							@Override
+							public void run() {
+								fileManager_.createFile(file);
+							};
+						}).start();
+					}
+				}
+				
 				file.setPriority(priority);
 				setTorrentActivePieces();
 			}
@@ -421,6 +432,15 @@ public class Torrent {
 				return;
 			}
 		}
+	}
+	
+	public void createFiles() {
+		(new Thread() {
+			@Override
+			public void run() {
+				fileManager_.createFiles();
+			}
+		}).start();
 	}
 
 	/** Adds bytes to the size of the checked bytes and calculates the percent of checked bytes. */
@@ -503,7 +523,11 @@ public class Torrent {
 				
 				isFirstStart_ = false;
 			}
+			createFiles();
 
+			downloadSpeed_ = new Speed();
+			uploadSpeed_ = new Speed();
+			
 			lastOptimisticUnchokingTime_ = lastUnchokingTime_ = 0;
 
 			peerTPE_ = new ThreadPoolExecutor(
@@ -634,16 +658,18 @@ public class Torrent {
 
 				// Connects to peers
 				if (status_ == R.string.status_downloading) {
-					for (int i = 0; i < notConnectedPeers_.size() && connectedPeers_.size() < Preferences.getMaxConnectedPeers(); i++) {
-						Peer peer = notConnectedPeers_.elementAt(i);
-						if (peer.canConnect()) {
-							connectedPeers_.addElement(peer);
-							notConnectedPeers_.removeElement(peer);
-							i--;
-							Runnable command = peer.connect(this);
-							peerTPE_.execute(command);
+					try {
+						for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize(); i++) {
+							Peer peer = notConnectedPeers_.elementAt(i);
+							if (peer.canConnect()) {
+								Runnable command = peer.connect(this);
+								peerTPE_.execute(command);
+								connectedPeers_.addElement(peer);
+								notConnectedPeers_.removeElement(peer);
+								i--;
+							}
 						}
-					}
+					} catch (Exception e) {}
 				}
 			}
 		}
@@ -734,7 +760,7 @@ public class Torrent {
 
 					for (int i = 0; i < activePieces_.size(); i++) {
 						piece = activePieces_.elementAt(i);
-						if (piece.priority() < priority)
+						if (!piece.canDownload() || piece.priority() < priority)
 							continue;
 						if (downloadablePieces_.contains(piece) || downloadingPieces_.contains(piece)) {
 							if (peer.hasPiece(piece.index())) {
@@ -764,7 +790,7 @@ public class Torrent {
 						// Get a block from the downloading pieces
 						for (int i = 0; i < downloadingPieces_.size(); i++) {
 							piece = downloadingPieces_.elementAt(i);
-							if (piece.priority() < priority)
+							if (!piece.canDownload() || piece.priority() < priority)
 								continue;
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
@@ -787,7 +813,7 @@ public class Torrent {
 						// Get a block from the rarest pieces
 						for (int i = 0; i < rarestPieces_.size(); i++) {
 							piece = rarestPieces_.elementAt(i);
-							if (piece.priority() < priority)
+							if (!piece.canDownload() || piece.priority() < priority)
 								continue;
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
@@ -813,7 +839,7 @@ public class Torrent {
 						// Get a block from the downloadable pieces
 						for (int i = 0; i < downloadablePieces_.size(); i++) {
 							piece = downloadablePieces_.elementAt(i);
-							if (piece.priority() < priority)
+							if (!piece.canDownload() || piece.priority() < priority)
 								continue;
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
@@ -895,19 +921,19 @@ public class Torrent {
 			boolean existed = false;
 			if (FileManager.fileExists(filePath))
 				existed = true;
-
+			
 			if (FileManager.freeSize(path_) < size) {
 				Log.v(LOG_TAG, "Not enough free space");
 				return ERROR_NO_FREE_SIZE;
 			}
 
-			if (FileManager.createFile(filePath, size)) {
-				if (existed)
-					return ERROR_ALREADY_EXISTS;
-				return ERROR_NONE;
+			long currentSize = FileManager.getFileSize(filePath);
+			if (currentSize < size) fileManager_.addFile(file);
+			
+			if (existed) {
+				return ERROR_ALREADY_EXISTS;
 			}
-
-			return ERROR_FILE_HANDLING;
+			return ERROR_NONE;
 		}
 
 		return ERROR_WRONG_CONTENT;
@@ -1142,6 +1168,11 @@ public class Torrent {
 		return pieces_.indexOf(piece);
 	}
 
+	/** Returns the length of pieces. */
+	public int getPieceLength() {
+		return pieceLength_;
+	}
+	
 	/** Returns the number of pieces. */
 	public int pieceCount() {
 		return pieces_.size();
@@ -1296,7 +1327,7 @@ public class Torrent {
 		int speed = getDownloadSpeed();
 		if (speed == 0)
 			return -1;
-		long remaining = activeSize_ - getBytesDownloaded();
+		long remaining = activeSize_ - activeDownloadedSize_;
 		double millis = ((double) remaining / (double) speed) * 1000.0;
 		return (int) millis;
 	}
@@ -1361,7 +1392,10 @@ public class Torrent {
 			JSONArray filePriorities = json.getJSONArray("FilePriorities");
 			if (filePriorities.length() == files_.size()) {
 				for (int i = 0; i < filePriorities.length(); i++) {
-					files_.get(i).setPriority(filePriorities.getInt(i));
+					int priority = filePriorities.getInt(i);
+					File file = files_.get(i);
+					file.setPriority(priority);
+					if (filePriorities.getInt(i) > File.PRIORITY_SKIP) fileManager_.addFile(file);
 				}
 			}
 			setTorrentActivePieces();

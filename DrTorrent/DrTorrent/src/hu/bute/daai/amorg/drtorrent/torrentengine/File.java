@@ -19,6 +19,7 @@ public class File {
     private String relativePath_;	// Path relative to the torrent's parent directory.
     
     private long size_;
+    private long createdSize_ = 0;
     private long downloadedSize_ = 0;
     
     private int priority_ = PRIORITY_NORMAL;
@@ -140,4 +141,14 @@ public class File {
     	}
     	return false;
     }
+
+    /** Sets the created size of the file. */
+	public void setCreatedSize(long createdSize) {
+		createdSize_ = createdSize;
+	}
+	
+	/** Returns the created size of the file. */
+	public long getCreatedSize() {
+		return createdSize_;
+	}
 }
