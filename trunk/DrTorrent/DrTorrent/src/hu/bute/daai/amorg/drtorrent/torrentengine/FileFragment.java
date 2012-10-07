@@ -24,4 +24,8 @@ public class FileFragment {
 	public int length() {
 		return  length_;
 	}
+	
+	public boolean isCreated() {
+		return (file_.getCreatedSize() >= offset_ + length_);
+	}
 }
