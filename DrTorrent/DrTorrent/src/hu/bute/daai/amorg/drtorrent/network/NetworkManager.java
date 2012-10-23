@@ -54,6 +54,7 @@ public class NetworkManager {
 		isListening_ = true;
 		acceptConnectionsThread_ = new AcceptConnections();
 		acceptConnectionsThread_.enable();
+		acceptConnectionsThread_.start();
 	}
 	
 	/** Stops listening for incoming connections. */
