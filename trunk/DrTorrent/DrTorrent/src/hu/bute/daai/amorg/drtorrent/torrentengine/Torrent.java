@@ -434,6 +434,7 @@ public class Torrent {
 		}
 	}
 	
+	/** Calls the FileManager to create the files previously were given to him. */
 	public void createFiles() {
 		(new Thread() {
 			@Override
@@ -532,11 +533,8 @@ public class Torrent {
 
 			peerTPE_ = new ThreadPoolExecutor(
 					Preferences.getMaxConnectedPeers(), Preferences.getMaxConnectedPeers(),
-					10, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(5)
+					30, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(5)
 			);
-			/*blockTPE_ = new ThreadPoolExecutor(
-					20, 100, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20)
-			);*/
 			
 			notConnectedPeers_ = new Vector<Peer>();
 

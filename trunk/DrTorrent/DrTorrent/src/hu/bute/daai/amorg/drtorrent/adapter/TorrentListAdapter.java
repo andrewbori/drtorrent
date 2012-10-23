@@ -24,6 +24,7 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 	private final int progressResource = R.id.list_item_torrent_progress;
 	
 	private final int layoutDownloadRecource = R.id.list_item_torrent_layoutDownload;
+	private final int layoutRemainingRecource  = R.id.list_item_torrent_layoutRemaining;
 	private final int tvRemainingTimeResource = R.id.list_item_torrent_tvRemainingTime;
 	private final int tvSizeResource = R.id.list_item_torrent_tvSize;
 	private final int tvDownloadedResource = R.id.list_item_torrent_tvDownloaded;
@@ -69,6 +70,7 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		progress.setProgress((int) item.getPercent());
 		
 		if (status != R.string.status_seeding) {
+			LinearLayout layoutRemaining = (LinearLayout) reusableView.findViewById(layoutRemainingRecource);
 			TextView tvRemainingTime = (TextView) reusableView.findViewById(tvRemainingTimeResource);
 			TextView tvSize = (TextView) reusableView.findViewById(tvSizeResource);
 			TextView tvDownloaded = (TextView) reusableView.findViewById(tvDownloadedResource);
@@ -76,12 +78,14 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 			
 			tvRemainingTime.setText(item.getRemainingTime());
 			tvSize.setText(item.getSize());
-			tvDownloaded.setText(item.getDownloaded());
+			tvDownloaded.setText(item.getReady());
 			tvDownSpeed.setText(item.getDownloadSpeed());
 			
 			layoutDownload.setVisibility(LinearLayout.VISIBLE);
 			layoutUpload.setVisibility(LinearLayout.GONE);
-		} else {		
+			if (status != R.string.status_stopped) layoutRemaining.setVisibility(LinearLayout.VISIBLE);  
+			else layoutRemaining.setVisibility(LinearLayout.GONE);
+		} else {	
 			TextView tvUploaded = (TextView) reusableView.findViewById(tvUploadedResource);
 			TextView tvUpSpeed = (TextView) reusableView.findViewById(tvUploadSpeedResource);
 

@@ -47,7 +47,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	public final static int MSG_START_TORRENT       	 = 102;
 	public final static int MSG_STOP_TORRENT        	 = 103;
 	public final static int MSG_CLOSE_TORRENT       	 = 104;
-	public final static int MSG_ADD_TRACKER 				 = 105;
+	public final static int MSG_ADD_TRACKER 			 = 105;
 	public final static int MSG_REMOVE_TACKER 			 = 106;
 	public final static int MSG_ADD_PEER 				 = 107;
 	public final static int MSG_REMOVE_PEER 			 = 108;

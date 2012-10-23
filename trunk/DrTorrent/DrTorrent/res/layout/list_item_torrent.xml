@@ -65,6 +65,7 @@
 	      	android:paddingLeft="2dp"
 	      	android:paddingRight="2dp">
 	    <LinearLayout
+	        android:id="@+id/list_item_torrent_layoutRemaining"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:orientation="horizontal">
