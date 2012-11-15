@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
@@ -492,6 +493,10 @@ public class PeerConnection {
 			int length = readInt();
 			
 			if (isChoking()) return;
+			if (!Preferences.isUploadEnabled()) {
+				setChoking(true);
+				return;
+			}
 			
 			Block block = new Block(torrent_.getPiece(pieceIndex), begin, length);
 			blocksToUpload_.add(block);
@@ -747,6 +752,11 @@ public class PeerConnection {
 	
 	/** Sending message: piece. */
 	private void sendPieceMessage(Block block) {
+		if (!Preferences.isUploadEnabled()) {
+			setChoking(true);
+			return;
+		}
+		
 		Piece piece = torrent_.getPiece(block.pieceIndex());
 		
 		if (piece != null) {
