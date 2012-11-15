@@ -647,7 +647,9 @@ public class Torrent {
 					connectedPeers_.elementAt(i).onTimer();
 				}
 
-				chokeAlgorithm();
+				if (Preferences.isUploadEnabled()) {
+					chokeAlgorithm();
+				}
 
 				// Updates the trackers
 				for (int i = 0; i < trackers_.size(); i++) {

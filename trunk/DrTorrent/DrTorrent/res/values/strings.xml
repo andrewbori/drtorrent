@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="hello">Hello World, DrTorrentActivity!</string>
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">Add Torrent</string>
     <string name="menu_start">Start</string>
@@ -33,7 +32,7 @@
 	<string name="status_seeding">Seeding</string>
 	<string name="status_stopped">Stopped</string>
 	<string name="preferences_streaming">Streaming mode</string>
-	<string name="preferences_streaming_sum">Download the content continuously</string>
+	<string name="preferences_streaming_sum">Download content continuously</string>
 	<string name="preferences_port">P2P Port</string>
 	<string name="preferences_connections">Connections per torrent</string>
 	<string name="all">All</string>
@@ -48,7 +47,7 @@
 	<string name="empty_field"></string>
 	<string name="preferences_download_speed">Download speed limit</string>
 	<string name="preferences_upload_speed">Upload speed limit</string>
-	<string name="only_wifi">Only WiFi</string>
+	<string name="only_wifi">WiFi only</string>
 	<string name="only_wifi_sum">Download over WiFi only</string>
 	<string name="ready">Ready:</string>
 	<string name="start">Start</string>
@@ -59,10 +58,14 @@
 	<string name="no">No</string>
 	<string name="exit_dialog_title">Do you really want to exit?</string>
 	<string name="menu_add_tracker">Add tracker</string>
-	<string name="ok">Ok</string>
+	<string name="ok">OK</string>
 	<string name="cancel">Cancel</string>
 	<string name="tracker_remove_message">Do you want to remove this tracker?</string>
 	<string name="menu_add_peer">Add peer</string>
 	<string name="ip_address">IP address:</string>
 	<string name="port">Port:</string>
+	<string name="incoming_connections">Incoming connections</string>
+	<string name="enable_incoming_connections">Enable incoming connections</string>
+	<string name="upload">Upload</string>
+	<string name="enable_upload">Enable upload</string>
 </resources>

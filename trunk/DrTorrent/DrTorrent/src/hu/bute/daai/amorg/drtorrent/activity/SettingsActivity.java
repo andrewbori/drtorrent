@@ -28,7 +28,7 @@ public class SettingsActivity extends PreferenceActivity {
 		
 		findPreference("connections").setSummary(Integer.toString(Preferences.getMaxConnectedPeers()));
 		
-		if (Preferences.getDownloadSpeedLimit() > 0) {
+		/*if (Preferences.getDownloadSpeedLimit() > 0) {
 			findPreference("download_speed").setSummary(Preferences.getDownloadSpeedLimit() + " kB/s");
 		} else {
 			findPreference("download_speed").setSummary("Unlimited");
@@ -38,6 +38,6 @@ public class SettingsActivity extends PreferenceActivity {
 			findPreference("upload_speed").setSummary(Preferences.getUploadSpeedLimit() + " kB/s");
 		} else {
 			findPreference("upload_speed").setSummary("Unlimited");
-		}
+		}*/
 	}
 }

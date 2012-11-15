@@ -20,8 +20,17 @@ public class Preferences {
 	}
 	
 	/** Returns whether the download is enabled only over WiFi or not. */
-	public static boolean isOnlyWiFi() {
-		return preferences_.getBoolean("only_wifi", true);
+	public static boolean isWiFiOnly() {
+		return preferences_.getBoolean("wifi_only", true);
+	}
+	
+	public static boolean isIncomingConnectionsEnabled() {
+		return preferences_.getBoolean("incoming_connections", true);
+	}
+	
+	/** Returns whether upload is enabled. */
+	public static boolean isUploadEnabled() {
+		return preferences_.getBoolean("upload", true);
 	}
 	
 	/** Returns the P2P port. */
@@ -36,27 +45,27 @@ public class Preferences {
 	/** Returns the number of the maximum connected peers per torrent. */
 	public static int getMaxConnectedPeers() {
 		try {
-			return Integer.valueOf(preferences_.getString("connections", "20"));
+			return Integer.valueOf(preferences_.getString("connections", "10"));
 		} catch (Exception e) {
 			return 0;
 		}
 	}
 	
 	/** Returns the download speed limit. */
-	public static int getDownloadSpeedLimit() {
+	/*public static int getDownloadSpeedLimit() {
 		try {
 			return Integer.valueOf(preferences_.getString("download_speed",  "0"));
 		} catch (Exception e) {
 			return 0;
 		}
-	}
+	}*/
 	
 	/** Returns the upload speed limit. */
-	public static int getUploadSpeedLimit() {
+	/*public static int getUploadSpeedLimit() {
 		try {
 			return Integer.valueOf(preferences_.getString("upload_speed",  "0"));
 		} catch (Exception e) {
 			return 0;
 		}
-	}
+	}*/
 }

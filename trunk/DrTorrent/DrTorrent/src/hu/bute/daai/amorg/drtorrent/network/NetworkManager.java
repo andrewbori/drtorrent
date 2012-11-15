@@ -50,6 +50,7 @@ public class NetworkManager {
 	/** Starts listening for incoming connections. */
 	public void startListening() {
 		if (isListening_) stopListening();
+		if (!Preferences.isIncomingConnectionsEnabled()) return;
 		
 		isListening_ = true;
 		acceptConnectionsThread_ = new AcceptConnections();

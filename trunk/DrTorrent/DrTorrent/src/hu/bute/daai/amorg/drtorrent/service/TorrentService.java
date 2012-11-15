@@ -790,12 +790,15 @@ public class TorrentService extends Service implements NetworkStateListener {
 		if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
 			isWifiConnected_ = !noConnectivity;
 			Log.v(LOG_TAG, "Has connection? WIFI CONNECTION " + !noConnectivity);
+		} else if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET){
+			isWifiConnected_ = !noConnectivity;
+			Log.v(LOG_TAG, "Has connection? ETHERNET CONNECTION " + !noConnectivity);
 		} else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
 			isMobileNetConnected_ = !noConnectivity;
 			Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION");
 		} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION " + !noConnectivity);
 		
-		boolean newState = isWifiConnected_ || isMobileNetConnected_;
+		boolean newState = isWifiConnected_ || (isMobileNetConnected_ && !Preferences.isWiFiOnly());
 		if (oldState != newState) {
 			if (newState) torrentManager_.enable();
 			else torrentManager_.disable();
