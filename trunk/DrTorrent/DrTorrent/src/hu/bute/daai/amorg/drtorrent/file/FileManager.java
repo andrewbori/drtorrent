@@ -17,26 +17,45 @@ public class FileManager {
 	private final static String LOG_TAG = "FileManager";
 	
 	private Torrent torrent_;
-	private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> files_;
+	private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesCreated_;
+	private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesToCreate_;
+
+	private boolean isCreating_ = false;
 	
 	public FileManager(Torrent torrent) {
 		torrent_ = torrent;
-		files_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
+		filesToCreate_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
+		filesCreated_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
 	}	
 	
+	/** Adds a new file to create. Returns true if it has not been added yet. */
 	public boolean addFile(hu.bute.daai.amorg.drtorrent.torrentengine.File file) {
-		if (!files_.contains(file)) {
-			files_.add(file);
+		if (!filesCreated_.contains(file) && !filesToCreate_.contains(file)) {
+			filesToCreate_.addElement(file);
 			return true;
 		}
 		return false;
 	}
 	
+	public boolean isCreating() {
+		return isCreating_;
+	}
+
 	public void createFiles() {
-		for (int i = 0; i < files_.size(); i++) {
-			hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo = files_.elementAt(i);
+		isCreating_ = true;
+		
+		for (int i = 0; i < filesToCreate_.size() && torrent_.isWorking(); i++) {
+			hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo = filesToCreate_.elementAt(i);
 			createFile(fileInfo);
+			
+			if (fileInfo.getSize() == fileInfo.getCreatedSize()) {
+				filesCreated_.addElement(fileInfo);
+				filesToCreate_.removeElementAt(i);
+				i--;
+			}
 		}
+		
+		isCreating_ = false;
 	}
 	
 	public void createFile(hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo) {
@@ -55,15 +74,20 @@ public class FileManager {
 
 			file = new RandomAccessFile(f, "rw");
 			
-			for (long size = file.length(); size < fileSize && torrent_.isWorking(); size += torrent_.getPieceLength()) {
-				long newSize = size + torrent_.getPieceLength(); 
-				if (newSize >= fileSize) {
-					newSize = fileSize;
+			if (file.length() != fileSize) {
+				for (long size = file.length(); size < fileSize && torrent_.isWorking(); size += torrent_.getPieceLength()) {
+					long newSize = size + torrent_.getPieceLength(); 
+					if (newSize >= fileSize) {
+						newSize = fileSize;
+					}
+					file.setLength(newSize);
+					fileInfo.setCreatedSize(newSize);
 				}
-				file.setLength(fileSize);
-				fileInfo.setCreatedSize(newSize);
+			} else {
+				fileInfo.setCreatedSize(fileSize);
 			}
-			fileInfo.setCreatedSize(fileSize);
+			
+			if (!torrent_.isWorking()) return;
 		} catch (Exception e) {
 			e.printStackTrace();
 			Log.v("FileManager", e.getMessage());
