@@ -23,7 +23,6 @@ public class File {
     private long downloadedSize_ = 0;
     
     private int priority_ = PRIORITY_NORMAL;
-    private boolean isCreated_ = false;
     private int downloadState_;
     private boolean isChanged_ = false;
     
@@ -123,16 +122,6 @@ public class File {
     	return index_;
     }
     
-    /** Sets the file created. */
-    public void setCreated(boolean isCreated) {
-    	isCreated_ = isCreated;
-    }
-    
-    /** Returns whether the file is created or not. */
-    public boolean isCreated() {
-    	return isCreated_;
-    }
-    
     /** Returns whether the file is changed or not. */
     public boolean isChanged() {
     	if (isChanged_) {
@@ -150,5 +139,10 @@ public class File {
 	/** Returns the created size of the file. */
 	public long getCreatedSize() {
 		return createdSize_;
+	}
+
+	/** Returns the index of the first piece that contains a fragment of the file. */
+	public int getIndexOfFirstPiece() {
+		return begin_;
 	}
 }

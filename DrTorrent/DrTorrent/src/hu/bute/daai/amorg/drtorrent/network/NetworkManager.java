@@ -66,9 +66,4 @@ public class NetworkManager {
 			serverSocket_.close();
 		} catch (Exception e) {}
 	}
-	
-	/** Returns whether the device is connected to a network or not. */
-	public static boolean hasNetorkConnection() {
-		return isListening_;
-	}
 }

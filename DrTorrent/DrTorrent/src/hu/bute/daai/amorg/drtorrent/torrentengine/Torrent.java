@@ -345,7 +345,7 @@ public class Torrent {
 	}
 
 	/** Sets the active pieces according to the selected file list of the torrent. */
-	public void setTorrentActivePieces() {
+	protected void setTorrentActivePieces() {
 		synchronized (activePieces_) {
 			synchronized (downloadablePieces_) {
 				synchronized (downloadingPieces_) {
@@ -355,15 +355,7 @@ public class Torrent {
 					for (int i = 0; i < pieces_.size(); i++) {
 						Piece piece = pieces_.get(i);
 						piece.calculatePriority();
-						Vector<FileFragment> fragments = piece.getFragments();
-						boolean hasToDownload = false;
-						for (int j = 0; j < fragments.size(); j++) {
-							if (fragments.get(j).file().getPriority() != File.PRIORITY_SKIP) {
-								hasToDownload = true;
-								break;
-							}
-						}
-						if (hasToDownload) {
+						if (piece.priority() > File.PRIORITY_SKIP) {
 							activePieces_.addElement(piece);
 							activeSize_ += piece.size();
 							activeDownloadedSize_ += piece.downloaded();
@@ -371,8 +363,9 @@ public class Torrent {
 								if (!downloadablePieces_.contains(piece) && !downloadingPieces_.contains(piece)) {
 									downloadablePieces_.addElement(piece);
 
-									if (status_ == R.string.status_seeding)
+									if (status_ == R.string.status_seeding) {
 										status_ = R.string.status_downloading;
+									}
 								}
 							}
 						} else {
@@ -392,6 +385,36 @@ public class Torrent {
 				status_ = R.string.status_downloading;
 		}
 	}
+	
+	/** Adds a new file (and files that contain its piece) to the file manger to create. */
+	protected void addFileToFileManager(File file) {
+		fileManager_.addFile(file);
+		
+		Piece firstPiece = pieces_.elementAt(file.getIndexOfFirstPiece());
+		Piece lastPiece = null;
+		int indexOfNextFile = file.index() + 1;
+		if (files_.size() > indexOfNextFile) {
+			lastPiece = pieces_.elementAt(files_.elementAt(indexOfNextFile).getIndexOfFirstPiece());
+		}
+		
+		for (int j = file.index() - 1; j > 0; j--) {
+			if (firstPiece.hasFile(files_.elementAt(j))) {
+				fileManager_.addFile(files_.elementAt(j));
+			} else {
+				break;
+			}
+		}
+		
+		if (lastPiece != null) {
+			for (int j = file.index() + 1; j < files_.size(); j++) {
+				if (lastPiece.hasFile(files_.elementAt(j))) {
+					fileManager_.addFile(files_.elementAt(j));
+				} else {
+					break;
+				}
+			}
+		}
+	}
 
 	/** Changes the priority of the given file. */
 	public void changeFilePriority(int index, int priority) {
@@ -399,14 +422,8 @@ public class Torrent {
 			final File file = files_.elementAt(index);
 			if (file.getPriority() != priority) {
 				if (priority > File.PRIORITY_SKIP) {
-					if (fileManager_.addFile(file)) {
-						(new Thread(){
-							@Override
-							public void run() {
-								fileManager_.createFile(file);
-							};
-						}).start();
-					}
+					addFileToFileManager(file);
+					createFiles();
 				}
 				
 				file.setPriority(priority);
@@ -436,12 +453,14 @@ public class Torrent {
 	
 	/** Calls the FileManager to create the files previously were given to him. */
 	public void createFiles() {
-		(new Thread() {
-			@Override
-			public void run() {
-				fileManager_.createFiles();
-			}
-		}).start();
+		if (!fileManager_.isCreating()) {
+			(new Thread() {
+				@Override
+				public void run() {
+					fileManager_.createFiles();
+				}
+			}).start();
+		}
 	}
 
 	/** Adds bytes to the size of the checked bytes and calculates the percent of checked bytes. */
@@ -455,7 +474,7 @@ public class Torrent {
 	 * pieces we have to know the file boundaries. If a torrent contains only
 	 * one file then "piece" ~ "file fragment".
 	 */
-	private void calculateFileFragments() {
+	protected void calculateFileFragments() {
 		int pieceIndex = 0;
 		Piece piece = pieces_.elementAt(pieceIndex);
 		int piecePos = 0;
@@ -550,7 +569,7 @@ public class Torrent {
 				status_ = R.string.status_downloading;
 			}
 
-			if (NetworkManager.hasNetorkConnection()) {
+			if (torrentManager_.isEnabled()) {
 				for (int i = 0; i < trackers_.size(); i++) {
 					trackers_.elementAt(i).changeEvent(Tracker.EVENT_STARTED);
 				}
@@ -579,7 +598,7 @@ public class Torrent {
 	/** Stops the torrent. */
 	public void stop() {
 		if (isConnected()) {
-			if (NetworkManager.hasNetorkConnection()) {
+			if (torrentManager_.isEnabled()) {
 				for (int i = 0; i < trackers_.size(); i++) {
 					trackers_.elementAt(i).changeEvent(Tracker.EVENT_STOPPED);
 				}
@@ -636,7 +655,7 @@ public class Torrent {
 		latestBytesDownloaded_ = downloadedSize_;
 		latestBytesUploaded_ = uploadedSize_;
 
-		if (isConnected() && NetworkManager.hasNetorkConnection()) {
+		if (isConnected() && torrentManager_.isEnabled()) {
 			if (valid_) {
 				Log.v(LOG_TAG,
 						"peers: " + connectedPeers_.size() + " Blocks: " + requestedBlocks_.size() + " Downloadable: " + downloadablePieces_.size()
@@ -659,7 +678,8 @@ public class Torrent {
 				// Connects to peers
 				if (status_ == R.string.status_downloading) {
 					try {
-						for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize(); i++) {
+						int activeCount = peerTPE_.getActiveCount();
+						for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize() && activeCount < peerTPE_.getCorePoolSize(); i++) {
 							Peer peer = notConnectedPeers_.elementAt(i);
 							if (peer.canConnect()) {
 								Runnable command = peer.connect(this);
@@ -667,6 +687,7 @@ public class Torrent {
 								connectedPeers_.addElement(peer);
 								notConnectedPeers_.removeElement(peer);
 								i--;
+								activeCount++;
 							}
 						}
 					} catch (Exception e) {}
@@ -927,8 +948,7 @@ public class Torrent {
 				return ERROR_NO_FREE_SIZE;
 			}
 
-			long currentSize = FileManager.getFileSize(filePath);
-			if (currentSize < size) fileManager_.addFile(file);
+			addFileToFileManager(file);
 			
 			if (existed) {
 				return ERROR_ALREADY_EXISTS;
@@ -1395,9 +1415,12 @@ public class Torrent {
 					int priority = filePriorities.getInt(i);
 					File file = files_.get(i);
 					file.setPriority(priority);
-					if (filePriorities.getInt(i) > File.PRIORITY_SKIP) fileManager_.addFile(file);
+					if (filePriorities.getInt(i) > File.PRIORITY_SKIP) {
+						addFileToFileManager(file);
+					}
 				}
 			}
+			createFiles();
 			setTorrentActivePieces();
 			
 			JSONArray bitfield = json.getJSONArray("Bitfield");

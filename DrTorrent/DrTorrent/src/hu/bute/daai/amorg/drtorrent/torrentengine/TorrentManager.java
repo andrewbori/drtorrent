@@ -41,7 +41,9 @@ public class TorrentManager {
 	private static int peerKey_;
 	
 	private boolean isSchedulerEnabled_ = true;
-	
+
+	private boolean isEnabled_ = false;
+
 	/** Thread that schedules the torrents. */
 	class TorrentSchedulerThread extends Thread {
 		@Override
@@ -96,6 +98,7 @@ public class TorrentManager {
 	
 	/** Enables the Torrent Manager. */
 	public void enable() {
+		isEnabled_ = true;
 		networkManager_.startListening();
 		
 		for (int i = 0; i < torrents_.size(); i++) {
@@ -108,6 +111,7 @@ public class TorrentManager {
 	
 	/** Disables the Torrent Manager. */
 	public void disable() {
+		isEnabled_ = false;
 		networkManager_.stopListening();
 	}
 	
@@ -462,5 +466,10 @@ public class TorrentManager {
 	public void update() {
 		updateEnabled_ = true;
 		if (torrentSchedulerThread_ != null) torrentSchedulerThread_.interrupt();
+	}
+	
+	/** Returns wheter the the download/upload is enabled or not. */
+	public boolean isEnabled() {
+		return isEnabled_;
 	}
 }
