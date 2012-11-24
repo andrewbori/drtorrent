@@ -29,7 +29,7 @@ import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 
 public class DrTorrentActivity extends TorrentHostActivity {
-
+	
 	private ListView lvTorrent_;
 	private ArrayList<TorrentListItem> torrents_;
 	private ArrayAdapter<TorrentListItem> adapter_;
@@ -38,6 +38,11 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
+		
+		if (isShuttingDown_) {
+			finish();
+			return;
+		}
 		
 		torrents_ = new ArrayList<TorrentListItem>();
 		lvTorrent_ = (ListView) findViewById(R.id.main_lvTorrent);
@@ -122,6 +127,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 
 	@Override
 	protected void onStart() {
+		super.onStart();
 		final Intent intent = getIntent ();
 		if (intent != null) {
 			final Uri data = intent.getData();
@@ -132,7 +138,6 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				}
 			}
 		}
-		super.onStart();
 	}
 	
 	@Override
@@ -203,6 +208,11 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				try {
 					serviceMessenger_.send(msg);
 				} catch (Exception e) {}
+				
+				Intent intent = new Intent(getApplicationContext(), DrTorrentActivity.class);
+				intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+				intent.putExtra(SHUT_DOWN, true);
+				startActivity(intent);
 				finish();
 			}
 		}).

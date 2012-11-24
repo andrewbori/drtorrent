@@ -28,7 +28,7 @@ import android.util.Log;
 public class TorrentManager {
 	private final static String LOG_TAG = "TorrentManager";
 	
-	public static String DEFAULT_DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getPath() + "/Downloads/";
+	public static String DEFAULT_DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getPath() + "/download/";
 	
 	private TorrentService torrentService_;
 	private NetworkManager networkManager_;
@@ -412,6 +412,11 @@ public class TorrentManager {
 	public void changeFilePriority(int torrentId, FileListItem item) {
 		Torrent torrent = getTorrent(torrentId);
 		if (torrent != null ) torrent.changeFilePriority(item.getIndex(), item.getPriority());
+	}
+	
+	/** Shows the completed notification. */
+	public void showCompletedNotification(Torrent torrent) {
+		torrentService_.showCompletedNotification(torrent.getName());
 	}
 	
 	/** Shows a toast with a message. */

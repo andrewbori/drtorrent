@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    		  xmlns:ads="http://schemas.android.com/apk/lib/com.google.ads"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:orientation="vertical" >
@@ -7,7 +8,16 @@
     <ListView
         android:id="@+id/main_lvTorrent"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent">
+        android:layout_height="fill_parent"
+        android:layout_weight="1">
     </ListView>
+    
+    <com.google.ads.AdView android:id="@+id/adView"
+                         android:layout_width="wrap_content"
+                         android:layout_height="wrap_content"
+                         ads:adUnitId="a150b0b5a8dc405"
+                         ads:adSize="SMART_BANNER"
+                         ads:testDevices="TEST_EMULATOR, 118365C26C39E4F219F83BAE00C80925"
+                         ads:loadAdOnCreate="true"/>
 
 </LinearLayout>

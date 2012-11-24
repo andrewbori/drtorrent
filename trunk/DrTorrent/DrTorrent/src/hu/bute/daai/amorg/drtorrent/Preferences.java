@@ -36,7 +36,7 @@ public class Preferences {
 	/** Returns the P2P port. */
 	public static int getPort() {
 		try {
-			return Integer.valueOf(preferences_.getString("port", "34400"));
+			return Integer.valueOf(preferences_.getString("port", "6886"));
 		} catch (Exception e) {
 			return 0;
 		}

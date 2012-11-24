@@ -281,7 +281,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		}
 	}
 	
-	static private int NOTIFICATION_TORRENT_SERVICE = 1;
+	final static private int NOTIFICATION_TORRENT_SERVICE = 1;
 	/** Show Notification. */
 	private void showNotification() {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -294,11 +294,33 @@ public class TorrentService extends Service implements NetworkStateListener {
 		
 		Context context = getApplicationContext();
 		Intent intent = new Intent(context, DrTorrentActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
 		
 		notification.setLatestEventInfo(context, text, "DrTorrent is running...", pendingIntent);
 		notification.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT;
 		notificationManager.notify(NOTIFICATION_TORRENT_SERVICE, notification);
+	}
+	
+	static private int notifiacionId = 10; 
+	/** Shows a new notificaion for download completed. */
+	public void showCompletedNotification(String torrentName) {
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		
+		int icon = R.drawable.icon_notification;
+		String text = torrentName;
+		long when = System.currentTimeMillis();
+		
+		Notification notification = new Notification(icon, text, when);
+		
+		Context context = getApplicationContext();
+		Intent intent = new Intent(context, DrTorrentActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
+		
+		notification.flags |= Notification.FLAG_AUTO_CANCEL;
+		notification.setLatestEventInfo(context, text, "Download complete.", pendingIntent);
+		notificationManager.notify(notifiacionId++, notification);
 	}
 	
 	/** Hides the service notification. */
@@ -387,6 +409,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	
 	/** Torrent changed. */
 	public void updateTorrentItem(Torrent torrent) {
+		if (torrent == null) return;
 		int torrentId = torrent.getId();
 		
 		// Searching the torrent item
@@ -423,6 +446,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	
 	/** Torrent deleted. */
 	public void removeTorrentItem(Torrent torrent) {
+		if (torrent == null) return;
 		int torrentId = torrent.getId();	
 
 		// Searching the torrent item
@@ -448,6 +472,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	
 	/** FileList changed. */
 	public void updateFileList(Torrent torrent) {
+		if (torrent == null) return;
 		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		Vector<File> files = torrent.getFiles();
@@ -472,6 +497,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	
 	/** Peer list changed. */
 	public void updatePeerList(Torrent torrent) {
+		if (torrent == null) return;
 		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		Message msg = Message.obtain();
@@ -492,6 +518,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	
 	/** Peer list changed. */
 	public void updateTrackerList(Torrent torrent) {
+		if (torrent == null) return;
 		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		Message msg = Message.obtain();
@@ -512,6 +539,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	
 	/** Bitfield changed. */
 	public void updateBitfield(Torrent torrent) {
+		if (torrent == null) return;
 		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
 		
@@ -611,6 +639,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		Bundle bundle = new Bundle();
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
+		if (torrent == null) return;
 		Vector<Peer> peers = torrent.getConnectedPeers();
 		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
 		for (int i = 0; i < peers.size(); i++) {
@@ -634,6 +663,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		Bundle bundle = new Bundle();
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
+		if (torrent == null) return;
 		Vector<File> files = torrent.getFiles();
 		ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
 		for (int i = 0; i < files.size(); i++) {
@@ -657,6 +687,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		Bundle bundle = new Bundle();
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
+		if (torrent == null) return;
 		Vector<Tracker> trackers = torrent.getTrackers();
 		ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
 		for (int i = 0; i < trackers.size(); i++) {

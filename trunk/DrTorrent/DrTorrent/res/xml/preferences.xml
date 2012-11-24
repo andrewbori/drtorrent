@@ -27,7 +27,7 @@
 
     <EditTextPreference
         android:key="port"
-        android:defaultValue="36400"
+        android:defaultValue="6886"
         android:inputType="number" 
         android:dialogTitle="@string/preferences_port"
         android:title="@string/preferences_port" />
