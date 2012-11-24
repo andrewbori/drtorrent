@@ -679,7 +679,7 @@ public class Torrent {
 				if (status_ == R.string.status_downloading) {
 					try {
 						int activeCount = peerTPE_.getActiveCount();
-						for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize() && activeCount < peerTPE_.getCorePoolSize(); i++) {
+						for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize() && activeCount < peerTPE_.getCorePoolSize() && connectedPeers_.size() < peerTPE_.getCorePoolSize(); i++) {
 							Peer peer = notConnectedPeers_.elementAt(i);
 							if (peer.canConnect()) {
 								Runnable command = peer.connect(this);
@@ -1137,6 +1137,7 @@ public class Torrent {
 
 			if (!calledBySavedTorrent) {
 				Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
+				torrentManager_.showCompletedNotification(this);
 				if (bitfield_.isFull()) {
 					for (int i = 0; i < trackers_.size(); i++) {
 						trackers_.elementAt(i).changeEvent(Tracker.EVENT_COMPLETED);
@@ -1451,6 +1452,9 @@ public class Torrent {
 				String trackerUrl = trackers.getString(i);
 				addTracker(trackerUrl);
 			}
+			
+			downloadSpeed_ = new Speed();
+			uploadSpeed_ = new Speed();
 			
 		} catch (JSONException e) {
 			Log.v(LOG_TAG, e.getMessage());

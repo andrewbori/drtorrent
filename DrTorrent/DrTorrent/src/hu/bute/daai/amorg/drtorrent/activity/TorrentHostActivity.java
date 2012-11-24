@@ -41,6 +41,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int MENU_SETTINGS       = 111;
 	protected static final int MENU_SHUT_DOWN      = 112;
 	
+	protected final static String SHUT_DOWN = "shut_down";
+	protected boolean isShuttingDown_ = false; 
+	
 	protected static final int RESULT_FILEBROWSER_ACTIVITY = 201;
 	protected static final int RESULT_TORRENT_SETTINGS     = 202;
 	
@@ -64,6 +67,11 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
 			torrentId_ = extras.getInt(KEY_TORRENT_ID, -1);
+			
+			isShuttingDown_ = extras.getBoolean(SHUT_DOWN, false);
+			if (isShuttingDown_) {
+				return;
+			}
 		}
 		
 		Intent i = new Intent(context_, TorrentService.class);
@@ -84,12 +92,19 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
+		if (isShuttingDown_) {
+			finish();
+			return;
+		}
 		doBindService();
 	}
 
 	@Override
 	protected void onStop() {
 		super.onStop();
+		if (isShuttingDown_) {
+			return;
+		}
 		doUnbindService();
 	}
 

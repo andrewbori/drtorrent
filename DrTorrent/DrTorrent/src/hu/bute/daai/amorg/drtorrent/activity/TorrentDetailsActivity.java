@@ -50,6 +50,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
+
 		updateTorrent(updateField_);
 	}
 	
