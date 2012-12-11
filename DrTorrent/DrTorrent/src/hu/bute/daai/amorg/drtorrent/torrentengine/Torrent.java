@@ -10,7 +10,6 @@ import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedList;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
-import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -105,6 +104,9 @@ public class Torrent {
 		torrentManager_ = torrentManager;
 		fileManager_ = new FileManager(this);
 		downloadFolder_ = downloadPath;
+		if (downloadFolder_.equals("/")) {
+			downloadFolder_ = "";
+		}
 
 		torrentFilePath_ = filePath;
 		torrentFileName_ = filePath.substring(filePath.lastIndexOf('/') + 1, filePath.length());
@@ -218,7 +220,7 @@ public class Torrent {
 				return ERROR_WRONG_CONTENT;
 
 			name_ = ((BencodedString) tempBencoded).getStringValue();
-			path_ = downloadFolder_ + name_ + "/";
+			path_ = downloadFolder_ + "/" + name_ + "/";
 
 			long fileBegin = 0;
 			for (int i = 0; i < files.count(); i++) {
@@ -274,7 +276,7 @@ public class Torrent {
 				return ERROR_WRONG_CONTENT;
 
 			name_ = ((BencodedString) tempBencoded).getStringValue();
-			path_ = downloadFolder_; // + name_ + "/";
+			path_ = downloadFolder_ + "/";
 
 			files_.addElement(new File(this, 0, 0, path_, name_, length));
 		}
@@ -589,7 +591,7 @@ public class Torrent {
 		
 		for (int i = 0; i < trackers_.size(); i++) {
 			Tracker tracker = trackers_.elementAt(i);
-			if (tracker.getStatus() == Tracker.STATUS_FAILED) {
+			if (tracker.getStatus() == Tracker.STATUS_FAILED || tracker.getStatus() == Tracker.STATUS_UNKNOWN) {
 				tracker.resetLastRequest();
 			}
 		}
@@ -1283,6 +1285,11 @@ public class Torrent {
 		return this.torrentManager_;
 	}
 
+	/** Returns the download folder of the torrent. */
+	public String getDownloadFolder() {
+		return downloadFolder_;
+	}
+	
 	/** Returns the name of the torrent. */
 	public String getName() {
 		return name_;
@@ -1370,12 +1377,14 @@ public class Torrent {
 	}
 
 	/** Returns information of the torrent in JSON. */
-	public JSONObject getJSON() {
+	public JSONObject getStateInJSON() {
 		JSONObject json = new JSONObject();
 
 		try {
 			json.put("InfoHash", getInfoHashString());
 
+			json.put("DownloadFolder", downloadFolder_);
+			
 			JSONArray bitfield = new JSONArray();
 			for (int i = 0; i < bitfield_.data().length; i++) {
 				bitfield.put((int) bitfield_.data()[i]);
@@ -1408,7 +1417,7 @@ public class Torrent {
 	}
 	
 	/** Sets the torrent from JSON. */
-	public boolean setJSON(JSONObject json) {
+	public boolean setStateFromJSON(JSONObject json) {
 		try {
 			JSONArray filePriorities = json.getJSONArray("FilePriorities");
 			if (filePriorities.length() == files_.size()) {

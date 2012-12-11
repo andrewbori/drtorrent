@@ -7,6 +7,7 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
+import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import hu.bute.daai.amorg.drtorrent.torrentengine.File;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
@@ -27,7 +28,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -38,7 +38,7 @@ import android.os.RemoteException;
 import android.util.Log;
 
 /** Torrent service. */
-public class TorrentService extends Service implements NetworkStateListener {
+public class TorrentService extends Service {
 	private final static String LOG_TAG           = "TorrentService";
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
@@ -71,6 +71,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	public final static int MSG_SEND_FILE_LIST_SELECTED  = 314;
 	public final static int MSG_SEND_TORRENT_SETTINGS	 = 315;
 	public final static int MSG_SHUT_DOWN				 = 321;
+	public static final int MSG_CONN_SETTINGS_CHANGED    = 400;
 	
 	public final static int UPDATE_INFO		    =  1;	// 0b00000001
 	public final static int UPDATE_FILE_LIST    =  2;	// 0b00000010
@@ -104,6 +105,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	private final Messenger serviceMessenger_ = new Messenger(new IncomingMessageHandler());
 
 	private TorrentManager torrentManager_;
+	private NetworkManager networkManager_;
 	private NetworkStateReceiver networkStateReceiver_;
 
 	private Messenger clientAll_;
@@ -112,9 +114,6 @@ public class TorrentService extends Service implements NetworkStateListener {
 	private int clientSingleUpdateField_ = 0;
 
 	private Vector<TorrentListItem> torrents_; // only for sending message
-	
-	private boolean isWifiConnected_ = false;
-	private boolean isMobileNetConnected_ = false;
 
 	@Override
 	public void onCreate() {
@@ -125,10 +124,11 @@ public class TorrentService extends Service implements NetworkStateListener {
 		showNotification();
 		
 		torrents_ = new Vector<TorrentListItem>();
-		torrentManager_ = new TorrentManager(this);
+		networkManager_ = new NetworkManager();
+		torrentManager_ = new TorrentManager(this, networkManager_);
 		schedulerHandler.postDelayed(schedulerRunnable, 1000);
 		networkStateReceiver_ = new NetworkStateReceiver();
-		networkStateReceiver_.setOnNetworkStateListener(this);
+		networkStateReceiver_.setOnNetworkStateListener(networkManager_);
 		registerReceiver(networkStateReceiver_, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 	}
 
@@ -228,10 +228,14 @@ public class TorrentService extends Service implements NetworkStateListener {
 				case MSG_SEND_TORRENT_LIST:
 					sendTorrentList(msg.replyTo);
 					break;
-
+					
 				case MSG_SEND_TORRENT_ITEM:
 					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
 					sendTorrentItem(msg.replyTo, torrentId);
+					break;
+					
+				case MSG_CONN_SETTINGS_CHANGED:
+					networkManager_.connectionSettingsChanged();
 					break;
 					
 				case MSG_SHUT_DOWN:
@@ -286,7 +290,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	private void showNotification() {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		
-		int icon = R.drawable.icon_notification;
+		int icon = R.drawable.ic_notification;
 		String text = "DrTorrent";
 		long when = System.currentTimeMillis();
 		
@@ -297,7 +301,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
 		
-		notification.setLatestEventInfo(context, text, "DrTorrent is running...", pendingIntent);
+		notification.setLatestEventInfo(context, text, getString(R.string.drtorrent_is_running), pendingIntent);
 		notification.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT;
 		notificationManager.notify(NOTIFICATION_TORRENT_SERVICE, notification);
 	}
@@ -307,7 +311,7 @@ public class TorrentService extends Service implements NetworkStateListener {
 	public void showCompletedNotification(String torrentName) {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		
-		int icon = R.drawable.icon_notification;
+		int icon = R.drawable.ic_notification;
 		String text = torrentName;
 		long when = System.currentTimeMillis();
 		
@@ -318,8 +322,11 @@ public class TorrentService extends Service implements NetworkStateListener {
 		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
 		
-		notification.flags |= Notification.FLAG_AUTO_CANCEL;
-		notification.setLatestEventInfo(context, text, "Download complete.", pendingIntent);
+		notification.ledARGB = 0xff00ff00;
+		notification.ledOnMS = 300;
+		notification.ledOffMS = 1000;
+		notification.flags |= Notification.FLAG_AUTO_CANCEL | Notification.FLAG_SHOW_LIGHTS;
+		notification.setLatestEventInfo(context, text, getString(R.string.download_complete), pendingIntent);
 		notificationManager.notify(notifiacionId++, notification);
 	}
 	
@@ -506,7 +513,11 @@ public class TorrentService extends Service implements NetworkStateListener {
 		Vector<Peer> peers = torrent.getConnectedPeers();
 		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
 		for (int i = 0; i < peers.size(); i++) {
-			peerListItems.add(new PeerListItem(peers.elementAt(i)));
+			try {
+				peerListItems.add(new PeerListItem(peers.elementAt(i)));
+			} catch (Exception e) {
+				break;
+			}
 		}
 		bundle.putSerializable(MSG_KEY_PEER_LIST, peerListItems);
 		
@@ -812,27 +823,4 @@ public class TorrentService extends Service implements NetworkStateListener {
 			schedulerHandler.postDelayed(schedulerRunnable, 1000);
 		}
 	};
-
-	/** Called when the network state changes. */
-	@Override
-	public void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
-		boolean oldState = isWifiConnected_ || isMobileNetConnected_;
-		
-		if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
-			isWifiConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? WIFI CONNECTION " + !noConnectivity);
-		} else if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET){
-			isWifiConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? ETHERNET CONNECTION " + !noConnectivity);
-		} else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
-			isMobileNetConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION");
-		} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION " + !noConnectivity);
-		
-		boolean newState = isWifiConnected_ || (isMobileNetConnected_ && !Preferences.isWiFiOnly());
-		if (oldState != newState) {
-			if (newState) torrentManager_.enable();
-			else torrentManager_.disable();
-		}
-	}
 }

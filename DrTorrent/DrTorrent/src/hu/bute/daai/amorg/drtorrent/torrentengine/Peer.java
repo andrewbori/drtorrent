@@ -35,6 +35,9 @@ public class Peer {
 	private long latestDownloaded_ = 0;
 	private long downloaded_ = 0;
 	private Speed downloadSpeed_ = null;
+	private long latestUploaded_ = 0;
+	private long uploaded_ = 0;
+	private Speed uploadSpeed_ = null;
 	
 	private int tcpTimeoutCount_ = 0;
 	private long disconnectionTime_ = 0;
@@ -61,6 +64,7 @@ public class Peer {
 	/** Connects to the peer. */
 	public Runnable connect(Torrent torrent) {
 		downloadSpeed_ = new Speed();
+		uploadSpeed_ = new Speed();
 		torrent_ = torrent;
 		if (connection_ == null) connection_ = new PeerConnection(this, torrent, false);
 		return connection_.connect();
@@ -68,6 +72,7 @@ public class Peer {
 	
 	public void connect(Socket socket) {
 		downloadSpeed_ = new Speed();
+		uploadSpeed_ = new Speed();
 		if (connection_ == null) connection_ = new PeerConnection(this, null, true);
 		connection_.connect(socket);
 	}
@@ -82,6 +87,7 @@ public class Peer {
 		cancelBlocks();
 		disconnectionTime_ = SystemClock.elapsedRealtime();
 		downloadSpeed_ = null;
+		uploadSpeed_ = null;
 	}
 	
 	/** Schedules the connection. */
@@ -154,10 +160,19 @@ public class Peer {
 		connection_.issueDownload();
 	}
 	
+	public void blockUploaded(int size) {
+		uploaded_ += size; 
+	}
+	
 	public void calculateSpeed(long time) {
-		if (downloadSpeed_ == null) return;
-		downloadSpeed_.addBytes(downloaded_ - latestDownloaded_, time);
-		latestDownloaded_ = downloaded_;
+		if (downloadSpeed_ != null) {
+			downloadSpeed_.addBytes(downloaded_ - latestDownloaded_, time);
+			latestDownloaded_ = downloaded_;
+		}
+		if (uploadSpeed_ != null) {
+			uploadSpeed_.addBytes(uploaded_ - latestUploaded_, time);
+			latestUploaded_ = uploaded_;
+		}
 	}
 	
 	/** Sets the bitfield of the peer. */
@@ -270,6 +285,13 @@ public class Peer {
 		return (int) (downloadSpeed_.getBytes() / Speed.TIME_INTERVAL);
 	}
 	
+	/** Returns the upload speed. */
+	public int getUploadSpeed() {
+		if (uploadSpeed_ == null) return 0;
+
+		return (int) (uploadSpeed_.getBytes() / Speed.TIME_INTERVAL);
+	}
+	
 	/** Returns the block speed. */
 	public double getBlockSpeed() {
 		return (double) getDownloadSpeed() / (double) Piece.DEFALT_BLOCK_LENGTH;
@@ -284,6 +306,11 @@ public class Peer {
 	/** Returns the count of downloaded bytes. */
 	public long getDownloaded() {
 		return downloaded_;
+	}
+	
+	/** Returns the count of uploaded bytes. */
+	public long getUploaded() {
+		return uploaded_;
 	}
 	
 	/** Returns the peers ID. Only used inside this program... */

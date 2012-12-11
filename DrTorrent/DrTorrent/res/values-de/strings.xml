@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DrTorrent</string>
+    <string name="menu_addtorrent">Torrent hinzufügen</string>
+    <string name="filebrowser_current">Verzeichnis</string>
+    <string name="filebrowser_parent">Übergeordnetes Verzeichnis</string>
+    <string name="filebrowser_folder">Mappe</string>
+    <string name="downloaded">Geladen:</string>
+    <string name="uploaded">Gesendet:</string>
+    <string name="peers">Seeds/peers:</string>
+    <string name="download_speed">Download-Rate:</string>
+    <string name="upload_speed">Upload-Rate:</string>
+    <string name="size">Größe:</string>
+    <string name="elapsed_time">Laufzeit:</string>
+    <string name="remaining_time">Restzeit:</string>
+    <string name="tab_info">Info</string>
+    <string name="tab_peers">Peers</string>
+    <string name="tab_pieces">Teile</string>
+    <string name="tab_files">Dateien</string>
+    <string name="tab_trackers">Tracker</string>
+    <string name="status_hash_check">Hash Überprüfung</string>
+    <string name="status_opening">Öffnung</string>
+    <string name="status_started">Gestartet</string>
+    <string name="status_wrong_file">Falsche Torrent!</string>
+    <string name="status_downloading">Beim Herunterladen</string>
+    <string name="status_seeding">Seeden</string>
+    <string name="status_stopped">Gestoppt</string>
+    <string name="preferences_streaming">Streaming Modus</string>
+    <string name="preferences_streaming_sum">Inhalte sequenziell herunterladen</string>
+    <string name="preferences_port">P2P Port</string>
+    <string name="preferences_connections">Verbindungen pro Torrent</string>
+    <string name="all">Alle</string>
+    <string name="priority">"Priorität: "</string>
+    <string name="priority_normal">normal</string>
+    <string name="priority_skip">auslassen</string>
+    <string name="priority_low">niedrig</string>
+    <string name="priority_high">hoch</string>
+    <string name="updating">Aktualisierung</string>
+    <string name="working">arbeitet</string>
+    <string name="failed">gescheitert</string>
+    <string name="empty_field"></string>
+    <string name="download_folder">Download-Sammlung</string>
+    <string name="only_wifi">Nur WiFi</string>
+    <string name="only_wifi_sum">Download nur über WiFi</string>
+    <string name="ready">Ferig:</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="remove">Entfernen</string>
+    <string name="remove_dialog_title">Möchtest du den gewählten Torrent wirklich löschen?</string>
+    <string name="exit_dialog_title">Möchtest du DrTorrent wirklich beenden?</string>
+    <string name="menu_add_tracker">Tracker hinzufügen</string>
+    <string name="tracker_remove_message">Möchtest du den gewählten Tracker wirklich löschen?</string>
+    <string name="menu_add_peer">Peer hinzufügen</string>
+    <string name="ip_address">IP-Addresse:</string>
+    <string name="port">Port:</string>
+    <string name="incoming_connections">Eingehende Verbindungen</string>
+    <string name="enable_incoming_connections">Aktivieren eingehende Verbindungen</string>
+    <string name="upload">Upload</string>
+    <string name="enable_upload">Aktivieren hochladen</string>
+    <string name="shut_down">Beenden</string>
+    <string name="about">Über</string>
+    <string name="search">Torrent suchen</string>
+    <string name="about_text">Dieses Projekt wurde in Zusammenarbeit mit BME AUT AMORG geschaffen.</string>
+    <string name="developers">Entwickler:</string>
+    <string name="active_developer">Aktive Entwickler:</string>
+    <string name="bori_andras">András Bori</string>
+    <string name="ekler_peter">Péter Ekler</string>
+    <string name="erdody_nagy_zsombor">Zsombor Erdődy-Nagy</string>
+    <string name="about_drtorrent">Über DrTorrent</string>
+    <string name="settings">Einstellungen</string>
+    <string name="download">Download</string>
+    <string name="connection">Verbindung</string>
+    <string name="back">Zurück</string>
+	<string-array name="search_sites">
+		<item>Google</item>
+		<item>1337x</item>
+		<item>BitSnoop</item>
+		<item>Extra Torrent</item>
+		<item>H33T</item>
+		<item>isoHunt</item>
+		<item>Kickass Torrents</item>
+		<item>mininova</item>
+		<item>Torrentz</item>
+		<item>The Pirate Bay</item>
+		<item>Torrent Reactor</item>
+		<item>RARBG</item>
+	</string-array>
+	<string name="destination">Speicherort:</string>
+	<string name="drtorrent_is_running">DrTorrent läuft&#8230;</string>
+	<string name="download_complete">Download abgeschlossen.</string>
+	<string name="no_email_client">Kein E-Mail-Client gefunden wurde.</string>
+	<string name="feedback">Rückkopplung</string>
+	<string name="reading_the_torrent_file">Einlesen der torrent-Datei&#8230;</string>
+	<string name="not_a_torrent_file">Nicht eine torrent-Datei!</string>
+	<string name="the_torrent_is_already_opened">Die Torrent ist bereits geöffnet!</string>
+	<string name="there_is_not_enough_free_space_on_the_sd_card">Nicht genügend Speicherplatz verfügbar!</string>
+	<string name="error">Fehler!</string>
+</resources>

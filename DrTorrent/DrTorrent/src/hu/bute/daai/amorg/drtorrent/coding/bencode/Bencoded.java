@@ -59,7 +59,13 @@ public abstract class Bencoded {
                 
                 parseIndex++; // jump the ':'
                 
-                int stringEndIndex = parseIndex+Integer.parseInt(temp);
+                int stringEndIndex = 0;
+                /** I had a an exception here (Bori Andras 2012-12-10): java.lang.NumberFormatExcetion: Invalid int: "140733193388032" */
+                try {
+                	stringEndIndex = parseIndex+Integer.parseInt(temp);
+                } catch (Exception e) {
+                	return null;
+                }
 
                 byte[] tempChars=new byte[stringEndIndex-parseIndex];
                 System.arraycopy(buff,parseIndex,tempChars,0,stringEndIndex-parseIndex);
@@ -87,7 +93,7 @@ public abstract class Bencoded {
                     c = (char)buff[parseIndex];
                 }
                 
-                parseStack.push(new BencodedInteger(Integer.parseInt(temp)));
+                parseStack.push(new BencodedInteger(Long.parseLong(temp)));
             }
             else if ((char)buff[parseIndex]=='l')
             {

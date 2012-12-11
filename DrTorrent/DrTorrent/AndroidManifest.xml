@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="hu.bute.daai.amorg.drtorrent"
-    android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionCode="2"
+    android:versionName="1.1" >
 
     <uses-sdk android:minSdkVersion="7" android:targetSdkVersion="14" />
     
@@ -39,8 +39,12 @@
         </activity>
         <activity android:name=".activity.TorrentDetailsActivity" />
         <activity android:name=".activity.SettingsActivity" />
+        <activity android:name=".activity.FolderChooserActivity"
+            	  android:theme="@android:style/Theme.Dialog"
+            	  android:configChanges="orientation|screenSize" />
         <activity android:name=".activity.FileBrowserActivity"
-            	  android:theme="@android:style/Theme.Dialog" />
+            	  android:theme="@android:style/Theme.Dialog"
+            	  android:configChanges="orientation|screenSize" />
         <activity android:name=".activity.TorrentSettingsActivity"
             	  android:theme="@android:style/Theme.Dialog" />
         

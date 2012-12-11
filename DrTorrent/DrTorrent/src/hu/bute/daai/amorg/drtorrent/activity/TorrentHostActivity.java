@@ -38,8 +38,11 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int MENU_DELETE_TORRENT = 104;
 	protected static final int MENU_ADD_TRACKER    = 105;
 	protected static final int MENU_ADD_PEER 	   = 106;
+	protected static final int MENU_SEARCH_TORRENT = 110;
 	protected static final int MENU_SETTINGS       = 111;
-	protected static final int MENU_SHUT_DOWN      = 112;
+	protected static final int MENU_ABOUT 		   = 112;
+	protected static final int MENU_FEEDBACK	   = 113;
+	protected static final int MENU_SHUT_DOWN      = 114;
 	
 	protected final static String SHUT_DOWN = "shut_down";
 	protected boolean isShuttingDown_ = false; 
@@ -57,6 +60,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected AlertDialog dialog_;
 	protected ProgressDialog progressDialog_;
 
+	protected boolean isOpening_ = false;
 	protected Uri fileToOpen_ = null;
 	
 	@Override

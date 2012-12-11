@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DrTorrent</string>
+    <string name="menu_addtorrent">Добавить торрент</string>
+    <string name="filebrowser_current">Каталог</string>
+    <string name="filebrowser_parent">Родительский каталог</string>
+    <string name="filebrowser_folder">Папка</string>
+    <string name="downloaded">Принято:</string>
+    <string name="uploaded">Отдано:</string>
+    <string name="peers">Сидов/пиров:</string>
+    <string name="download_speed">Приём:</string>
+    <string name="upload_speed">Отдача:</string>
+    <string name="size">Объём:</string>
+    <string name="elapsed_time">Прошло:</string>
+    <string name="remaining_time">Осталось:</string>
+    <string name="tab_info">Информация</string>
+    <string name="tab_peers">Пиры</string>
+    <string name="tab_pieces">Частей</string>
+    <string name="tab_files">Файлы</string>
+    <string name="tab_trackers">Трекеры</string>
+    <string name="status_hash_check">Проверка хэша</string>
+    <string name="status_opening">Открытие</string>
+    <string name="status_started">Началась</string>
+    <string name="status_wrong_file">Неправильный торрент-файл</string>
+    <string name="status_downloading">Загрузка</string>
+    <string name="status_seeding">Раздаваемые</string>
+    <string name="status_stopped">Остановлен</string>
+    <string name="preferences_streaming">Потоковом режиме</string>
+    <string name="preferences_streaming_sum">Загрузка содержимого последовательно</string>
+    <string name="preferences_port">P2P Порт</string>
+    <string name="preferences_connections">Присоединённых пиров на торрент</string>
+    <string name="all">Все</string>
+    <string name="priority">"Приоритет: "</string>
+    <string name="priority_normal">бычный</string>
+    <string name="priority_skip">пропуск</string>
+    <string name="priority_low">низкий</string>
+    <string name="priority_high">высокий</string>
+    <string name="updating">обновление</string>
+    <string name="working">работает</string>
+    <string name="failed">не удалось</string>
+    <string name="empty_field"></string>
+    <string name="download_folder">Скачать папку</string>
+    <string name="only_wifi">Только WiFi</string>
+    <string name="only_wifi_sum">Скачать только по WiFi</string>
+    <string name="ready">Готовый:</string>
+    <string name="start">Пуск</string>
+    <string name="stop">Стоп</string>
+    <string name="remove">Удалить</string>
+    <string name="remove_dialog_title">Вы действительно хотите удалить выбранный торрент?</string>
+    <string name="exit_dialog_title">Вы действительно хотите выйти?</string>
+    <string name="menu_add_tracker">Добавить трекер</string>
+    <string name="tracker_remove_message">Вы действительно хотите удалить выбранный трекер?</string>
+    <string name="menu_add_peer">Добавить пир</string>
+    <string name="ip_address">IP-адрес:</string>
+    <string name="port">Порт:</string>
+    <string name="incoming_connections">Входящие соединения</string>
+    <string name="enable_incoming_connections">Включить входящие соединения</string>
+    <string name="upload">Закачивать</string>
+    <string name="enable_upload">Включить закачивать</string>
+    <string name="shut_down">Выход</string>
+    <string name="about">О программе</string>
+    <string name="search">Поискать торрент</string>
+    <string name="about_text">Этот проект был создан в сотрудничестве с BME AUT AMORG.</string>
+    <string name="developers">Разработчики:</string>
+    <string name="active_developer">Активный разработчик:</string>
+    <string name="bori_andras">Андрей Бори (Bori András)</string>
+    <string name="ekler_peter">Петр Эклер (Ekler Péter)</string>
+    <string name="erdody_nagy_zsombor">Сомбор Эрдоди-Наги (Erdődy-Nagy Zsombor)</string>
+    <string name="about_drtorrent">О ДрТоррент</string>
+    <string name="settings">Настройки</string>
+    <string name="download">Скачать</string>
+    <string name="connection">Соединение</string>
+    <string name="back">Назад</string>
+	<string-array name="search_sites">
+		<item>Google</item>
+		<item>1337x</item>
+		<item>BitSnoop</item>
+		<item>Extra Torrent</item>
+		<item>H33T</item>
+		<item>isoHunt</item>
+		<item>Kickass Torrents</item>
+		<item>mininova</item>
+		<item>Torrentz</item>
+		<item>The Pirate Bay</item>
+		<item>Torrent Reactor</item>
+		<item>RARBG</item>
+	</string-array>
+	<string name="destination">Расположение:</string>
+	<string name="drtorrent_is_running">ДрТоррент работает&#8230;</string>
+	<string name="download_complete">Загрузка завершена.</string>
+	<string name="no_email_client">Нет почтового клиента было найдено.</string>
+	<string name="feedback">Обратная связь</string>
+	<string name="reading_the_torrent_file">Чтение торрент-файл&#8230;</string>
+	<string name="not_a_torrent_file">Не торрент-файл!</string>
+	<string name="the_torrent_is_already_opened">Торрент уже открыт!</string>
+	<string name="there_is_not_enough_free_space_on_the_sd_card">Существует не хватает свободного пространства!</string>
+	<string name="error">Ошибка!</string>
+</resources>

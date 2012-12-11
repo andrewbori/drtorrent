@@ -71,24 +71,29 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	
 	protected void createMenu(Menu menu) {
 		if (!isStopped_) {
-			menu.add(Menu.NONE, MENU_STOP_TORRENT, 0, R.string.menu_stop)
-				.setIcon(R.drawable.ic_pause)
+			menu.add(Menu.NONE, MENU_STOP_TORRENT, 0, R.string.stop)
+				//.setIcon(R.drawable.ic_pause)
+				.setIcon(R.drawable.ic_menu_pause)
 				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		} else {
-			menu.add(Menu.NONE, MENU_START_TORRENT, 0, R.string.menu_start)
-				.setIcon(R.drawable.ic_play)
+			menu.add(Menu.NONE, MENU_START_TORRENT, 0, R.string.start)
+				//.setIcon(R.drawable.ic_play)
+				.setIcon(R.drawable.ic_menu_play)
 				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		}
-		menu.add(Menu.NONE, MENU_DELETE_TORRENT, 1, R.string.menu_delete)
-			.setIcon(R.drawable.ic_delete)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+		menu.add(Menu.NONE, MENU_DELETE_TORRENT, 1, R.string.remove)
+			//.setIcon(R.drawable.ic_delete)
+			.setIcon(R.drawable.ic_menu_delete)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
 		menu.add(Menu.NONE, MENU_ADD_PEER, 2, R.string.menu_add_peer)
-			.setIcon(R.drawable.ic_add)
+			//.setIcon(R.drawable.ic_add)
+			.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
 		menu.add(Menu.NONE, MENU_ADD_TRACKER, 3, R.string.menu_add_tracker)
-			.setIcon(R.drawable.ic_add)
+			//.setIcon(R.drawable.ic_add)
+			.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 	}
 
@@ -133,7 +138,8 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			case MENU_DELETE_TORRENT:
 				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 				builder.setMessage(R.string.remove_dialog_title).
-				setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+				setTitle(getString(R.string.remove)).
+				setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						msg.what = TorrentService.MSG_CLOSE_TORRENT;
@@ -145,7 +151,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			            startActivity(intent);
 					}
 				}).
-				setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+				setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.cancel();
@@ -165,7 +171,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				final EditText etAddress = (EditText) layout.findViewById(R.id.dialog_add_peer_ip);
 				final EditText etPort = (EditText) layout.findViewById(R.id.dialog_add_peer_port);
 				
-				builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {	
+				builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						try {
@@ -183,7 +189,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 						dialog.cancel();
 					}
 				}).
-				setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {	
+				setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.cancel();
@@ -200,7 +206,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				etTrackerUrl.setHint("udp://...");
 				builder.setView(etTrackerUrl);
 				
-				builder.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {	
+				builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						String url = etTrackerUrl.getText().toString();
@@ -214,7 +220,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 						dialog.cancel();
 					}
 				}).
-				setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {	
+				setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.cancel();

@@ -789,6 +789,7 @@ public class PeerConnection {
 				write(baos.toByteArray());
 
 				torrent_.updateBytesUploaded(block.length());
+				peer_.blockUploaded(blockBytes.length);
 
 				// Log.v(LOG_TAG, "Piece sent to " + peer_.getAddress());
 			} catch (Exception e) {
