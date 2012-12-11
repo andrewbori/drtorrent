@@ -12,6 +12,7 @@ public class TorrentListItem implements Serializable {
 
 	private int id_;
 	private String infoHash_ = "";
+	private String downloadFolder_ = "";
 	private String name_ = "";
 	private double percent_ = 0;
 	private int status_ = R.string.status_stopped;
@@ -40,6 +41,7 @@ public class TorrentListItem implements Serializable {
 	public void set(TorrentListItem item) {
 		this.id_ = item.id_;
 		this.infoHash_ = item.infoHash_;
+		this.downloadFolder_ = item.downloadFolder_;
 		this.name_ = item.name_;
 		this.percent_ = item.percent_;
 		this.status_ = item.status_;
@@ -57,6 +59,7 @@ public class TorrentListItem implements Serializable {
 	public void set(Torrent torrent) {
 		this.id_ = torrent.getId();
 		this.infoHash_ = torrent.getInfoHashString();
+		this.downloadFolder_ = torrent.getDownloadFolder();
 		this.name_ = torrent.getName();
 		this.percent_ = torrent.getProgressPercent();
 		this.status_ = torrent.getStatus();
@@ -83,6 +86,10 @@ public class TorrentListItem implements Serializable {
 		return infoHash_;
 	}
 
+	public String getDownloadFolder() {
+		return downloadFolder_;
+	}
+	
 	public String getName() {
 		return name_;
 	}

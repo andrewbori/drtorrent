@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
+import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.TorrentListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
@@ -13,17 +14,23 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
@@ -95,7 +102,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 								AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 								builder.setTitle(torrent.getName()).
 								setMessage(getString(R.string.remove_dialog_title)).
-								setPositiveButton(getString(R.string.yes), new DialogInterface.OnClickListener() {
+								setPositiveButton(getString(android.R.string.yes), new DialogInterface.OnClickListener() {
 									@Override
 									public void onClick(DialogInterface dialog, int which) {
 										msg.what = TorrentService.MSG_CLOSE_TORRENT;
@@ -104,7 +111,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 										} catch (RemoteException e) {}
 									}
 								}).
-								setNegativeButton(getString(R.string.no), new DialogInterface.OnClickListener() {
+								setNegativeButton(getString(android.R.string.no), new DialogInterface.OnClickListener() {
 									@Override
 									public void onClick(DialogInterface dialog, int which) {
 										dialog.cancel();
@@ -128,10 +135,11 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	@Override
 	protected void onStart() {
 		super.onStart();
-		final Intent intent = getIntent ();
+		final Intent intent = getIntent();
 		if (intent != null) {
-			final Uri data = intent.getData();
-			setIntent(null);
+			Uri data = intent.getData();
+			intent.setData(Uri.parse("nothing://"));
+			
 			if (data != null) {
 				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http")) {
 					fileToOpen_ = data;
@@ -176,6 +184,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	@Override
 	protected void openTorrent(Uri torrentUri) {
 		fileToOpen_ = null;
+		
 		Log.v("", torrentUri.getHost() + torrentUri.getPath());
 		Message msg = Message.obtain();
 		Bundle b = new Bundle();
@@ -196,11 +205,92 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		startActivityForResult(intent, RESULT_TORRENT_SETTINGS);
 	}
 	
+	/** Shows the search dialog. */
+	protected void search() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+		builder.setTitle(R.string.search);
+
+	    LayoutInflater inflater = context_.getLayoutInflater();
+	    View dialogView = inflater.inflate(R.layout.dialog_search, null);
+	    builder.setView(dialogView);
+	    
+	    final Spinner spinnerSite = (Spinner) dialogView.findViewById(R.id.dialog_search_spinnerSite);
+	    final EditText etSearch = (EditText) dialogView.findViewById(R.id.dialog_search_etSearch);
+	    
+	    if (spinnerSite.getAdapter().getCount() > Preferences.getSearchSite()) {
+	    	spinnerSite.setSelection(Preferences.getSearchSite());
+	    }
+		
+		builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				Preferences.setSearchSite(spinnerSite.getSelectedItemPosition());
+				String searchStr = etSearch.getText().toString();
+				String searchUrlStr = "";
+				switch (spinnerSite.getSelectedItemPosition()) {
+					case 0:
+						searchUrlStr = "http://www.google.hu/search?q=" + searchStr + " .torrent";
+						break;
+					case 1:
+						searchUrlStr = "http://1337x.org/search/" + searchStr + "/0/";
+						break;
+					case 2:
+						searchUrlStr = "http://bitsnoop.com/search/all/" + searchStr;
+						break;
+					case 3:
+						searchUrlStr = "http://extratorrent.com/search/?search=" + searchStr;
+						break;
+					case 4:
+						searchUrlStr = "http://h33t.com/search/" + searchStr;
+						break;
+					case 5:
+						searchUrlStr = "http://isohunt.com/torrents/?ihq=" + searchStr;
+						break;
+					case 6:
+						searchUrlStr = "http://kat.ph/usearch/" + searchStr + "/";
+						break;
+					case 7:
+						searchUrlStr = "http://www.mininova.org/search/?search=" + searchStr;
+						break;
+					case 8:
+						searchUrlStr = "http://torrentz.eu/search?f=" + searchStr;
+						break;
+					case 9:
+						searchUrlStr = "http://thepiratebay.org/search/" + searchStr;
+						break;
+					case 10:
+						searchUrlStr = "http://www.torrentreactor.net/torrent-search/" + searchStr;
+						break;
+					case 11:
+						searchUrlStr = "http://rarbg.com/torrents.php?search=" + searchStr;
+						break;
+				};
+				
+				try {
+					Uri uri = Uri.parse(searchUrlStr);
+					Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+					startActivity(intent);
+					
+					dialog.cancel();
+				} catch (Exception e) {
+				}
+			}
+		}).
+		setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
+			}
+		}).
+		create().show();
+	}
+	
 	/** Shuts down the application. */
 	protected void shutDown() {
 		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 		builder.setMessage(getString(R.string.exit_dialog_title)).
-		setPositiveButton(getString(R.string.yes), new DialogInterface.OnClickListener() {
+		setTitle(getString(R.string.shut_down)).
+		setPositiveButton(getString(android.R.string.yes), new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				Message msg = Message.obtain();
@@ -216,7 +306,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				finish();
 			}
 		}).
-		setNegativeButton(getString(R.string.no), new DialogInterface.OnClickListener() {
+		setNegativeButton(getString(android.R.string.no), new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
 				dialog.cancel();
@@ -227,14 +317,23 @@ public class DrTorrentActivity extends TorrentHostActivity {
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, "Settings")
-			.setIcon(R.drawable.ic_settings)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, R.string.settings)
+			.setIcon(R.drawable.ic_menu_settings)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		menu.add(Menu.NONE, MENU_ADD_TORRENT, Menu.NONE, R.string.menu_addtorrent)
-			.setIcon(R.drawable.ic_add)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-		menu.add(Menu.NONE, MENU_SHUT_DOWN, Menu.NONE, "Shut down")
-			.setIcon(android.R.drawable.ic_menu_close_clear_cancel)
+			.setIcon(R.drawable.ic_menu_add2)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		menu.add(Menu.NONE, MENU_SEARCH_TORRENT, Menu.NONE, R.string.search)
+			.setIcon(R.drawable.ic_menu_search)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		menu.add(Menu.NONE, MENU_ABOUT, Menu.NONE, R.string.about)
+			.setIcon(R.drawable.ic_menu_about)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		menu.add(Menu.NONE, MENU_FEEDBACK, Menu.NONE, R.string.feedback)
+			.setIcon(R.drawable.ic_menu_email)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		menu.add(Menu.NONE, MENU_SHUT_DOWN, Menu.NONE, R.string.shut_down)
+			.setIcon(R.drawable.ic_menu_close)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		return true;
 	}
@@ -249,9 +348,44 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				startActivityForResult(intent, RESULT_FILEBROWSER_ACTIVITY);
 				break;
 				
+			case MENU_SEARCH_TORRENT:
+				search();
+				break;
+				
 			case MENU_SETTINGS:
 				intent = new Intent(this, SettingsActivity.class);
 				startActivity(intent);
+				break;
+				
+			case MENU_ABOUT:
+				LayoutInflater inflater = getLayoutInflater();
+				View layout = inflater.inflate(R.layout.dialog_about, null);
+
+				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+				builder.setTitle(getString(R.string.about_drtorrent)).
+				setView(layout).
+				create().show();
+				break;
+				
+			case MENU_FEEDBACK:
+				String ver = "";
+				try {
+					PackageManager manager = context_.getPackageManager();
+					PackageInfo info = manager.getPackageInfo(context_.getPackageName(), 0);
+					ver = " (v" + info.versionName + ")";
+				} catch (Exception e) {
+				}
+				
+				intent = new Intent(Intent.ACTION_SENDTO);
+				intent.setType("text/plain");
+				intent.setData(Uri.parse("mailto:andreasweiner@gmail.com"));
+				intent.putExtra(Intent.EXTRA_SUBJECT, "DrTorrent feedback" + ver);
+				intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // when return, DrTorrent is displayed, instead of the email client
+				try {
+				    startActivity(intent);
+				} catch (android.content.ActivityNotFoundException ex) {
+				    Toast.makeText(context_, context_.getString(R.string.no_email_client), Toast.LENGTH_SHORT).show();
+				}
 				break;
 				
 			case MENU_SHUT_DOWN:

@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
+import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
@@ -27,8 +28,6 @@ import android.util.Log;
 /** Class managing the opened torrents. */
 public class TorrentManager {
 	private final static String LOG_TAG = "TorrentManager";
-	
-	public static String DEFAULT_DOWNLOAD_PATH = Environment.getExternalStorageDirectory().getPath() + "/download/";
 	
 	private TorrentService torrentService_;
 	private NetworkManager networkManager_;
@@ -84,13 +83,14 @@ public class TorrentManager {
 	}
 
 	/** Constructor of the Torrent Manager with its Torrent Service as a parameter. */
-	public TorrentManager(TorrentService torrentService) {
+	public TorrentManager(TorrentService torrentService, NetworkManager networkManager) {
 		torrentService_ = torrentService;
 		torrents_ = new Vector<Torrent>();
 		openingTorrents_ = new Vector<Torrent>();
 		generatePeerId();
 		
-		networkManager_ = new NetworkManager(this);
+		networkManager_ = networkManager;
+		networkManager_.setTorrentManager(this);
 		torrentSchedulerThread_ = new TorrentSchedulerThread();
 		torrentSchedulerThread_.start();
 		updateEnabled_ = false;
@@ -99,7 +99,6 @@ public class TorrentManager {
 	/** Enables the Torrent Manager. */
 	public void enable() {
 		isEnabled_ = true;
-		networkManager_.startListening();
 		
 		for (int i = 0; i < torrents_.size(); i++) {
 			Torrent torrent = torrents_.elementAt(i);
@@ -112,7 +111,6 @@ public class TorrentManager {
 	/** Disables the Torrent Manager. */
 	public void disable() {
 		isEnabled_ = false;
-		networkManager_.stopListening();
 	}
 	
 	/** Starts the torrent manager, loads its previously saved state. */
@@ -120,7 +118,6 @@ public class TorrentManager {
 		JSONArray jsonArray = new JSONArray();
 		try {
 			String content = torrentService_.loadState();
-			Log.v(LOG_TAG, content);
 			jsonArray = new JSONArray(content);
 		} catch (Exception e) {
 			Log.v(LOG_TAG, "Error while startup: " + e.getMessage());
@@ -134,7 +131,6 @@ public class TorrentManager {
 			} catch (JSONException e) {
 				Log.v(LOG_TAG, e.getMessage());
 			}
-			Log.v(LOG_TAG, infoHash);
 			openTorrent(infoHash, json);
 		}
 	}
@@ -147,7 +143,7 @@ public class TorrentManager {
 		JSONArray jsonArray = new JSONArray();
 		for (int i = 0; i < torrents_.size(); i++) {
 			Torrent torrent = torrents_.get(i);
-			jsonArray.put(torrent.getJSON());
+			jsonArray.put(torrent.getStateInJSON());
 			torrent.stop();
 			
 			torrents_.removeElementAt(i);
@@ -188,10 +184,17 @@ public class TorrentManager {
 			return;
 		}
 		
-		final Torrent newTorrent = new Torrent(this, infoHash, DEFAULT_DOWNLOAD_PATH);
+		String downloadFolder;
+		try {
+			downloadFolder = json.getString("DownloadFolder");
+		} catch (Exception ex) {
+			downloadFolder = Preferences.getDownloadFolder();
+		}
+		
+		final Torrent newTorrent = new Torrent(this, infoHash, downloadFolder);
 		int result = newTorrent.processBencodedTorrent(bencoded);
 		if (result == Torrent.ERROR_NONE) {								// No error.
-			if (newTorrent.setJSON(json)) {
+			if (newTorrent.setStateFromJSON(json)) {
 				addTorrent(newTorrent);
 				torrentService_.updateTorrentItem(newTorrent);
 				if (newTorrent.getStatus() != R.string.status_stopped) {
@@ -209,7 +212,7 @@ public class TorrentManager {
 	
 	/** Opens a new Torrent file with the given file path. */
 	public void openTorrent(Uri torrentUri) {
-		openTorrent(torrentUri, DEFAULT_DOWNLOAD_PATH);
+		openTorrent(torrentUri, Preferences.getDownloadFolder());
 	}
 	
 	/**
@@ -221,7 +224,7 @@ public class TorrentManager {
 		byte[] torrentContent = null;
 		String path = "";
 		
-		showProgress("Reading the torrent file...");
+		showProgress(torrentService_.getString(R.string.reading_the_torrent_file));
 		
 		if (torrentUri.getScheme().equalsIgnoreCase("file")) {
 			path = torrentUri.getPath();
@@ -235,7 +238,7 @@ public class TorrentManager {
 		
 		if (torrentContent == null) {
 			hideProgress();
-			showDialog("Not a torrent file!");
+			showDialog(torrentService_.getString(R.string.not_a_torrent_file));
 			return;
 		}
 		
@@ -245,13 +248,13 @@ public class TorrentManager {
 			bencoded = Bencoded.parse(torrentContent);
 		} catch (Exception e) {
 			hideProgress();
-			showDialog("Not a torrent file!");
+			showDialog(torrentService_.getString(R.string.not_a_torrent_file));
 			return;
 		}
 		
 		if (bencoded == null) {
 			hideProgress();
-			showDialog("Not a torrent file!");
+			showDialog(torrentService_.getString(R.string.not_a_torrent_file));
 			return;
 		}
 		
@@ -264,13 +267,14 @@ public class TorrentManager {
 			showTorrentSettings(newTorrent);
 			//newTorrent.start();
 		} else if (result == Torrent.ERROR_WRONG_CONTENT) {					// Error.
-			showDialog("Wrong file format!");
+			showDialog(torrentService_.getString(R.string.status_wrong_file));
 		} else if (result == Torrent.ERROR_ALREADY_EXISTS) {
-			showDialog("The torrent is already opened!");
+			showDialog(torrentService_.getString(R.string.the_torrent_is_already_opened));
 		} else if (result == Torrent.ERROR_NO_FREE_SIZE) {
-			showDialog("There is not enough free space on the SD card.");
+			showDialog(torrentService_
+					.getString(R.string.there_is_not_enough_free_space_on_the_sd_card));
 		} else {
-			showDialog("Error.");
+			showDialog(torrentService_.getString(R.string.error));
 		}
 	}
 	

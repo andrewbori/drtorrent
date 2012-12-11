@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    
+    <ListView 
+        android:id="@+id/torrent_settings_lvFiles"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/torrent_settings_llButtons">
+        
+    </ListView>
+    
+    <LinearLayout
+        android:id="@+id/torrent_settings_llButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_alignParentBottom="true" >
+        
+        <CheckBox 
+            android:id="@+id/torrent_settings_cbALl"
+            android:layout_width="match_parent"
+        	android:layout_height="wrap_content"
+        	android:layout_weight="1"
+        	android:text="@string/all"
+        	android:checked="true" />
+        
+        <Button 
+            android:id="@+id/torrent_settings_btnCancel"
+        	android:layout_width="match_parent"
+        	android:layout_height="wrap_content"
+        	android:text="@android:string/cancel"
+        	android:layout_weight="1"
+        	style="@android:style/Widget.Holo.Button" />
+        
+        <Button 
+        	android:id="@+id/torrent_settings_btnOk"
+        	android:layout_width="match_parent"
+        	android:layout_height="wrap_content"
+        	android:text="@android:string/ok"
+        	android:layout_weight="1"
+        	style="@android:style/Widget.Holo.Button" />
+    </LinearLayout>
+
+</RelativeLayout>

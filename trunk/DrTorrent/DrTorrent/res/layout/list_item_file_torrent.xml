@@ -18,8 +18,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="left"
-        android:text="@string/priority"
         android:textStyle="bold"
+        android:text="@string/priority"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
     

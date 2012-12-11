@@ -28,6 +28,7 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 	private final int tvRemainingTimeResource = R.id.list_item_torrent_tvRemainingTime;
 	private final int tvSizeResource = R.id.list_item_torrent_tvSize;
 	private final int tvDownloadedResource = R.id.list_item_torrent_tvDownloaded;
+	private final int layoutDownloadSpeedResource  = R.id.list_item_torrent_layoutDownloadSpeed;
 	private final int tvDownloadSpeedResource = R.id.list_item_torrent_tvDownloadSpeed;
 	
 	private final int layoutUploadRecource = R.id.list_item_torrent_layoutUpload;
@@ -67,10 +68,10 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		DecimalFormat dec = new DecimalFormat("###.#");
 		tvPercent.setText(dec.format(item.getPercent()).concat(" %"));
 		
-		progress.setProgress((int) item.getPercent());
-		
+		//String MyColor = "#09AFED";
 		if (status != R.string.status_seeding) {
 			LinearLayout layoutRemaining = (LinearLayout) reusableView.findViewById(layoutRemainingRecource);
+			LinearLayout layoutDownloadSpeed = (LinearLayout) reusableView.findViewById(layoutDownloadSpeedResource);
 			TextView tvRemainingTime = (TextView) reusableView.findViewById(tvRemainingTimeResource);
 			TextView tvSize = (TextView) reusableView.findViewById(tvSizeResource);
 			TextView tvDownloaded = (TextView) reusableView.findViewById(tvDownloadedResource);
@@ -83,8 +84,21 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 			
 			layoutDownload.setVisibility(LinearLayout.VISIBLE);
 			layoutUpload.setVisibility(LinearLayout.GONE);
-			if (status != R.string.status_stopped) layoutRemaining.setVisibility(LinearLayout.VISIBLE);  
-			else layoutRemaining.setVisibility(LinearLayout.GONE);
+			if (status != R.string.status_stopped) {
+				layoutRemaining.setVisibility(LinearLayout.VISIBLE);
+				layoutDownloadSpeed.setVisibility(LinearLayout.VISIBLE);
+
+				//Drawable drawable = progress.getProgressDrawable();
+				//drawable.setColorFilter(new LightingColorFilter(0xFF000000, 0xFF99CC00));
+			}
+			else {
+				layoutRemaining.setVisibility(LinearLayout.GONE);
+				layoutDownloadSpeed.setVisibility(LinearLayout.GONE);
+				
+				//Drawable drawable = progress.getProgressDrawable();
+				//drawable.setColorFilter(new LightingColorFilter(0xFF000000, 0xFF09AFED));
+				//MyColor = "#09AFED";
+			}
 		} else {	
 			TextView tvUploaded = (TextView) reusableView.findViewById(tvUploadedResource);
 			TextView tvUpSpeed = (TextView) reusableView.findViewById(tvUploadSpeedResource);
@@ -94,8 +108,25 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 			
 			layoutDownload.setVisibility(LinearLayout.GONE);
 			layoutUpload.setVisibility(LinearLayout.VISIBLE);
+			
+			//Drawable drawable = progress.getProgressDrawable();
+			//drawable.setColorFilter(new LightingColorFilter(0xFF000000, 0xFF33CC00));
+			//MyColor = "#33CC00";
 		}
+		
+		/*final float[] roundedCorners = new float[] { 5, 5, 5, 5, 5, 5, 5, 5 };
+		ShapeDrawable shape = new ShapeDrawable(new RoundRectShape(roundedCorners, null, null));
+		shape.getPaint().setColor(Color.parseColor(MyColor));
+		ClipDrawable clip = new ClipDrawable(shape, Gravity.LEFT, ClipDrawable.HORIZONTAL);
+		progress.setProgressDrawable(clip);
+		progress.setBackgroundDrawable(context_.getResources().getDrawable(android.R.drawable.progress_horizontal));
 
+		//clip.setLevel((int) item.getPercent() * 100);
+		progress.setProgress(0);*/
+		progress.setProgress((int) item.getPercent());
+		
+		//progress.invalidate();
+		
 		return reusableView;
 	}
 }

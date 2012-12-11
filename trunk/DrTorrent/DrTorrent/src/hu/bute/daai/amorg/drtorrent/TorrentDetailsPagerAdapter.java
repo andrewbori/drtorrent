@@ -32,6 +32,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.viewpagerindicator.TitleProvider;
 
@@ -48,6 +49,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	private ListView lvFiles_ = null;
 	private ListView lvTrackers_ = null;
 	
+	private TextView tvDownloadFolder_ = null;
 	private TextView tvName_ = null;
 	private TextView tvStatus_ = null;
 	private TextView tvPercent_ = null;
@@ -111,6 +113,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 				if (infoView_ == null) {
 					infoView_ = inflater.inflate(R.layout.torrent_info, null);
 				
+					tvDownloadFolder_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvDownloadFolder);
 					tvName_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvName);
 	    			tvStatus_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvStatus);
 	    			tvPercent_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvPercent);
@@ -148,7 +151,10 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 			             
 			                Intent intent = new Intent(Intent.ACTION_VIEW);
 			                intent.setDataAndType(Uri.fromFile(file), type);
-							context_.startActivity(intent);
+			                try {
+			                	context_.startActivity(intent);
+			                } catch (Exception e) {
+			                }
 						}
 					});
 					lvFiles_.setOnItemLongClickListener(new OnItemLongClickListener() {
@@ -220,7 +226,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 							AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 							builder.setTitle(item.getAddress()).
 							setMessage(R.string.tracker_remove_message).
-							setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+							setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 								@Override
 								public void onClick(DialogInterface dialog, int which) {
 									((TorrentDetailsActivity) context_).removeTracker(item.getId());
@@ -228,7 +234,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 									dialog.cancel();
 								}
 							}).
-							setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {	
+							setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {	
 								@Override
 								public void onClick(DialogInterface dialog, int which) {
 									dialog.cancel();
@@ -261,6 +267,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	public void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
 		torrent_ = item;
 		if (tvPeers_ != null) {
+			tvDownloadFolder_.setText(item.getDownloadFolder());
 			tvName_.setText(item.getName());
 			tvStatus_.setText(context_.getString(item.getStatus()));
 			

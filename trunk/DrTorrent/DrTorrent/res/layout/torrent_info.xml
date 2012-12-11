@@ -73,6 +73,22 @@
 				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
+				      android:text="@string/destination" />
+	            
+	            <TextView android:id="@+id/torrent_details_tvDownloadFolder"
+					  android:layout_width="wrap_content"
+				      android:layout_height="wrap_content"
+				      android:paddingLeft="2dp"
+				      android:paddingRight="2dp"
+				      android:textStyle="bold"
+				      android:text="/mnt/sdcard/download" />
+	        </TableRow>
+		    <TableRow>
+	            <TextView
+					  android:layout_width="wrap_content"
+				      android:layout_height="wrap_content"
+				      android:paddingLeft="3dp"
+				      android:paddingRight="3dp"
 				      android:text="@string/size" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvSize"

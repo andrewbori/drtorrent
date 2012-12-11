@@ -1,45 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
 
-    <CheckBoxPreference
-        android:key="streaming"
-        android:defaultValue="false"
-        android:summary="@string/preferences_streaming_sum"
-        android:title="@string/preferences_streaming" />
-    
-    <CheckBoxPreference
-        android:key="wifi_only"
-        android:defaultValue="true"
-        android:summary="@string/only_wifi_sum"
-        android:title="@string/only_wifi" />
-    
-    <CheckBoxPreference
-        android:key="incoming_connections"
-        android:defaultValue="true"
-        android:summary="@string/enable_incoming_connections"
-        android:title="@string/incoming_connections" />
-    
-    <CheckBoxPreference
-        android:key="upload"
-        android:defaultValue="true"
-        android:summary="@string/enable_upload"
-        android:title="@string/upload" />
+    <PreferenceCategory android:title="@string/download">
+	    <Preference
+	        android:key="download_folder"
+	        android:summary=""
+	        android:title="@string/download_folder"
+	        android:widgetLayout="@layout/preference_dialog" />
+	    
+	    <CheckBoxPreference
+	        android:key="streaming"
+	        android:defaultValue="false"
+	        android:summary="@string/preferences_streaming_sum"
+	        android:title="@string/preferences_streaming" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/upload">
+        <CheckBoxPreference
+	        android:key="upload"
+	        android:defaultValue="true"
+	        android:summary="@string/enable_upload"
+	        android:title="@string/upload" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/connection">
+        <CheckBoxPreference
+	        android:key="wifi_only"
+	        android:defaultValue="true"
+	        android:summary="@string/only_wifi_sum"
+	        android:title="@string/only_wifi" />
+        
+	    <CheckBoxPreference
+	        android:key="incoming_connections"
+	        android:defaultValue="true"
+	        android:summary="@string/enable_incoming_connections"
+	        android:title="@string/incoming_connections" />
+	    
+	    <EditTextPreference
+	        android:key="port"
+	        android:defaultValue="6886"
+	        android:inputType="number" 
+	        android:dialogTitle="@string/preferences_port"
+	        android:title="@string/preferences_port" />
 
-    <EditTextPreference
-        android:key="port"
-        android:defaultValue="6886"
-        android:inputType="number" 
-        android:dialogTitle="@string/preferences_port"
-        android:title="@string/preferences_port" />
-    
-    <EditTextPreference
-        android:key="connections"
-        android:defaultValue="10"
-        android:inputType="number" 
-        android:dialogTitle="@string/preferences_connections"
-        android:title="@string/preferences_connections" />
-	
-    
+	    <EditTextPreference
+	        android:key="connections"
+	        android:defaultValue="10"
+	        android:inputType="number" 
+	        android:dialogTitle="@string/preferences_connections"
+	        android:title="@string/preferences_connections" />
+    </PreferenceCategory>
     <!--EditTextPreference
         android:key="download_speed"
         android:defaultValue="0"

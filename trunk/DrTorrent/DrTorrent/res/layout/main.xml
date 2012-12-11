@@ -8,7 +8,7 @@
     <ListView
         android:id="@+id/main_lvTorrent"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
+        android:layout_height="0dp"
         android:layout_weight="1">
     </ListView>
     
@@ -19,5 +19,4 @@
                          ads:adSize="SMART_BANNER"
                          ads:testDevices="TEST_EMULATOR, 118365C26C39E4F219F83BAE00C80925"
                          ads:loadAdOnCreate="true"/>
-
 </LinearLayout>

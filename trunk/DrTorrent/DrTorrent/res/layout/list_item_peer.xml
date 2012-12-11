@@ -1,52 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="horizontal"
-    android:padding="5dp" >
+    android:orientation="vertical"
+    android:padding="3dp" >
 
-    <TextView
-        android:id="@+id/list_item_peer_tvAddress"
-        android:layout_width="wrap_content"
+	<LinearLayout 
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="192.168.0.1:9876" 
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true" />
+        android:orientation="horizontal">
+	    <TextView
+	        android:id="@+id/list_item_peer_tvAddress"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_weight="1"
+	        android:text="192.168.0.2:6886" />
+	    
+	    <TextView
+	        android:id="@+id/list_item_peer_tvPercent"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_weight="1"
+	        android:gravity="right"
+	        android:text="0 %" />
+    </LinearLayout>
     
-     <TextView
-        android:id="@+id/list_item_peer_tvPercent"
-        android:layout_width="wrap_content"
+    <LinearLayout 
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:paddingRight="10dp"
-        android:text="100 %"
-        android:layout_toLeftOf="@+id/list_item_peer_tvDownloaded"
-        android:layout_alignParentTop="true" />
-    
-     <TextView
-        android:id="@+id/list_item_peer_tvDownloaded"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingRight="10dp"
-        android:text="0 MB"
-        android:layout_toLeftOf="@+id/list_item_peer_tvDownloadSpeed"
-        android:layout_alignParentTop="true" />
-    
-    <TextView
-        android:id="@+id/list_item_peer_tvDownloadSpeed"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingRight="10dp"
-        android:text="0 kB/s"
-        android:layout_toLeftOf="@+id/list_item_peer_tvRequests"
-        android:layout_alignParentTop="true" />
-    
-    <TextView
-        android:id="@+id/list_item_peer_tvRequests"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="right"
-        android:text="0"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentTop="true" />
-    
-</RelativeLayout>
+        android:orientation="horizontal">
+	    <LinearLayout android:id="@+id/list_item_peer_layoutDown"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_marginRight="10dp"
+	        android:gravity="center_vertical"
+	        android:layout_weight="1">
+	        
+			<ImageView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:src="@drawable/ic_menu_down" />
+	    
+		    <TextView
+		        android:id="@+id/list_item_peer_tvDownloaded"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:paddingRight="5dp"
+		        android:text="0 B" />
+	    
+		    <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="(" />
+	        <TextView
+		        android:id="@+id/list_item_peer_tvDownloadSpeed"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="0 B/s" />
+	        <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text=")" />
+	    </LinearLayout>
+	    
+	    <LinearLayout android:id="@+id/list_item_peer_layoutUp"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:gravity="center_vertical"
+	        android:layout_weight="1">
+	        
+			<ImageView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:src="@drawable/ic_menu_up" />
+	    
+		    <TextView
+		        android:id="@+id/list_item_peer_tvUploaded"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:paddingRight="5dp"
+		        android:text="0 B" />
+	    
+		    <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="(" />
+	        <TextView
+		        android:id="@+id/list_item_peer_tvUploadSpeed"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="0 B/s" />
+	        <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text=")" />
+	    </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

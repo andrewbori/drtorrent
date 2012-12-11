@@ -11,9 +11,11 @@ public class PeerListItem implements Serializable {
 	
 	private int id_;
 	private String address_;
-	private String requests_;
+	//private String requests_;
 	private String downloadSpeed_;
 	private String downloaded_;
+	private String uploadSpeed_;
+	private String uploaded_;
 	private String percent_;
 	
 	public PeerListItem(Peer peer) {
@@ -27,18 +29,22 @@ public class PeerListItem implements Serializable {
 	public void set(PeerListItem item) {
 		id_ = item.id_;
 		address_ = item.address_;
-		requests_ = item.requests_;
+		//requests_ = item.requests_;
 		downloadSpeed_ = item.downloadSpeed_;
 		downloaded_ = item.downloaded_;
+		uploadSpeed_ = item.getUploadSpeed();
+		uploaded_ = item.getUploaded();
 		percent_ = item.percent_;
 	}
 	
 	public void set(Peer peer) {
 		id_ = peer.getId();
 		address_ = peer.getAddressPort();
-		requests_ = peer.getRequestsCount() + "";
+		//requests_ = peer.getRequestsCount() + "";
 		downloadSpeed_ = Tools.bytesToString(peer.getDownloadSpeed()) + "/s";
 		downloaded_ = Tools.bytesToString(peer.getDownloaded());
+		uploadSpeed_ = Tools.bytesToString(peer.getUploadSpeed()) + "/s";
+		uploaded_ = Tools.bytesToString(peer.getUploaded());
 		percent_ = peer.getPercent() + " %";
 	}
 	
@@ -50,9 +56,9 @@ public class PeerListItem implements Serializable {
 		return address_;
 	}
 	
-	public String getRequests() {
+	/*public String getRequests() {
 		return requests_;
-	}
+	}*/
 	
 	public String getDownloadSpeed() {
 		return downloadSpeed_;
@@ -60,6 +66,14 @@ public class PeerListItem implements Serializable {
 	
 	public String getDownloaded() {
 		return downloaded_;
+	}
+	
+	public String getUploadSpeed() {
+		return uploadSpeed_;
+	}
+	
+	public String getUploaded() {
+		return uploaded_;
 	}
 	
 	public String getPercent() {

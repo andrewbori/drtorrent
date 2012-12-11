@@ -18,9 +18,11 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 	
 	private final int rowResource = R.layout.list_item_peer;
 	private final int tvAddressResource = R.id.list_item_peer_tvAddress;
-	private final int tvRequestsResource = R.id.list_item_peer_tvRequests;
+	//private final int tvRequestsResource = R.id.list_item_peer_tvRequests;
 	private final int tvDownloadSpeedRecource = R.id.list_item_peer_tvDownloadSpeed;
 	private final int tvDownloadedRecource = R.id.list_item_peer_tvDownloaded;
+	private final int tvUploadSpeedRecource = R.id.list_item_peer_tvUploadSpeed;
+	private final int tvUploadedRecource = R.id.list_item_peer_tvUploaded;
 	private final int tvPercentRecource = R.id.list_item_peer_tvPercent;
 
 	public PeerListAdapter(Activity context, ArrayList<T> items) {
@@ -38,17 +40,21 @@ public class PeerListAdapter<T> extends ArrayAdapter<T> {
 		}
 
 		TextView tvAddress = (TextView) reusableView.findViewById(tvAddressResource);
-		TextView tvRequests = (TextView) reusableView.findViewById(tvRequestsResource);
+		//TextView tvRequests = (TextView) reusableView.findViewById(tvRequestsResource);
 		TextView tvDownloadSpeed = (TextView) reusableView.findViewById(tvDownloadSpeedRecource);
 		TextView tvDownloaded = (TextView) reusableView.findViewById(tvDownloadedRecource);
+		TextView tvUploadSpeed = (TextView) reusableView.findViewById(tvUploadSpeedRecource);
+		TextView tvUploaded = (TextView) reusableView.findViewById(tvUploadedRecource);
 		TextView tvPercent = (TextView) reusableView.findViewById(tvPercentRecource);
 
 		PeerListItem item = (PeerListItem) items_.get(position);
 
 		tvAddress.setText(item.getAddress());
-		tvRequests.setText(item.getRequests());
+		//tvRequests.setText(item.getRequests());
 		tvDownloadSpeed.setText(item.getDownloadSpeed());
 		tvDownloaded.setText(item.getDownloaded());
+		tvUploadSpeed.setText(item.getUploadSpeed());
+		tvUploaded.setText(item.getUploaded());
 		tvPercent.setText(item.getPercent());
 
 		return reusableView;

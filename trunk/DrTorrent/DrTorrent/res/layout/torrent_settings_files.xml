@@ -31,14 +31,14 @@
         	android:id="@+id/torrent_settings_btnOk"
         	android:layout_width="match_parent"
         	android:layout_height="wrap_content"
-        	android:text="@string/menu_ok"
+        	android:text="@android:string/ok"
         	android:layout_weight="1" />
         
         <Button 
             android:id="@+id/torrent_settings_btnCancel"
         	android:layout_width="match_parent"
         	android:layout_height="wrap_content"
-        	android:text="@string/menu_cancel"
+        	android:text="@android:string/cancel"
         	android:layout_weight="1" />
     </LinearLayout>
 

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">DrTorrent</string>
+    <string name="menu_addtorrent">Torrent hozzáadása</string>
+	<string name="filebrowser_current">Könyvtár</string>
+    <string name="filebrowser_parent">Szülő könyvtár</string>
+    <string name="filebrowser_folder">Mappa</string>
+    <string name="downloaded">Letöltve:</string>
+    <string name="uploaded">Feltöltve:</string>
+    <string name="peers">Seedek/peerek:</string>
+    <string name="download_speed">Letöltési sebesség:</string>
+    <string name="upload_speed">Feltöltési sebesség:</string>
+    <string name="size">Méret:</string>
+    <string name="elapsed_time">Eltelt idő:</string>
+    <string name="remaining_time">Hátralévő idő:</string>
+    <string name="tab_info">Infó</string>
+    <string name="tab_peers">Peerek</string>
+    <string name="tab_pieces">Szeletek</string>
+    <string name="tab_files">Fájlok</string>
+    <string name="tab_trackers">Trackerek</string>
+    <string name="status_hash_check">Hash ellenőrzés</string>
+    <string name="status_opening">Megnyitás</string>
+    <string name="status_started">Elindítva</string>
+    <string name="status_wrong_file">Hibás torrent fájl</string>
+    <string name="status_downloading">Letöltés</string>
+    <string name="status_seeding">Seedelés</string>
+    <string name="status_stopped">Leállítva</string>
+    <string name="preferences_streaming">Streaming mód</string>
+    <string name="preferences_streaming_sum">Tartalom letöltése sorrendben</string>
+    <string name="preferences_port">P2P Port</string>
+    <string name="preferences_connections">Kapcsolatok torrentenként</string>
+    <string name="all">Mind</string>
+    <string name="priority">"Prioritás: "</string>
+    <string name="priority_normal">normál</string>
+    <string name="priority_skip">kihagyás</string>
+    <string name="priority_low">alacsony</string>
+    <string name="priority_high">magas</string>
+    <string name="updating">frissítés</string>
+    <string name="working">aktív</string>
+    <string name="failed">sikertelen kapcsolódás</string>
+    <string name="empty_field"></string>
+    <string name="download_folder">Letöltési könyvtár</string>
+    <string name="only_wifi">Csak WiFi</string>
+    <string name="only_wifi_sum">Letöltés csak WiFi-n keresztül</string>
+    <string name="ready">Készen:</string>
+    <string name="start">Indítás</string>
+    <string name="stop">Leállítás</string>
+    <string name="remove">Törlés</string>
+    <string name="remove_dialog_title">Biztos, hogy eltávolítja a kiválasztott torrentet?</string>
+    <string name="exit_dialog_title">Biztos, hogy kilép az alkalmazásból?</string>
+    <string name="menu_add_tracker">Tracker hozzáadása</string>
+    <string name="tracker_remove_message">Biztos, hogy eltávolítja a kiválasztott trackert?</string>
+    <string name="menu_add_peer">Peer hozzáadása</string>
+    <string name="ip_address">IP cím:</string>
+    <string name="port">Port:</string>
+    <string name="incoming_connections">Bejövő kapcsolatok</string>
+    <string name="enable_incoming_connections">Bejövő kapcsolatok engedélyezése</string>
+    <string name="upload">Feltöltés</string>
+    <string name="enable_upload">Feltöltés engedélyezése</string>
+    <string name="shut_down">Kilépés</string>
+    <string name="about">Névjegy</string>
+    <string name="search">Torrent keresése</string>
+    <string name="about_text">Az alkalmazás a BME AUT AMORG együttműködésével készült.</string>
+    <string name="developers">Fejlesztők:</string>
+    <string name="active_developer">Aktív fejlesztő:</string>
+    <string name="bori_andras">Bori András</string>
+    <string name="ekler_peter">Ekler Péter</string>
+    <string name="erdody_nagy_zsombor">Erdődy-Nagy Zsombor</string>
+    <string name="about_drtorrent">DrTorrent névjegy</string>
+    <string name="settings">Beállítások</string>
+    <string name="download">Letöltés</string>
+    <string name="connection">Kapcsolat</string>
+    <string name="back">Vissza</string>
+	<string-array name="search_sites">
+		<item>Google</item>
+		<item>1337x</item>
+		<item>BitSnoop</item>
+		<item>Extra Torrent</item>
+		<item>H33T</item>
+		<item>isoHunt</item>
+		<item>Kickass Torrents</item>
+		<item>mininova</item>
+		<item>Torrentz</item>
+		<item>The Pirate Bay</item>
+		<item>Torrent Reactor</item>
+		<item>RARBG</item>
+	</string-array>
+	<string name="destination">Célmappa:</string>
+	<string name="drtorrent_is_running">DrTorrent fut&#8230;</string>
+	<string name="download_complete">Letöltés kész.</string>
+	<string name="no_email_client">Nem található e-mail kliens.</string>
+	<string name="feedback">Visszajelzés</string>
+	<string name="reading_the_torrent_file">A torrent fájl olvasása&#8230;</string>
+	<string name="not_a_torrent_file">Nem torrent fájl!</string>
+	<string name="the_torrent_is_already_opened">A torrent már meg van nyitva!</string>
+	<string name="there_is_not_enough_free_space_on_the_sd_card">Nincs elég szabad hely!</string>
+	<string name="error">Hiba!</string>
+</resources>

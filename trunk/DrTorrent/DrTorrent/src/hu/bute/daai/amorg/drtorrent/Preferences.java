@@ -2,6 +2,7 @@ package hu.bute.daai.amorg.drtorrent;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Environment;
 import android.preference.PreferenceManager;
 
 public class Preferences {
@@ -14,6 +15,18 @@ public class Preferences {
 		preferences_ = PreferenceManager.getDefaultSharedPreferences(context);
 	}
 	
+	/** Sets the download folder. */
+	public static void setDownloadFolder(String path) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putString("download_folder", path);
+		editor.commit();
+	}
+
+	/** Returns the download folder. */
+	public static String getDownloadFolder() {
+		return preferences_.getString("download_folder", Environment.getExternalStorageDirectory().getPath() + "/download");
+	}
+	
 	/** Returns whether the streaming is enabled or not. */
 	public static boolean isStreamingMode() {
 		return preferences_.getBoolean("streaming", false);
@@ -24,6 +37,7 @@ public class Preferences {
 		return preferences_.getBoolean("wifi_only", true);
 	}
 	
+	/** Returns whether incoming connections are enabled or not. */
 	public static boolean isIncomingConnectionsEnabled() {
 		return preferences_.getBoolean("incoming_connections", true);
 	}
@@ -68,4 +82,16 @@ public class Preferences {
 			return 0;
 		}
 	}*/
+	
+	/** Sets the number of the default search site. */
+	public static void setSearchSite(int searchSite) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putInt("search_site", searchSite);
+		editor.commit();
+	}
+	
+	/** Returns the number of the default search site. */
+	public static int getSearchSite() {
+		return preferences_.getInt("search_site", 0);
+	}
 }

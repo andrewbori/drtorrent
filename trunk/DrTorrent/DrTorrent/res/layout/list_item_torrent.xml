@@ -112,23 +112,26 @@
 			      android:textStyle="bold"
 			      android:text="0 B" />
   			
-            <TextView
-                  android:layout_width="wrap_content"
-			      android:layout_height="wrap_content"
-			      android:paddingLeft="4dp"
-			      android:text="(" />
-            <TextView android:id="@+id/list_item_torrent_tvDownloadSpeed"
-				  android:layout_width="wrap_content"
-			      android:layout_height="wrap_content"
-			      android:paddingLeft="2dp"
-			      android:paddingRight="2dp"
-			      android:textStyle="bold"
-			      android:text="0 B/s" />
-            <TextView
-				  android:layout_width="wrap_content"
-			      android:layout_height="wrap_content"
-			      android:paddingRight="2dp"
-			      android:text=")" />
+            <LinearLayout android:id="@+id/list_item_torrent_layoutDownloadSpeed"
+                android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:orientation="horizontal">
+	            <TextView
+	                  android:layout_width="wrap_content"
+				      android:layout_height="wrap_content"
+				      android:paddingLeft="4dp"
+				      android:text="(" />
+	            <TextView android:id="@+id/list_item_torrent_tvDownloadSpeed"
+					  android:layout_width="wrap_content"
+				      android:layout_height="wrap_content"
+				      android:textStyle="bold"
+				      android:text="0 B/s" />
+	            <TextView
+					  android:layout_width="wrap_content"
+				      android:layout_height="wrap_content"
+				      android:paddingRight="2dp"
+				      android:text=")" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
     
