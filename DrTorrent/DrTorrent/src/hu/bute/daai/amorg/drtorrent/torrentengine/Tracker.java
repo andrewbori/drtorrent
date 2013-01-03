@@ -26,9 +26,9 @@ public abstract class Tracker {
 	
     protected static int ID = 0;
     
-    protected int id_;
-    protected Torrent torrent_;
-    protected String url_;
+    final protected int id_;
+    final protected Torrent torrent_;
+    final protected String url_;
     protected int status_ = STATUS_UNKNOWN;
     protected int interval_ = DEFAULT_REQUEST_INTERVAL;
     protected String trackerId_ = null;

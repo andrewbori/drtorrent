@@ -1,10 +1,14 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.Tools;
+import hu.bute.daai.amorg.drtorrent.Quantity;
 import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.Time;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
 import java.io.Serializable;
+
+import android.content.Context;
 
 /** Item of the torrent list adapter */
 public class TorrentListItem implements Serializable {
@@ -16,15 +20,15 @@ public class TorrentListItem implements Serializable {
 	private String name_ = "";
 	private double percent_ = 0;
 	private int status_ = R.string.status_stopped;
-	private String size_ = "0 B";
-	private String ready_ = "0 B";
-	private String downloaded_ = "0 B";
-	private String downloadSpeed_ = "0 B/s";
-	private String uploaded_ = "0 B";
-	private String uploadSpeed_ = "0 B/s";
+	private Quantity size_;
+	private Quantity ready_;
+	private Quantity downloaded_;
+	private Quantity downloadSpeed_;
+	private Quantity uploaded_;
+	private Quantity uploadSpeed_;
 	private String peers_ = "0/0";
-	private String elapsedTime_ = "0 s";
-	private String remainingTime_ = "0 s";
+	private Time elapsedTime_;
+	private Time remainingTime_;
 
 	public TorrentListItem(String name) {
 		this.name_ = name;
@@ -62,20 +66,24 @@ public class TorrentListItem implements Serializable {
 		this.downloadFolder_ = torrent.getDownloadFolder();
 		this.name_ = torrent.getName();
 		this.percent_ = torrent.getProgressPercent();
-		this.status_ = torrent.getStatus();
+		if (((int) this.percent_) == 100 && torrent.getStatus() == R.string.status_stopped) {
+			status_ = R.string.status_finished;
+		} else {
+			this.status_ = torrent.getStatus();
+		}
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
-		this.size_ = Tools.bytesToString(torrent.getActiveSize());
-		this.ready_ = Tools.bytesToString(torrent.getActiveDownloadedSize());
+		this.size_ = new Quantity(torrent.getActiveSize(), Quantity.SIZE);
+		this.ready_ = new Quantity(torrent.getActiveDownloadedSize(), Quantity.SIZE);
 		
-		this.downloaded_ = Tools.bytesToString(torrent.getBytesDownloaded());
-		this.downloadSpeed_ = Tools.bytesToString(torrent.getDownloadSpeed()).concat("/s");
+		this.downloaded_ = new Quantity(torrent.getBytesDownloaded(), Quantity.SIZE);
+		this.downloadSpeed_ = new Quantity(torrent.getDownloadSpeed(), Quantity.SPEED);
 		
-		this.uploaded_ = Tools.bytesToString(torrent.getBytesUploaded());
-		this.uploadSpeed_ = Tools.bytesToString(torrent.getUploadSpeed()).concat("/s");
+		this.uploaded_ = new Quantity(torrent.getBytesUploaded(), Quantity.SIZE);
+		this.uploadSpeed_ = new Quantity(torrent.getUploadSpeed(), Quantity.SPEED);
 		
-		this.remainingTime_ = Tools.timeToString(torrent.getRemainingTime(), Tools.MSEC, 2);
-		this.elapsedTime_ = Tools.timeToString(torrent.getElapsedTime(), Tools.MSEC, 2);
+		this.remainingTime_ = new Time(torrent.getRemainingTime(), Tools.MSEC, 2);
+		this.elapsedTime_ = new Time(torrent.getElapsedTime(), Tools.MSEC, 2);
 	}
 
 	public int getId() {
@@ -102,40 +110,44 @@ public class TorrentListItem implements Serializable {
 		return status_;
 	}
 	
-	public String getSize() {
-		return size_;
+	public String getSize(Context context) {
+		return size_.toString(context);
 	}
 
-	public String getReady() {
-		return ready_;
+	public String getReady(Context context) {
+		return ready_.toString(context);
 	}
 	
-	public String getDownloaded() {
-		return downloaded_;
+	public String getReadySize(Context context) {
+		return ready_.toString(context, size_.getUnit());
+	}
+	
+	public String getDownloaded(Context context) {
+		return downloaded_.toString(context);
 	}
 
-	public String getDownloadSpeed() {
-		return downloadSpeed_;
+	public String getDownloadSpeed(Context context) {
+		return downloadSpeed_.toString(context);
 	}
 
-	public String getUploaded() {
-		return uploaded_;
+	public String getUploaded(Context context) {
+		return uploaded_.toString(context);
 	}
 
-	public String getUploadSpeed() {
-		return uploadSpeed_;
+	public String getUploadSpeed(Context context) {
+		return uploadSpeed_.toString(context);
 	}
 
 	public String getPeers() {
 		return peers_;
 	}
 
-	public String getElapsedTime() {
-		return elapsedTime_;
+	public String getElapsedTime(Context context) {
+		return elapsedTime_.toString(context);
 	}
 	
-	public String getRemainingTime() {
-		return remainingTime_;
+	public String getRemainingTime(Context context) {
+		return remainingTime_.toString(context);
 	}
 	
 	@Override

@@ -1,10 +1,13 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.Time;
+import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Tracker;
 
 import java.io.Serializable;
+
+import android.content.Context;
 
 public class TrackerListItem implements Serializable  {
 
@@ -13,7 +16,7 @@ public class TrackerListItem implements Serializable  {
 	private int id_;
 	private String address_;
 	private int status_;
-	private String time_;
+	private Time time_;
 	private String peers_;
 	
 	public TrackerListItem(Tracker tracker) {
@@ -30,22 +33,22 @@ public class TrackerListItem implements Serializable  {
 		switch (tracker.getStatus()) {
 			case Tracker.STATUS_UPDATING:
 				status_ = R.string.updating;
-				time_ = "";
+				time_ = new Time();
 				peers_ = "";
 				break;
 			case Tracker.STATUS_WORKING:
 				status_ = R.string.working; 
-				time_ = Tools.timeToString(tracker.getRemainingTime(), Tools.SEC, 2);
+				time_ = new Time(tracker.getRemainingTime(), Tools.SEC, 2);
 				peers_ = "(" + tracker.getComplete() + "/" + tracker.getIncomplete() + ")";
 				break;
 			case Tracker.STATUS_FAILED:
 				status_ = R.string.failed;
-				time_ = Tools.timeToString(tracker.getRemainingTime(), Tools.SEC, 2);
+				time_ = new Time(tracker.getRemainingTime(), Tools.SEC, 2);
 				peers_ = "";
 				break;
 			default:
 				status_ = R.string.empty_field;
-				time_ = "";
+				time_ = new Time();
 				peers_ = "";
 				break;
 		}
@@ -71,8 +74,8 @@ public class TrackerListItem implements Serializable  {
 		return status_;
 	}
 
-	public String getTime() {
-		return time_;
+	public String getTime(Context context) {
+		return time_.toString(context);
 	}
 
 	public String getPeers() {

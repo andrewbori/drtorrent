@@ -4,15 +4,15 @@ import android.os.SystemClock;
 
 public class Block {
 
-	private Piece piece_;
-	private int begin_;
-	private int length_;
+	final private Piece piece_;
+	final private int begin_;
+	final private int length_;
 	
 	private boolean isRequested_;	// True if a peer got this to request to download
 	private boolean isDownloaded_;
 	private long requestTime_;
 	
-	public Block(Piece piece, int blockBegin, int blockLength) {
+	public Block(final Piece piece, final int blockBegin, final int blockLength) {
 		piece_ = piece;
 		begin_ = blockBegin;
 		length_ = blockLength;
@@ -43,7 +43,7 @@ public class Block {
 		return isDownloaded_;
 	}
 	
-	public void setRequestTime(long requestTime) {
+	public void setRequestTime(final long requestTime) {
 		requestTime_ = requestTime;
 	}
 	

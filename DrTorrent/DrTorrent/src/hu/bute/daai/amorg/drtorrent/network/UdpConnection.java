@@ -9,15 +9,15 @@ import android.util.Log;
 
 public class UdpConnection {
 	private final static String LOG_TAG = "UdpConnection";
-	private String host_;
-	private int port_;
-	private byte[] message_;
-	private int lengthOfResponse_;
+	final private String host_;
+	final private int port_;
+	final private byte[] message_;
+	final private int lengthOfResponse_;
 	
 	private String errorMessage_ = null;
 	
 	/** Constructor with the host that has to be connecting to. */
-	public UdpConnection(String host, int port, byte[] message, int lengthOfResponse) {
+	public UdpConnection(final String host, final int port, final byte[] message, final int lengthOfResponse) {
 		host_ = host;
 		port_ = port;
 		message_ = message;

@@ -68,7 +68,12 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		DecimalFormat dec = new DecimalFormat("###.#");
 		tvPercent.setText(dec.format(item.getPercent()).concat(" %"));
 		
-		//String MyColor = "#09AFED";
+		if (status == R.string.status_seeding || status == R.string.status_finished || status == R.string.status_metadata) {
+			tvPercent.setVisibility(TextView.GONE);
+		} else {
+			tvPercent.setVisibility(TextView.VISIBLE);
+		}
+		
 		if (status != R.string.status_seeding) {
 			LinearLayout layoutRemaining = (LinearLayout) reusableView.findViewById(layoutRemainingRecource);
 			LinearLayout layoutDownloadSpeed = (LinearLayout) reusableView.findViewById(layoutDownloadSpeedResource);
@@ -77,52 +82,46 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 			TextView tvDownloaded = (TextView) reusableView.findViewById(tvDownloadedResource);
 			TextView tvDownSpeed = (TextView) reusableView.findViewById(tvDownloadSpeedResource);
 			
-			tvRemainingTime.setText(item.getRemainingTime());
-			tvSize.setText(item.getSize());
-			tvDownloaded.setText(item.getReady());
-			tvDownSpeed.setText(item.getDownloadSpeed());
+			tvRemainingTime.setText(item.getRemainingTime(context_));
+			tvSize.setText(item.getSize(context_));
+			tvDownloaded.setText(item.getReadySize(context_));
+			tvDownSpeed.setText(item.getDownloadSpeed(context_));
 			
 			layoutDownload.setVisibility(LinearLayout.VISIBLE);
 			layoutUpload.setVisibility(LinearLayout.GONE);
-			if (status != R.string.status_stopped) {
+			if (status != R.string.status_stopped && status != R.string.status_finished && status != R.string.status_metadata) {
 				layoutRemaining.setVisibility(LinearLayout.VISIBLE);
 				layoutDownloadSpeed.setVisibility(LinearLayout.VISIBLE);
-
-				//Drawable drawable = progress.getProgressDrawable();
-				//drawable.setColorFilter(new LightingColorFilter(0xFF000000, 0xFF99CC00));
 			}
 			else {
 				layoutRemaining.setVisibility(LinearLayout.GONE);
 				layoutDownloadSpeed.setVisibility(LinearLayout.GONE);
-				
-				//Drawable drawable = progress.getProgressDrawable();
-				//drawable.setColorFilter(new LightingColorFilter(0xFF000000, 0xFF09AFED));
-				//MyColor = "#09AFED";
 			}
 		} else {	
 			TextView tvUploaded = (TextView) reusableView.findViewById(tvUploadedResource);
 			TextView tvUpSpeed = (TextView) reusableView.findViewById(tvUploadSpeedResource);
 
-			tvUploaded.setText(item.getUploaded());
-			tvUpSpeed.setText(item.getUploadSpeed());
+			tvUploaded.setText(item.getUploaded(context_));
+			tvUpSpeed.setText(item.getUploadSpeed(context_));
 			
 			layoutDownload.setVisibility(LinearLayout.GONE);
 			layoutUpload.setVisibility(LinearLayout.VISIBLE);
-			
-			//Drawable drawable = progress.getProgressDrawable();
-			//drawable.setColorFilter(new LightingColorFilter(0xFF000000, 0xFF33CC00));
-			//MyColor = "#33CC00";
 		}
 		
-		/*final float[] roundedCorners = new float[] { 5, 5, 5, 5, 5, 5, 5, 5 };
-		ShapeDrawable shape = new ShapeDrawable(new RoundRectShape(roundedCorners, null, null));
-		shape.getPaint().setColor(Color.parseColor(MyColor));
-		ClipDrawable clip = new ClipDrawable(shape, Gravity.LEFT, ClipDrawable.HORIZONTAL);
-		progress.setProgressDrawable(clip);
-		progress.setBackgroundDrawable(context_.getResources().getDrawable(android.R.drawable.progress_horizontal));
-
-		//clip.setLevel((int) item.getPercent() * 100);
-		progress.setProgress(0);*/
+		/*Rect bounds = progress.getProgressDrawable().getBounds();
+		
+		if (status == R.string.status_stopped) {
+			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue_light));
+		} else if (status == R.string.status_finished) {
+			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green_light));
+		} else if (status == R.string.status_seeding) {
+			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green));
+		} else {
+			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue));
+		}
+		
+		progress.getProgressDrawable().setBounds(bounds);*/
+		
 		progress.setProgress((int) item.getPercent());
 		
 		//progress.invalidate();

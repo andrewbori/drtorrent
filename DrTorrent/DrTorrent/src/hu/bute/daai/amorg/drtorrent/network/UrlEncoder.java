@@ -6,7 +6,7 @@ public class UrlEncoder {
 	public static String encode(String s) {
 		if (s == null) return s;
 		
-        StringBuffer sb = new StringBuffer(s.length() * 3);
+        final StringBuffer sb = new StringBuffer(s.length() * 3);
         try {
             char c;
             for (int i = 0; i < s.length(); i++)  {

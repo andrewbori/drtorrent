@@ -5,7 +5,7 @@
     android:orientation="vertical" >
     <RelativeLayout android:id="@+id/torrent_details_tab1"
 				    android:layout_width="fill_parent"
-				    android:layout_height="fill_parent"
+				    android:layout_height="wrap_content"
 				    android:paddingLeft="2dp"
 				    android:paddingRight="2dp"
 				    android:paddingTop="4dp"
@@ -20,15 +20,19 @@
 	        android:layout_alignParentLeft="true"
 	        android:layout_alignParentTop="true"
 	        android:text="Name of the torrent"
-	        android:textStyle="bold" />
+	        android:textStyle="bold"
+	        android:singleLine="true" />
 	
 	    <ProgressBar
 	        android:id="@+id/torrent_details_progress"
 	        style="?android:attr/progressBarStyleHorizontal"
+	        android:progressDrawable="@drawable/progress_blue"
 	        android:layout_centerInParent="true"
 	        android:indeterminate="false"
 	        android:layout_width="fill_parent"
 	        android:layout_height="20dp"
+	        android:minHeight="20dp"
+	        android:maxHeight="20dp"
 	        android:layout_margin="2dp"
 	        android:layout_below="@id/torrent_details_tvName" />
 	    
@@ -37,8 +41,6 @@
 	        android:layout_width="wrap_content"
 		    android:layout_height="wrap_content"
 		    android:orientation="horizontal"
-		    android:paddingTop="1dp"
-		    android:paddingBottom="1dp"
 		    android:layout_alignTop="@id/torrent_details_progress"
 		    android:layout_centerInParent="true">
 	    
@@ -69,31 +71,26 @@
 		      	android:paddingRight="2dp" >
 		    <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/destination" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvDownloadFolder"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
+				      android:singleLine="true"
 				      android:text="/mnt/sdcard/download" />
 	        </TableRow>
 		    <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/size" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvSize"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -101,15 +98,12 @@
 	        </TableRow>
 	        <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/ready" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvReady"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -117,15 +111,12 @@
 	        </TableRow>
 			<TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/elapsed_time" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvElapsedTime"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -133,15 +124,12 @@
 	        </TableRow>
 	        <TableRow>    
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/remaining_time" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvRemainingTime"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -149,15 +137,12 @@
 	        </TableRow>
            	<TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/downloaded" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvDownloaded"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -165,15 +150,12 @@
 	        </TableRow>
 	        <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/uploaded" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvUploaded"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -181,15 +163,12 @@
 	        </TableRow>
 	        <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/download_speed" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvDownloadSpeed"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -198,15 +177,12 @@
 
 	        <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/upload_speed" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvUploadSpeed"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
@@ -214,19 +190,30 @@
             </TableRow>
 	        <TableRow>
 	            <TextView
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
 				      android:paddingLeft="3dp"
 				      android:paddingRight="3dp"
 				      android:text="@string/peers" />
 	            
 	            <TextView android:id="@+id/torrent_details_tvPeers"
-					  android:layout_width="wrap_content"
-				      android:layout_height="wrap_content"
+	                  android:layout_weight="1"
 				      android:paddingLeft="2dp"
 				      android:paddingRight="2dp"
 				      android:textStyle="bold"
 				      android:text="0/0" />
+	        </TableRow>
+	        <TableRow>
+	            <TextView
+				      android:paddingLeft="3dp"
+				      android:paddingRight="3dp"
+				      android:text="@string/hash" />
+	            
+	            <TextView android:id="@+id/torrent_details_tvHash"
+	                  android:layout_weight="1"
+				      android:paddingLeft="2dp"
+				      android:paddingRight="2dp"
+				      android:textStyle="bold"
+				      android:singleLine="true"
+				      android:text="0123456789ABCDEF0123456789ABCDEF01234567" />
 	        </TableRow>
 	    </TableLayout>
 	    

@@ -7,9 +7,13 @@ public class BencodedString extends Bencoded {
 
 	private byte[] value_;
 
-	/** Creates a new instance of MTBencodedString */
+	/** Creates a new instance of BencodedString */
 	public BencodedString(byte[] value) {
 		setValue(value);
+	}
+	
+	public BencodedString(String value) {
+		setValue(value.getBytes());
 	}
 
 	public int type() {

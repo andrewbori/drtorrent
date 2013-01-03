@@ -9,7 +9,9 @@
         android:id="@+id/list_item_file_torrent_tvFilePath"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="File in torrent.txt" 
+        android:text="Name of the file.txt"
+        android:textStyle="bold"
+        android:singleLine="true"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true" />
     
@@ -18,7 +20,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="left"
-        android:textStyle="bold"
         android:text="@string/priority"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
@@ -29,6 +30,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="left"
         android:text="@string/priority_normal"
+        android:textStyle="bold|italic"
         android:layout_toRightOf="@+id/list_item_file_torrent_tvPriorityText"
         android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
     
@@ -37,7 +39,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="right"
-        android:text="0 B/1MB"
+        android:text="0/0 B"
         android:layout_alignParentRight="true"
         android:layout_below="@+id/list_item_file_torrent_tvFilePath" />
     

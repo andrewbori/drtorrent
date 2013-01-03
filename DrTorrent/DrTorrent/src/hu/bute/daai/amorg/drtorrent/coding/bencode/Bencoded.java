@@ -6,10 +6,14 @@ import java.util.Stack;
 public abstract class Bencoded {
 
     // Bencode types
-    public static int BENCODED_STRING 	  = 0;
-    public static int BENCODED_INTEGER	  = 1;
-    public static int BENCODED_LIST 	  = 2;    
-    public static int BENCODED_DICTIONARY = 3; 
+    public final static int BENCODED_STRING 	= 0;
+    public final static int BENCODED_INTEGER	= 1;
+    public final static int BENCODED_LIST 	  	= 2;    
+    public final static int BENCODED_DICTIONARY = 3;
+    
+    private final static int STATE_IN_PROGRESS = 0;
+    private final static int STATE_FAILED 	   = 1;
+    private final static int STATE_SUCCESS	   = 2;
     
     /** Creates a new instance of Bencode */
     public Bencoded() {
@@ -22,36 +26,30 @@ public abstract class Bencoded {
     public abstract byte[] Bencode();    
     
     /**
-     * Parses a bencoded string. It only decodes the first
-     * bencoded element of the string (of course, if the element
-     * is a list or dictionary, it parses the contained elements too)!
+     * Parses a bencoded string. It only decodes the first bencoded element of the string
+     * (of course, if the element is a list or dictionary, it parses the contained elements too)!
      *
-     * return on succces a bencoded data class,
-     * otherwise null
+     * @param buff data to be parsed
+     * @returns on succces a bencoded data class, otherwise null
      */    
-    public static Bencoded parse(byte[] buff)
-    {
+    public static Bencoded parse(byte[] buff) {
         boolean itemParsed = false;
         Stack<Bencoded> parseStack = new Stack<Bencoded>();
-        int parseState = 0; // 0: in progress; 1: failed; 2: success
+        int parseState = STATE_IN_PROGRESS;
         int parseIndex = 0;
         int dataLength = buff.length;                 
         
-        while (parseIndex<dataLength && parseState==0)
-        {
+        while (parseIndex < dataLength && parseState == STATE_IN_PROGRESS) {
             //System.gc();
             // bencoded string
-            if (Character.isDigit((char)buff[parseIndex]))
-            {
-                String temp="";
+            if (Character.isDigit((char)buff[parseIndex])) {
+                String temp = "";
                 char c = (char)buff[parseIndex];
-                while(c!=':')
-                {
-                    temp=temp+c;
+                while (c != ':') {
+                    temp = temp + c;
                     parseIndex++;
-                    if (parseIndex>dataLength)
-                    {
-                        parseState = 1; // failed
+                    if (parseIndex > dataLength) {
+                        parseState = STATE_FAILED;
                         continue;
                     }
                     c = (char)buff[parseIndex];
@@ -62,104 +60,85 @@ public abstract class Bencoded {
                 int stringEndIndex = 0;
                 /** I had a an exception here (Bori Andras 2012-12-10): java.lang.NumberFormatExcetion: Invalid int: "140733193388032" */
                 try {
-                	stringEndIndex = parseIndex+Integer.parseInt(temp);
+                	stringEndIndex = parseIndex + Integer.parseInt(temp);
                 } catch (Exception e) {
                 	return null;
                 }
 
-                byte[] tempChars=new byte[stringEndIndex-parseIndex];
-                System.arraycopy(buff,parseIndex,tempChars,0,stringEndIndex-parseIndex);
+                byte[] tempChars = new byte[stringEndIndex - parseIndex];
+                System.arraycopy(buff, parseIndex, tempChars, 0, stringEndIndex - parseIndex);
 
                 parseStack.push(new BencodedString(tempChars));
                 
                 parseIndex = stringEndIndex;
                 
                 itemParsed = true;
-            }
-            else if ((char)buff[parseIndex]=='i')
-            {
-                String temp="";
+            } else if ((char)buff[parseIndex] == 'i') {
+                String temp = "";
                 parseIndex++;
                 char c = (char)buff[parseIndex];
-                while(c!='e')
-                {
-                    temp=temp+c;
+                while(c != 'e') {
+                    temp = temp + c;
                     parseIndex++;
-                    if (parseIndex>dataLength)
-                    {
-                        parseState = 1; // failed
+                    if (parseIndex > dataLength) {
+                        parseState = STATE_FAILED;
                         continue;
                     }
                     c = (char)buff[parseIndex];
                 }
                 
                 parseStack.push(new BencodedInteger(Long.parseLong(temp)));
-            }
-            else if ((char)buff[parseIndex]=='l')
-            {
+            } else if ((char)buff[parseIndex] == 'l') {
                 parseStack.push(new BencodedList());                
                 parseIndex++;
-            }
-            else if ((char)buff[parseIndex]=='d')
-            {
+            } else if ((char)buff[parseIndex] == 'd') {
                 parseStack.push(new BencodedDictionary());                
                 parseIndex++;
-            }            
-            else if ((char)buff[parseIndex]=='e')
-            {
+            } else if ((char)buff[parseIndex] == 'e') {
                 itemParsed = true;
                 parseIndex++;
+            } else {
+                parseState = STATE_FAILED;
             }
-            else
-                parseState = 1; // failed
             
-            if (itemParsed)
-            {
+            if (itemParsed) {
                 itemParsed = false;
                 
-                if (parseStack.size()==1)
-                    parseState = 2; // success
-                else
-                {
-                    int type = ((Bencoded)parseStack.elementAt(parseStack.size()-2)).type();
-                    switch (type)
-                    {
-                        case 2: // bencodedList
-                        {
+                if (parseStack.size() == 1) {
+                    parseState = STATE_SUCCESS;
+                } else {
+                    int type = ((Bencoded)parseStack.elementAt(parseStack.size() - 2)).type();
+                    switch (type) {
+                        case BENCODED_LIST:
                             Bencoded item = (Bencoded)parseStack.pop();
                             ((BencodedList)parseStack.peek()).append(item);                                                 
-                        }
-                        break;
+                        	break;
                         
-                        case 0: // bencodedString
-                        {
-                            if (((Bencoded)parseStack.elementAt(parseStack.size()-3)).type() == Bencoded.BENCODED_DICTIONARY)
-                            {
+                        case BENCODED_STRING:
+                            if (((Bencoded)parseStack.elementAt(parseStack.size() - 3)).type() == Bencoded.BENCODED_DICTIONARY) {
                                 Bencoded value = (Bencoded)parseStack.pop();
                                 BencodedString key = (BencodedString)parseStack.pop();
-                                ((BencodedDictionary)parseStack.peek()).addEntry(key,value);					
+                                ((BencodedDictionary)parseStack.peek()).addEntry(key, value);					
+                            } else {
+                                parseState = STATE_FAILED;
                             }
-                            else
-                                parseState = 1;	// failed											
-                        }
-                        break;                        
+                            break;                        
                         
-                        case 3: // BencodedDictionary
+                        case BENCODED_DICTIONARY:
                             break;
 
                         default:
-                        {
-                            parseState = 1;												
-                        }
-                        break;	                        
+                            parseState = STATE_FAILED;												
+                            break;	                        
                     }                                        
                 }
             }            
         }
 
         Bencoded parsedItem = null;
-        if (parseState == 2) // success
-            parsedItem = (Bencoded)parseStack.pop();		
+        if (parseState == STATE_SUCCESS) {
+            parsedItem = (Bencoded)parseStack.pop();
+        }
 			                
         return parsedItem;
     }

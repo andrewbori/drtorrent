@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+   	<string name="unit_b">Б</string>
+	<string name="unit_kb">кБ</string>
+	<string name="unit_mb">МБ</string>
+	<string name="unit_gb">ГБ</string>
+	<string name="unit_tb">ТБ</string>
+	<string name="unit_bps">Б/с</string>
+	<string name="unit_kbps">кБ/с</string>
+	<string name="unit_mbps">МБ/с</string>
+	<string name="unit_gbps">ГБ/с</string>
+	<string name="unit_tbps">ТБ/с</string>
+	<string name="time_sec">\u0020с\u0020</string>
+	<string name="time_min">\u0020м\u0020</string>
+	<string name="time_hour">\u0020ч\u0020</string>
+	<string name="time_day">\u0020д\u0020</string>
+	<string name="time_year">\u0020г\u0020</string>
+	
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">Добавить торрент</string>
     <string name="filebrowser_current">Каталог</string>
@@ -41,8 +56,8 @@
     <string name="failed">не удалось</string>
     <string name="empty_field"></string>
     <string name="download_folder">Скачать папку</string>
-    <string name="only_wifi">Только WiFi</string>
-    <string name="only_wifi_sum">Скачать только по WiFi</string>
+    <string name="only_wifi">Только Wi-Fi</string>
+    <string name="only_wifi_sum">Скачать только по Wi-Fi</string>
     <string name="ready">Готовый:</string>
     <string name="start">Пуск</string>
     <string name="stop">Стоп</string>
@@ -59,7 +74,7 @@
     <string name="upload">Закачивать</string>
     <string name="enable_upload">Включить закачивать</string>
     <string name="shut_down">Выход</string>
-    <string name="about">О программе</string>
+    <string name="about">О ДрТоррент</string>
     <string name="search">Поискать торрент</string>
     <string name="about_text">Этот проект был создан в сотрудничестве с BME AUT AMORG.</string>
     <string name="developers">Разработчики:</string>
@@ -72,20 +87,6 @@
     <string name="download">Скачать</string>
     <string name="connection">Соединение</string>
     <string name="back">Назад</string>
-	<string-array name="search_sites">
-		<item>Google</item>
-		<item>1337x</item>
-		<item>BitSnoop</item>
-		<item>Extra Torrent</item>
-		<item>H33T</item>
-		<item>isoHunt</item>
-		<item>Kickass Torrents</item>
-		<item>mininova</item>
-		<item>Torrentz</item>
-		<item>The Pirate Bay</item>
-		<item>Torrent Reactor</item>
-		<item>RARBG</item>
-	</string-array>
 	<string name="destination">Расположение:</string>
 	<string name="drtorrent_is_running">ДрТоррент работает&#8230;</string>
 	<string name="download_complete">Загрузка завершена.</string>
@@ -96,4 +97,11 @@
 	<string name="the_torrent_is_already_opened">Торрент уже открыт!</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Существует не хватает свободного пространства!</string>
 	<string name="error">Ошибка!</string>
+	<string name="wrong_magnet_link">Неправильная магнет-ссылка!</string>
+	<string name="status_metadata">Загрузка метаданные</string>
+	<string name="add_magnet_link">Добавить магнет-ссылка</string>
+	<string name="status_finished">Завершено</string>
+	<string name="hash">Хеш:</string>
+	<string name="torrent_already_opened_add_trackers">Торрент уже открыт! Хотите загрузить из него список трекеров?</string>
+	<string name="inactive">неактивный</string>
 </resources>

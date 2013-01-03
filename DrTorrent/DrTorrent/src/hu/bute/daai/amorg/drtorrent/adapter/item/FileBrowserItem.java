@@ -7,11 +7,11 @@ public class FileBrowserItem implements Comparable<FileBrowserItem> {
 	public final static int FILE_TYPE_FOLDER = 2;
 	public final static int FILE_TYPE_PARENT = 3;
 	
-	private String name_;
-	private int type_;
-	private String path_;
+	final private String name_;
+	final private int type_;
+	final private String path_;
 	
-	public FileBrowserItem(String name, int type, String path) {
+	public FileBrowserItem(final String name, final int type, final String path) {
 		name_ = name;
 		type_ = type;
 		path_ = path;
@@ -30,9 +30,10 @@ public class FileBrowserItem implements Comparable<FileBrowserItem> {
 	}
 	
 	public int compareTo(FileBrowserItem o) {
-		if(this.name_ != null)
-			return this.name_.toLowerCase().compareTo(o.getName().toLowerCase()); 
-		else 
+		if (this.name_ != null) {
+			return this.name_.toLowerCase().compareTo(o.getName().toLowerCase());
+		} else { 
 			throw new IllegalArgumentException();
+		}
 	}
 }

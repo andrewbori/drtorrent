@@ -14,12 +14,12 @@ public class Piece {
 	
 	public final static int DEFALT_BLOCK_LENGTH = 16384;	// default download block size 16kB (2^14)
 	
-	private Torrent torrent_;
-	private byte[] hash_;
-	private int index_;
-	private int size_;
+	final private Torrent torrent_;
+	final private byte[] hash_;
+	final private int index_;
+	final private int size_;
 	private int downloaded_;
-	private Vector<FileFragment> fragments_;
+	final private Vector<FileFragment> fragments_;
 	private int priority_ = File.PRIORITY_NORMAL;
 	private int numberOfPeersHaveThis_ = 0;
 	private boolean isRequested_ = false;
@@ -40,7 +40,7 @@ public class Piece {
 	 * @param hash    The hash value of the piece.
 	 * @param length  The length of the piece.
 	 */
-	public Piece(Torrent torrent, byte[] hash, int index, int length) {
+	public Piece(final Torrent torrent, final byte[] hash, final int index, int length) {
 		torrent_ = torrent;
 		hash_ = hash;
 		index_ = index;
@@ -80,7 +80,7 @@ public class Piece {
 	 * @param offset The position of the file fragment within the file.
 	 * @param length The length of the file fragment.
 	 */
-	public void addFileFragment(File file, int offset, int length) {
+	public void addFileFragment(final File file, final long offset, final int length) {
         fragments_.addElement(new FileFragment(file, offset, length));
     }
 	
@@ -92,92 +92,90 @@ public class Piece {
 	 * @param peer   The peer which the block was received from.
 	 * @return Torrent error code.
 	 */
-	public int appendBlock(byte[] data, Block block, Peer peer) {
+	public int appendBlock(final byte[] data, final Block block, final Peer peer) {
 		// If received an already received part.
 		if (blocks_ == null || !blocks_.contains(block)) {
 			Log.v(LOG_TAG, "Wrong block has been received: " + block.begin());
 			return Torrent.ERROR_NONE;
 		}
 
-		synchronized (this) {
-			int blockPosition = 0;
-			while (blockPosition < data.length) {
-				
-				// Calculating the file and the position within the file...
-				File file = null;
-				long filePosition = 0;
-				long pos = 0;
-				for (int i = 0; i < fragments_.size(); i++) {
-					FileFragment fragment = (FileFragment) fragments_.elementAt(i);
-					// If the already downloaded part doesn't extend beyond the current fragment...
-					// (...which means that a part of the current fragment was received.)
-					if (block.begin() + blockPosition < (pos + fragment.length())) {
-						file = fragment.file();
-						filePosition = fragment.offset() + ((block.begin() + blockPosition) - pos);//- pos);
-						i = fragments_.size(); // break
-					} else {
-						pos += fragment.length();
-					}
-				}
-
-				if (file != null) {
-					// set the file to downloading state
-					/**
-					 * TODO: what if file is set not to be downloaded?
-					 */
-					if (file.getDownloadState() != File.STATUS_DOWNLOADING) {
-						file.setDownloadState(File.STATUS_DOWNLOADING);
-					}
-
-					int res = Torrent.ERROR_NONE;
-					long fileRemainingLength = file.getSize() - filePosition; // Remaining length from the position
-
-					Log.v(LOG_TAG, "Appending block to " + file.getFullPath());
-
-					int rightSize;
-					// If the file is not finished yet
-					if (fileRemainingLength > (data.length - blockPosition)) {
-						rightSize = data.length - blockPosition;
-					}
-					// If the end of a file was reached...
-					else {
-						rightSize = (int) fileRemainingLength;
-					}
-
-					res = torrent_.writeFile(file, filePosition, data, blockPosition, rightSize);
-					if (res != Torrent.ERROR_NONE) return res;
-					
-					file.addDownloadedBytes(rightSize);
-
-					blockPosition += rightSize;
+		int blockPosition = 0;
+		while (blockPosition < data.length) {
+			
+			// Calculating the file and the position within the file...
+			File file = null;
+			long filePosition = 0;
+			long pos = 0;
+			for (int i = 0; i < fragments_.size(); i++) {
+				FileFragment fragment = (FileFragment) fragments_.elementAt(i);
+				// If the already downloaded part doesn't extend beyond the current fragment...
+				// (...which means that a part of the current fragment was received.)
+				if (block.begin() + blockPosition < (pos + fragment.length())) {
+					file = fragment.file();
+					filePosition = fragment.offset() + ((block.begin() + blockPosition) - pos);//- pos);
+					i = fragments_.size(); // break
 				} else {
-					return Torrent.ERROR_GENERAL;
+					pos += fragment.length();
 				}
 			}
-			
-			addPeer(peer);
-			
+
+			if (file != null) {
+				// set the file to downloading state
+				/**
+				 * TODO: what if file is set not to be downloaded?
+				 */
+				if (file.getDownloadState() != File.STATUS_DOWNLOADING) {
+					file.setDownloadState(File.STATUS_DOWNLOADING);
+				}
+
+				int res = Torrent.ERROR_NONE;
+				long fileRemainingLength = file.getSize() - filePosition; // Remaining length from the position
+
+				Log.v(LOG_TAG, "Appending block to " + file.getFullPath());
+
+				int rightSize;
+				// If the file is not finished yet
+				if (fileRemainingLength > (data.length - blockPosition)) {
+					rightSize = data.length - blockPosition;
+				}
+				// If the end of a file was reached...
+				else {
+					rightSize = (int) fileRemainingLength;
+				}
+
+				res = torrent_.writeFile(file, filePosition, data, blockPosition, rightSize);
+				if (res != Torrent.ERROR_NONE) return res;
+				
+				file.addDownloadedBytes(rightSize);
+
+				blockPosition += rightSize;
+			} else {
+				return Torrent.ERROR_GENERAL;
+			}
+		}
+		
+		addPeer(peer);
+		
+		synchronized (this) {
 			if (!downloadedBlocks_.contains(block)) {
 				downloadedBlocks_.addElement(block);
 				torrent_.updateBytesDownloaded(data.length);
 				downloaded_ += data.length;
 			}
-
+	
 			// If the piece is complete...
 			if (downloadedBlocks_.size() >= blocks_.size()) {
 				// Hash check
 				boolean isHashCorrect = checkHash();
 				if (isHashCorrect) {
-					Log.v(LOG_TAG, "Hash OK!");
 					isComplete_ = true;
 					//setFilesDownloaded();
 					torrent_.pieceDownloaded(this, false);
 					
 					blocks_ = null;
 					downloadedBlocks_ = null;
+					
 				} else {
-					Log.v(LOG_TAG, "Hash FAILED!");
-
 					isRequested_ = false;
 					blocks_ = null;
 					downloadedBlocks_ = null;
@@ -189,17 +187,20 @@ public class Piece {
 				for (int i = 0; i < peers_.size(); i++) {
 					peers_.elementAt(i).pieceHashCorrect(isHashCorrect);
 				}
+				if (isHashCorrect) {
+					peers_ = null;
+				}
 			}
-
-			return Torrent.ERROR_NONE;
 		}
+			
+		return Torrent.ERROR_NONE;
 	}
 	
 	/** Reads a block from its file(s). */
-	public byte[] readBlock(Block block) {
+	public byte[] readBlock(final Block block) {
 		int length = block.length();
 		
-		ByteArrayOutputStream blockByteArray = new ByteArrayOutputStream();
+		final ByteArrayOutputStream blockByteArray = new ByteArrayOutputStream();
 
 		File file = null;
 		long filePosition = 0;
@@ -207,7 +208,7 @@ public class Piece {
 		int i = 0;
 		long pos = 0;
 		for (; i < fragments_.size(); i++) {
-			FileFragment fragment = (FileFragment) fragments_.elementAt(i);
+			final FileFragment fragment = (FileFragment) fragments_.elementAt(i);
 			if (block.begin() < (pos + fragment.length())) {
 				file = fragment.file();
 				filePosition = fragment.offset() + (block.begin() - pos);
@@ -259,35 +260,30 @@ public class Piece {
 	public boolean checkHash() {
 		isHashChecked_ = true;
 		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
+			final SHA1 sha1 = new SHA1();
 			for (int i = 0; i < fragments_.size(); i++) {
-				FileFragment fragment = fragments_.get(i);
-				byte[] content = torrent_.read(fragment.file().getFullPath(), fragment.offset(), fragment.length());
-				baos.write(content);
-				Log.v(LOG_TAG, fragment.file().getRelativePath() + " " + fragment.offset() + " " + fragment.length());
+				final FileFragment fragment = fragments_.get(i);
+				Log.v(LOG_TAG, "Checking hash: " + fragment.file().getRelativePath() + " " + fragment.offset() + " " +  fragment.length());
+				final byte[] content = torrent_.read(fragment.file().getFullPath(), fragment.offset(), fragment.length());
+				sha1.update(content);
+				//Log.v(LOG_TAG, fragment.file().getRelativePath() + " " + fragment.offset() + " " + fragment.length());
 			}
 			
-			SHA1 sha1 = new SHA1();
-			sha1.update(baos.toByteArray());
-			byte[] hash = SHA1.resultToByte(sha1.digest());
+			final byte[] hash = SHA1.resultToByte(sha1.digest());
 			
-			Log.v(LOG_TAG, SHA1.resultToString(hash_));
-			Log.v(LOG_TAG, SHA1.resultToString(hash));
+			//Log.v(LOG_TAG, SHA1.resultToString(hash_));
+			//Log.v(LOG_TAG, SHA1.resultToString(hash));
 			if (Tools.byteArrayEqual(hash_, hash)) {
 				downloaded_ = size_;
+				Log.v(LOG_TAG, "Hash OK!");
 				return true;
 			}
 		} catch (Exception e) {
-		} finally {
-			try {
-				baos.flush();
-				baos.close();
-			} catch (Exception e) {
-			}
 		}
 		
 		downloaded_ = 0;
+		Log.v(LOG_TAG, "Hash FAILED!");
 		return false;
 	}
 
@@ -307,7 +303,7 @@ public class Piece {
 	}
 	
 	/** Returns the length of the block in the given position. */
-	public int getBlockLength(int index) {
+	public int getBlockLength(final int index) {
 		int lengthFromIndex = size_ - (index * DEFALT_BLOCK_LENGTH);
 		if (lengthFromIndex > DEFALT_BLOCK_LENGTH) return DEFALT_BLOCK_LENGTH;
 		
@@ -328,12 +324,14 @@ public class Piece {
 	/** Returns an unrequested block. */
 	public Block getUnrequestedBlock() {
 		if (!isRequested_) {
-			if (!isComplete_) calculateBlocks();
+			if (!isComplete_) {
+				calculateBlocks();
+			}
 			else return null;
 		}
 		synchronized(unrequestedBlocks_) {
 			if (unrequestedBlocks_.size() > 0) {
-				Block block = unrequestedBlocks_.elementAt(0);
+				final Block block = unrequestedBlocks_.elementAt(0);
 				unrequestedBlocks_.removeElementAt(0);
 				return block;
 			}
@@ -343,8 +341,10 @@ public class Piece {
 	}
 	
 	/** Adds a block to the the array of blocks to be requested. */
-	public void addBlockToRequest(Block block) {
-		unrequestedBlocks_.addElement(block);
+	public void addBlockToRequest(final Block block) {
+		if (unrequestedBlocks_ != null) {
+			unrequestedBlocks_.addElement(block);
+		}
 	}
 	
 	/** Returns the file fragments of the piece. */
@@ -353,7 +353,7 @@ public class Piece {
 	}
 	
 	/** Returns whether the piece contains parts of the given file or not. */
-	public boolean hasFile(File file) {
+	public boolean hasFile(final File file) {
 		for (int i = 0; i < fragments_.size(); i++) {
 			if (fragments_.get(i).file() == file) {
 				return true;
@@ -362,9 +362,9 @@ public class Piece {
 		return false;
 	}
 	
-	public void addFilesDownloadedBytes(boolean isPositive) {
+	public void addFilesDownloadedBytes(final boolean isPositive) {
 		for (int j = 0; j < fragments_.size(); j++) {
-			FileFragment fragment = fragments_.get(j);
+			final FileFragment fragment = fragments_.get(j);
 			
 			if (isPositive) fragment.file().addDownloadedBytes(fragment.length());
 			else 		    fragment.file().addDownloadedBytes(-fragment.length());
@@ -375,7 +375,7 @@ public class Piece {
 	public void calculatePriority() {
 		priority_ = 0;
 		for (int i = 0; i < fragments_.size(); i++) {
-			FileFragment fragment = fragments_.elementAt(i);
+			final FileFragment fragment = fragments_.elementAt(i);
 			int priority = fragment.file().getPriority();
 			if (priority > priority_) priority_ = priority; 
 		}
@@ -432,7 +432,9 @@ public class Piece {
 	}
 	
 	/** Adds a peer to the list of the peers that gave the blocks of this piece. */
-	public void addPeer(Peer peer) {
-		if (!peers_.contains(peer)) peers_.addElement(peer);
+	public void addPeer(final Peer peer) {
+		if (peers_ != null && !peers_.contains(peer)) {
+			peers_.addElement(peer);
+		}
 	}
 }

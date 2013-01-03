@@ -6,6 +6,7 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,11 +43,29 @@ public class TrackerListAdapter<T> extends ArrayAdapter<T> {
 		TextView tvPeers = (TextView) reusableView.findViewById(tvPeersResource);
 
 		TrackerListItem item = (TrackerListItem) items_.get(position);
-
+		
+		int colorId;
+		switch (item.getStatus()) {
+			case R.string.failed:
+				colorId = Color.RED;
+				break;
+				
+			case R.string.updating:
+				colorId = Color.CYAN;
+				break;
+			
+			case R.string.working:
+				
+			default:
+				colorId = Color.LTGRAY;
+		}
+		
 		tvAddress.setText(item.getAddress());
 		tvStatus.setText(context_.getString(item.getStatus()));
 		tvPeers.setText(item.getPeers());
-		tvTime.setText(item.getTime());
+		tvTime.setText(item.getTime(context_));
+		
+		tvAddress.setTextColor(colorId);
 
 		return reusableView;
 	}

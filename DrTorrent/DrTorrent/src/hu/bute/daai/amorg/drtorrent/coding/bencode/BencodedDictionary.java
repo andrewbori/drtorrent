@@ -13,7 +13,7 @@ public class BencodedDictionary extends Bencoded {
 
 	private Vector<BencodedDictionaryEntry> entries_;
 
-	/** Creates a new instance of MTBencodedDictionary */
+	/** Creates a new instance of BencodedDictionary */
 	public BencodedDictionary() {
 		entries_ = new Vector<BencodedDictionaryEntry>();
 	}
@@ -48,7 +48,19 @@ public class BencodedDictionary extends Bencoded {
 	public void addEntry(BencodedString key, Bencoded value) {
 		addEntry(new BencodedDictionaryEntry(key, value));
 	}
+	
+	public void addEntry(String key, Bencoded value) {
+		addEntry(new BencodedDictionaryEntry(new BencodedString(key), value));
+	}
+	
+	public void addEntry(String key, long value) {
+		addEntry(new BencodedDictionaryEntry(new BencodedString(key), new BencodedInteger(value)));
+	}
 
+	public void addEntry(String key, String value) {
+		addEntry(new BencodedDictionaryEntry(new BencodedString(key), new BencodedString(value)));
+	}
+	
 	public void addEntry(byte[] key, Bencoded value) {
 		addEntry(new BencodedDictionaryEntry(new BencodedString(key), value));
 	}

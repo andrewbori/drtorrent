@@ -90,6 +90,24 @@ public class Tools {
         return a + "." + b + "." + c + "." + d;
 	}
 	
+	/** Reads an IP address from a compact string. */
+	public static String readIp(String compactIp) {
+		String ip = "";
+		for (int i = 0; i < compactIp.length(); i++) {
+			if (i > 0) {
+				ip += ".";
+			}
+			
+			int num = (byte) compactIp.charAt(i);
+			if (num < 0) {
+				num += 256;
+			}
+			ip = ip + num;
+		}
+		
+		return ip;
+	}
+	
 	/** Returns whether the byte arrays equal or not. */
 	public static boolean byteArrayEqual(byte[] array1, byte[] array2) {
 		if (array1.length != array2.length)
@@ -107,19 +125,19 @@ public class Tools {
 	public static String bytesToString(long bytesLong) {
 		double bytes = bytesLong;
 		String metric = " B";
-		if (bytes > 1023.0) {
+		if (bytes > 999.0) {
 			bytes = bytes / 1024.0;
 			metric = " kB";
-		
-			if (bytes > 1023.0) {
-					bytes = bytes / 1024.0;
-					metric = " MB";
-					
-				if (bytes > 1023.0) {
+
+			if (bytes > 999.0) {
+				bytes = bytes / 1024.0;
+				metric = " MB";
+
+				if (bytes > 999.0) {
 					bytes = bytes / 1024.0;
 					metric = " GB";
-					
-					if (bytes > 1023.0) {
+
+					if (bytes > 999.0) {
 						bytes = bytes / 1024.0;
 						metric = " TB";
 					}
@@ -209,5 +227,25 @@ public class Tools {
 		}
 
 		return timeStr.toString();
+	}
+	
+	public static String infoHashByteArrayToString(byte[] infoHashByteArray) {
+		String infoHash = "";
+		for (byte b : infoHashByteArray) {
+			int a = 0;
+			if (b < 0) {
+				a = 256 + b;
+			} else {
+				a = b;
+			}
+			
+			String bStr = Integer.toHexString(a);
+			while (bStr.length() < 2) {
+				bStr = "0" + bStr;
+			}
+			infoHash += bStr;
+		}
+		
+		return infoHash.toUpperCase();
 	}
 }

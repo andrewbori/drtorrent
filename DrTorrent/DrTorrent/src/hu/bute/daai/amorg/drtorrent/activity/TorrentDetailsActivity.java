@@ -273,13 +273,17 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	
 	@Override
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
+		if (item == null) {
+			return;
+		}
+		
 		if (isStopped_) {
-			if (item.getStatus() != R.string.status_stopped) {
+			if (item.getStatus() != R.string.status_stopped && item.getStatus() != R.string.status_finished) {
 				isStopped_ = false;
 				invalidateOptionsMenu();
 			}
 		} else {
-			if (item.getStatus() == R.string.status_stopped) {
+			if (item.getStatus() == R.string.status_stopped || item.getStatus() == R.string.status_finished) {
 				isStopped_ = true;
 				invalidateOptionsMenu();
 			}

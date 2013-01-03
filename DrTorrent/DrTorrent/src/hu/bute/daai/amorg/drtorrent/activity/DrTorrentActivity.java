@@ -20,7 +20,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -73,7 +72,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				final TorrentListItem torrent = torrents_.get(position);
 				
 				CharSequence[] items = null;
-				if (torrent.getStatus() == R.string.status_stopped) {
+				if (torrent.getStatus() == R.string.status_stopped || torrent.getStatus() == R.string.status_finished) {
 					items = new CharSequence[] { getString(R.string.start), getString(R.string.remove) };
 				} else {
 					items = new CharSequence[] { getString(R.string.stop), getString(R.string.remove) };
@@ -91,8 +90,12 @@ public class DrTorrentActivity extends TorrentHostActivity {
 						
 						switch (which) {
 							case 0:
-								if (torrent.getStatus() == R.string.status_stopped) msg.what = TorrentService.MSG_START_TORRENT;
-								else msg.what = TorrentService.MSG_STOP_TORRENT;
+								if (torrent.getStatus() == R.string.status_stopped || torrent.getStatus() == R.string.status_finished) {
+									msg.what = TorrentService.MSG_START_TORRENT;
+								}
+								else {
+									msg.what = TorrentService.MSG_STOP_TORRENT;
+								}
 								try {
 									serviceMessenger_.send(msg);
 								} catch (RemoteException e) {}
@@ -121,7 +124,6 @@ public class DrTorrentActivity extends TorrentHostActivity {
 								
 								break;
 						}
-						
 					}
 				}).
 				create().show();
@@ -141,7 +143,8 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			intent.setData(Uri.parse("nothing://"));
 			
 			if (data != null) {
-				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http")) {
+				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http") || 
+																 data.getScheme().equalsIgnoreCase("magnet")) {
 					fileToOpen_ = data;
 				}
 			}
@@ -161,21 +164,26 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				break;
 				
 			case RESULT_TORRENT_SETTINGS:
+				Message msg = Message.obtain();
+				Bundle b = new Bundle();
 				if (resultCode == Activity.RESULT_OK) {
-					TorrentListItem torrent = (TorrentListItem) data.getSerializableExtra(TorrentService.MSG_KEY_TORRENT_ITEM);
 					@SuppressWarnings("unchecked")
 					ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) data.getSerializableExtra(TorrentService.MSG_KEY_FILE_LIST));
 					
-					Message msg = Message.obtain();
-					Bundle b = new Bundle();
-					b.putSerializable(TorrentService.MSG_KEY_TORRENT_ITEM, torrent);
 					b.putSerializable(TorrentService.MSG_KEY_FILE_LIST, fileList);
-					msg.what = TorrentService.MSG_SEND_TORRENT_SETTINGS;
-					msg.setData(b);
-					try {
-						serviceMessenger_.send(msg);
-					} catch (Exception e) {}
+					b.putSerializable(TorrentService.MSG_KEY_IS_REMOVED, false);
+				} else {
+					b.putSerializable(TorrentService.MSG_KEY_IS_REMOVED, true);
 				}
+				
+				TorrentListItem torrent = (TorrentListItem) data.getSerializableExtra(TorrentService.MSG_KEY_TORRENT_ITEM);
+				b.putSerializable(TorrentService.MSG_KEY_TORRENT_ITEM, torrent);
+				
+				msg.what = TorrentService.MSG_SEND_TORRENT_SETTINGS;
+				msg.setData(b);
+				try {
+					serviceMessenger_.send(msg);
+				} catch (Exception e) {}
 				break;
 		}
 	}
@@ -185,7 +193,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	protected void openTorrent(Uri torrentUri) {
 		fileToOpen_ = null;
 		
-		Log.v("", torrentUri.getHost() + torrentUri.getPath());
+		//Log.v("", torrentUri.getHost() + torrentUri.getPath());
 		Message msg = Message.obtain();
 		Bundle b = new Bundle();
 		b.putParcelable(TorrentService.MSG_KEY_FILEPATH, torrentUri);
@@ -285,6 +293,39 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		create().show();
 	}
 	
+	/** Shows the "Add magnet link" dialog. */
+	public void addMagnetLink() {
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+		builder.setTitle(R.string.add_magnet_link);
+
+	    final EditText etMagnetLink = new EditText(context_);
+	    etMagnetLink.setHint("magnet:?xt=urn:btih:...");
+	    builder.setView(etMagnetLink).
+	    
+	    setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				String magnetLinkStr = etMagnetLink.getText().toString();
+				if (magnetLinkStr.startsWith("magnet")) {
+					try {
+						Uri uri = Uri.parse(magnetLinkStr);
+						openTorrent(uri);
+						
+						dialog.cancel();
+					} catch (Exception e) {
+					}
+				}
+			}
+		}).
+		setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
+			}
+		}).
+		create().show();
+	}
+	
 	/** Shuts down the application. */
 	protected void shutDown() {
 		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
@@ -326,6 +367,9 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		menu.add(Menu.NONE, MENU_SEARCH_TORRENT, Menu.NONE, R.string.search)
 			.setIcon(R.drawable.ic_menu_search)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		menu.add(Menu.NONE, MENU_ADD_MAGNET_LINK, Menu.NONE, R.string.add_magnet_link)
+			.setIcon(R.drawable.ic_menu_magnet)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		menu.add(Menu.NONE, MENU_ABOUT, Menu.NONE, R.string.about)
 			.setIcon(R.drawable.ic_menu_about)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
@@ -355,6 +399,10 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			case MENU_SETTINGS:
 				intent = new Intent(this, SettingsActivity.class);
 				startActivity(intent);
+				break;
+				
+			case MENU_ADD_MAGNET_LINK:
+				addMagnetLink();
 				break;
 				
 			case MENU_ABOUT:
