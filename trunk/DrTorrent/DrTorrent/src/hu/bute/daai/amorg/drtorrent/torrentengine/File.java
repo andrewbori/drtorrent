@@ -12,22 +12,22 @@ public class File {
     public static final int PRIORITY_NORMAL = 2;
     public static final int PRIORITY_HIGH	= 3;
     
-    private Torrent torrent_;
-    private int index_;				// File index
-    private int begin_;				// The index of the first piece that contains parts of the file
+    final private Torrent torrent_;
+    final private int index_;			// File index
+    final private int begin_;			// The index of the first piece that contains parts of the file
     private String path_;			// Torrent's path
     private String relativePath_;	// Path relative to the torrent's parent directory.
     
-    private long size_;
+    final private long size_;
     private long createdSize_ = 0;
     private long downloadedSize_ = 0;
     
     private int priority_ = PRIORITY_NORMAL;
     private int downloadState_;
-    private boolean isChanged_ = false;
+    private boolean isChanged_ = true;
     
     /** Constructor with the torrent and the file's properties. */
-    public File(Torrent torrent, int index, int begin, String path, String relativePath, long size) {
+    public File(final Torrent torrent, final int index, final int begin, final String path, final String relativePath, final long size) {
     	torrent_ = torrent;
     	index_ = index;
     	begin_ = begin;
@@ -37,9 +37,9 @@ public class File {
     }
     
     /** Checks the hash of pieces that contain parts of the file. */
-    public void checkHash(boolean shouldCheck) {
+    public void checkHash(final boolean shouldCheck) {
     	for (int i = begin_; i < torrent_.pieceCount(); i++) {
-			Piece piece = torrent_.getPiece(i);
+			final Piece piece = torrent_.getPiece(i);
 			if (piece.hasFile(this)) {
 				if (!piece.isHashChecked()) {
 					if (shouldCheck && piece.checkHash()) {
@@ -50,7 +50,9 @@ public class File {
 			} else {
 				break;
 			}
-			if (torrent_.getStatus() == R.string.status_stopped) return;
+			if (torrent_.getStatus() == R.string.status_stopped) {
+				return;
+			}
 		}
     }
     
@@ -75,7 +77,7 @@ public class File {
     }
     
     /** Adds the given bytes to the downloaded bytes. */
-    public void addDownloadedBytes(long bytes) {
+    public synchronized void addDownloadedBytes(final long bytes) {
     	downloadedSize_ += bytes;
     	isChanged_ = true;
     }
@@ -100,8 +102,10 @@ public class File {
      *	2 = PRIORITY_NORMAL<br>
      *	3 = PRIORITY_HIGH
      */
-    public void setPriority(int priority) {
-    	if (priority_ == PRIORITY_SKIP && priority > 0) checkHash(true);
+    public void setPriority(final int priority) {
+    	if (priority_ == PRIORITY_SKIP && priority > 0) {
+    		checkHash(true);
+    	}
     	priority_ = priority;
     	isChanged_ = true;
     }
@@ -112,7 +116,7 @@ public class File {
     }
     
     /** Sets the download status of the file. */
-    public void setDownloadState(int downloadState) {
+    public void setDownloadState(final int downloadState) {
     	downloadState_ = downloadState;
     	isChanged_ = true;
     }
@@ -132,7 +136,7 @@ public class File {
     }
 
     /** Sets the created size of the file. */
-	public void setCreatedSize(long createdSize) {
+	public void setCreatedSize(final long createdSize) {
 		createdSize_ = createdSize;
 	}
 	
@@ -144,5 +148,9 @@ public class File {
 	/** Returns the index of the first piece that contains a fragment of the file. */
 	public int getIndexOfFirstPiece() {
 		return begin_;
+	}
+
+	public boolean isComplete() {
+		return downloadedSize_ == size_;
 	}
 }

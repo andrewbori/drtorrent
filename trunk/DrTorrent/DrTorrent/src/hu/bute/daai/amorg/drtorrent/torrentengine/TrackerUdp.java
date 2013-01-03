@@ -11,7 +11,7 @@ import java.util.Random;
 import android.util.Log;
 
 public class TrackerUdp extends Tracker {
-	private static final String LOG_TAG = "TrackerTcp";
+	private static final String LOG_TAG = "TrackerUdp";
 	
 	private final static int ACTION_ID_CONNECT	= 0;
 	private final static int ACTION_ID_ANNOUNCE = 1;
@@ -28,21 +28,32 @@ public class TrackerUdp extends Tracker {
 	public TrackerUdp(String url, Torrent torrent) {
 		super(url, torrent);
 		
-		URI uri = URI.create(url);
-		host_ = uri.getHost();
-		port_ = uri.getPort();
-		if (port_ == -1) port_ = 80;
+		try {
+			URI uri = URI.create(url);
+			host_ = uri.getHost();
+			port_ = uri.getPort();
+			if (port_ == -1) {
+				port_ = 80;
+			}
+		} catch (Exception e) {
+			host_ = null;
+			Log.v(LOG_TAG, "Invalid path: " + e.getMessage());
+		}
 	}
 	
 	/** Sends a connection request to the tracker and reads its response. */
 	private byte[] connecting() {
+		if (host_ == null) {
+			return null;
+		}
+		
 		if (transactionId_ == null) {
 			transactionId_ = new byte[4];
 			Random r = new Random();
 			r.nextBytes(transactionId_);
 		}
 		
-		byte[] message = {
+		final byte[] message = {
 				0, 0, (byte) 0x04, (byte) 0x17, (byte) 0x27, (byte) 0x10, (byte) 0x19, (byte) 0x80,
 				0, 0, 0, 0,
 				transactionId_[0], transactionId_[1], transactionId_[2], transactionId_[3] 
@@ -61,13 +72,17 @@ public class TrackerUdp extends Tracker {
 	
 	/** Sends a announcing request to the tracker and reads its response. */
 	private byte[] announcing() {
+		if (host_ == null) {
+			return null;
+		}
+		
 		if (transactionId_ == null) {
 			transactionId_ = new byte[4];
 			Random r = new Random();
 			r.nextBytes(transactionId_);
 		}
 		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		try {
 			baos.write(connectionId_);
 			baos.write(Tools.int32ToByteArray(ACTION_ID_ANNOUNCE));
@@ -82,15 +97,25 @@ public class TrackerUdp extends Tracker {
 			baos.write(Tools.int32ToByteArray(TorrentManager.getPeerKey()));
 			baos.write(Tools.int32ToByteArray(-1));	// Number of peers (default)
 			baos.write(Tools.int16ToByteArray(Preferences.getPort()));
-		} catch (Exception e) {}
 		
-		UdpConnection udpConnection = new UdpConnection(host_, port_, baos.toByteArray(), 320);		// Response buffer for max 50 peers
-		return udpConnection.execute();
+			UdpConnection udpConnection = new UdpConnection(host_, port_, baos.toByteArray(), 320);		// Response buffer for max 50 peers
+			return udpConnection.execute();
+		} catch (Exception e) {
+			return null;
+		} finally {
+			try {
+				if (baos != null) {
+					baos.close();
+				}
+			} catch (Exception e) {}
+		}
 	}
 	
 	/** Processes the response of the tracker */
-	public int processResponse(byte[] response) {
-		if (response.length < 8) return ERROR_WRONG_CONTENT;
+	public int processResponse(final byte[] response) {
+		if (response.length < 8) {
+			return ERROR_WRONG_CONTENT;
+		}
 		
 		if ((response[0] == 0 && response[1] == 0 && response[2] == 0 && (response[3] >= 0 && response[3] <= 3)) &&
 			(response[4] == transactionId_[0] && response[5] == transactionId_[1] &&

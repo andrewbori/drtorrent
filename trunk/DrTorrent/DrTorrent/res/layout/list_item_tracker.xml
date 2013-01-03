@@ -9,7 +9,9 @@
         android:id="@+id/list_item_tracker_tvUrl"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="http://tracker.bittorrent.com/announce" 
+        android:text="http://tracker.bittorrent.com/announce"
+        android:singleLine="true"
+        android:textStyle="bold" 
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true" />
     

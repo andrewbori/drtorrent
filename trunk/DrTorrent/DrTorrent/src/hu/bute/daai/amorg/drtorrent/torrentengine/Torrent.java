@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
+import hu.bute.daai.amorg.drtorrent.Quantity;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
@@ -10,9 +11,11 @@ import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedList;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
+import hu.bute.daai.amorg.drtorrent.network.MagnetUri;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -42,19 +45,24 @@ public class Torrent {
 	public final static int ERROR_GENERAL = -8;
 
 	private static int ID = 0;
-	private int id_;
+	final private int id_;
 
-	private TorrentManager torrentManager_;
-	private FileManager fileManager_;
+	final private TorrentManager torrentManager_;
+	final private FileManager fileManager_;
 
 	private int status_ = R.string.status_stopped;
+	private boolean isFirstStart_ = true;
+	private boolean valid_ = false;
 
 	private String infoHash_;
 	private String infoHashString_;
 	private byte[] infoHashByteArray_;
+	
+	private Metadata metadata_ = null;
+	private int metadataSize_ = 0;
+	private boolean shouldStart_ = false;
 
 	private String torrentFilePath_;
-	private String torrentFileName_;
 	private String downloadFolder_;
 	private String name_;
 	private String path_; // downloadFolder + name
@@ -63,7 +71,6 @@ public class Torrent {
 	private String comment_ = "";
 	private String createdBy_ = "";
 	private long creationDate_ = 0;
-	private boolean valid_ = false;
 
 	private int seeds_ = 0;
 	private int leechers_ = 0;
@@ -76,31 +83,32 @@ public class Torrent {
 	private long uploadedSize_ = 0; 		// Size of the uploaded bytes
 	private Speed downloadSpeed_;
 	private Speed uploadSpeed_;
-	private Vector<File> files_;
-	private Vector<Piece> pieces_;
-	private Vector<Piece> activePieces_;
-	private Vector<Piece> downloadablePieces_;
-	private Vector<Piece> rarestPieces_;
-	private Vector<Piece> downloadingPieces_;
-	private Vector<Block> requestedBlocks_;
+	final private Vector<File> files_;
+	final private Vector<Piece> pieces_;
+	final private Vector<Piece> activePieces_;
+	final private Vector<Piece> downloadablePieces_;
+	final private Vector<Piece> rarestPieces_;
+	final private Vector<Piece> downloadingPieces_;
+	final private Vector<Block> requestedBlocks_;
 	private Bitfield bitfield_;
 	private Bitfield downloadingBitfield_;
+	private Bitfield activeBitfield_;
 
 	private long elapsedTime_ = 0;
 	private long lastTime_ = 0;
 
-	private Vector<Peer> peers_;
-	private Vector<Peer> connectedPeers_;
-	private Vector<Peer> notConnectedPeers_;
-	private Vector<Peer> interestedPeers_;
-	private Vector<Tracker> trackers_;
+	final private Vector<Peer> peers_;
+	final private Vector<Peer> connectedPeers_;
+	final private Vector<Peer> notConnectedPeers_;
+	final private Vector<Peer> interestedPeers_;
+	final private Vector<Tracker> trackers_;
 
 	private boolean isEndGame_ = false;
 	
 	private ThreadPoolExecutor peerTPE_ = null;
 
 	/** Constructor with the manager and the torrent file as a parameter. */
-	public Torrent(TorrentManager torrentManager, String filePath, String downloadPath) {
+	public Torrent(final TorrentManager torrentManager, final String filePath, final String downloadPath) {
 		torrentManager_ = torrentManager;
 		fileManager_ = new FileManager(this);
 		downloadFolder_ = downloadPath;
@@ -109,7 +117,6 @@ public class Torrent {
 		}
 
 		torrentFilePath_ = filePath;
-		torrentFileName_ = filePath.substring(filePath.lastIndexOf('/') + 1, filePath.length());
 
 		files_ = new Vector<File>();
 		pieces_ = new Vector<Piece>();
@@ -122,6 +129,7 @@ public class Torrent {
 		connectedPeers_ = new Vector<Peer>();
 		notConnectedPeers_ = new Vector<Peer>();
 		interestedPeers_ = new Vector<Peer>();
+		trackers_ = new Vector<Tracker>();
 		downloadSpeed_ = new Speed();
 		uploadSpeed_ = new Speed();
 
@@ -135,17 +143,16 @@ public class Torrent {
 	 * @return Error code.
 	 */
 	public int processBencodedTorrent(Bencoded torrentBencoded) {
-		long time = SystemClock.elapsedRealtime();
-
 		status_ = R.string.status_opening;
 
-		if (torrentBencoded.type() != Bencoded.BENCODED_DICTIONARY)
+		if (torrentBencoded == null || torrentBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
 			return ERROR_WRONG_CONTENT; // bad bencoded torrent
+		}
 
 		BencodedDictionary torrent = (BencodedDictionary) torrentBencoded;
 		Bencoded tempBencoded = null;
 
-		trackers_ = new Vector<Tracker>();
+		trackers_.removeAllElements();
 		// announce
 		tempBencoded = torrent.entryValue("announce");
 		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING) {
@@ -176,26 +183,117 @@ public class Torrent {
 			}
 		}
 
+		// comment
+		tempBencoded = torrent.entryValue("comment");
+		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING) {
+			comment_ = ((BencodedString) tempBencoded).getStringValue();
+		}
+
+		// created by
+		tempBencoded = torrent.entryValue("created by");
+		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING) {
+			createdBy_ = ((BencodedString) tempBencoded).getStringValue();
+		}
+
+		// creation date
+		tempBencoded = torrent.entryValue("creation date");
+		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_INTEGER) {
+			creationDate_ = ((BencodedInteger) tempBencoded).getValue();
+		}
+		
 		// info
 		tempBencoded = torrent.entryValue("info");
-		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_DICTIONARY)
+		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
 			return ERROR_WRONG_CONTENT;
+		}
 
 		BencodedDictionary info = (BencodedDictionary) tempBencoded;
-
+		
 		SHA1 sha1 = new SHA1();
-		sha1.update(info.Bencode());
+		byte[] metadata = info.Bencode();
+		metadataSize_ = metadata.length;
+		Log.v(LOG_TAG, "metadata size: " + Tools.bytesToString(metadata.length) + " (" + metadata.length + ")");
+		sha1.update(metadata);
 		int[] hashResult = sha1.digest();
 		infoHash_ = SHA1.resultToByteString(hashResult);
-
-		if (torrentManager_.hasTorrent(infoHash_))
-			return ERROR_ALREADY_EXISTS;
 
 		infoHashByteArray_ = SHA1.resultToByte(hashResult);
 		infoHashString_ = SHA1.resultToString(hashResult);
 		Log.v(LOG_TAG, "Infohash of the torrrent(hex): " + infoHashString_);
 		hashResult = null;
-
+		
+		if (torrentManager_.hasTorrent(infoHash_)) {
+			return ERROR_ALREADY_EXISTS;
+		}
+		
+		return processBencodedMetadata(info);
+	}
+	
+	
+	/** Processes the Magnet Link. */
+	public int processMagnetTorrent(MagnetUri magnetUri) {
+		status_ = R.string.status_opening;
+		
+		infoHashString_ = magnetUri.getInfoHash();
+		if (infoHashString_ == null || infoHashString_.length() != 40) {
+			return ERROR_WRONG_CONTENT;
+		}
+		
+		int[] hashResult = SHA1.stringToIntArray(infoHashString_);
+		infoHash_ = SHA1.resultToByteString(hashResult);
+		
+		infoHashByteArray_ = SHA1.resultToByte(hashResult);
+		//hashResult = null;
+		
+		infoHashString_ = infoHashString_.toUpperCase();
+		Log.v(LOG_TAG, "xt = " + infoHashString_);
+		Log.v(LOG_TAG, "xt = " + SHA1.resultToString(hashResult));
+		
+		name_ = magnetUri.getName();
+		if (name_ != null && !name_.equals("")) {
+			Log.v(LOG_TAG, "dn = " + name_);
+		} else {
+			name_ = infoHashString_;
+		}
+		
+		List<String> trackers = magnetUri.getTrackers();
+		trackers_.removeAllElements();
+		for (String announceURL : trackers) {
+			Log.v(LOG_TAG, "tr = " + announceURL);
+			addTracker(announceURL);
+		}
+		
+		if (torrentManager_.hasTorrent(infoHash_)) {
+			return ERROR_ALREADY_EXISTS;
+		}
+		
+		return ERROR_NONE;
+	}
+	
+	/** Processes the metadata from external source. */
+	public int processMetadata(byte[] metadata) {
+		metadataSize_ = metadata.length;
+		Bencoded info = null;
+		try {
+			info = Bencoded.parse(metadata);
+		} catch (Exception e) {
+			Log.v(LOG_TAG, "Error occured while processing metadata " + e.getMessage());
+			return ERROR_WRONG_CONTENT;
+		}
+		
+		if (info == null || info.type() != Bencoded.BENCODED_DICTIONARY) {
+			return ERROR_WRONG_CONTENT;
+		}
+		
+		return processBencodedMetadata((BencodedDictionary) info);
+	}
+	
+	/** Processes the metadata. */
+	public int processBencodedMetadata(BencodedDictionary info) {
+		status_ = R.string.status_opening;
+		
+		Bencoded tempBencoded = null;
+		
 		// info/piece lenght
 		tempBencoded = info.entryValue("piece length");
 		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER)
@@ -312,36 +410,16 @@ public class Torrent {
 			pieces_.addElement(piece);
 			downloadablePieces_.addElement(piece);
 		}
-		Log.v(LOG_TAG, "Pieces: " + pieceCount + " size: " + Tools.bytesToString(pieceLength_));
+		
+		Quantity pieceLength = new Quantity(pieceLength_, Quantity.SIZE);
+		Log.v(LOG_TAG, "Pieces: " + pieceCount + " size: " + pieceLength);
 
 		bitfield_ = new Bitfield(pieces_.size(), false);
 		downloadingBitfield_ = new Bitfield(pieces_.size(), false);
-
-		// comment
-		tempBencoded = torrent.entryValue("comment");
-		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING)
-			comment_ = ((BencodedString) tempBencoded).getStringValue();
-
-		// created by
-		tempBencoded = torrent.entryValue("created by");
-		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_STRING)
-			createdBy_ = ((BencodedString) tempBencoded).getStringValue();
-
-		// creation date
-		tempBencoded = torrent.entryValue("creation date");
-		if (tempBencoded != null && tempBencoded.type() == Bencoded.BENCODED_INTEGER)
-			creationDate_ = ((BencodedInteger) tempBencoded).getValue();
+		activeBitfield_ = new Bitfield(pieces_.size(), false);
 
 		calculateFileFragments();
 		valid_ = true;
-
-		/*
-		 * DecimalFormat dec = new DecimalFormat("###.##"); float filesize =
-		 * (float) (getSize() / 1048576.0); name_ += " (" + dec.format(filesize)
-		 * + " MB)";
-		 */
-
-		Log.v(LOG_TAG, "Bencode processing over. " + (float) (SystemClock.elapsedRealtime() - time) / 1000.0 + " seconds.");
 
 		return ERROR_NONE;
 	}
@@ -353,12 +431,14 @@ public class Torrent {
 				synchronized (downloadingPieces_) {
 					activeSize_ = 0;
 					activeDownloadedSize_ = 0;
-					activePieces_ = new Vector<Piece>();
+					activePieces_.removeAllElements();
+					activeBitfield_ = new Bitfield(pieces_.size(), false);
 					for (int i = 0; i < pieces_.size(); i++) {
 						Piece piece = pieces_.get(i);
 						piece.calculatePriority();
 						if (piece.priority() > File.PRIORITY_SKIP) {
 							activePieces_.addElement(piece);
+							activeBitfield_.setBit(piece.index());
 							activeSize_ += piece.size();
 							activeDownloadedSize_ += piece.downloaded();
 							if (!bitfield_.isBitSet(i)) {
@@ -438,7 +518,7 @@ public class Torrent {
 	public void checkHash() {
 		status_ = R.string.status_hash_check;
 
-		for (File file : files_) {
+		for (final File file : files_) {
 			if (file.getPriority() > 0) {
 				int result = createFile(file);
 				if (result == ERROR_ALREADY_EXISTS) {
@@ -482,9 +562,9 @@ public class Torrent {
 		int piecePos = 0;
 
 		for (int i = 0; i < files_.size(); i++) {
-			File file = (File) files_.elementAt(i);
+			final File file = (File) files_.elementAt(i);
 			// If the file is NOT BIGGER than the remaining part of the piece...
-			if (piecePos + file.getSize() <= piece.size()) {
+			if ((long) piecePos + file.getSize() <= piece.size()) {
 				piece.addFileFragment(file, 0, (int) file.getSize());
 				piecePos += file.getSize();
 
@@ -497,13 +577,13 @@ public class Torrent {
 				}
 				// ...if the file is BIGGER
 			} else {
-				int filePos = 0;
+				long filePos = 0;
 				while (filePos < file.getSize()) {
 					// If the remaining part of the file is BIGGER than the
 					// remaining part of the piece...
-					if ((file.getSize() - filePos + piecePos) > piece.size()) {
+					if ((file.getSize() - filePos + (long) piecePos) > piece.size()) {
 						piece.addFileFragment(file, filePos, piece.size() - piecePos);
-						filePos += piece.size() - piecePos;
+						filePos += piece.size() - (long) piecePos;
 
 						if (pieces_.size() > pieceIndex + 1) {
 							piece = pieces_.elementAt(++pieceIndex);
@@ -512,7 +592,7 @@ public class Torrent {
 						// ...if SMALLER or EQUALS
 					} else {
 						piece.addFileFragment(file, filePos, (int) (file.getSize() - filePos));
-						piecePos += file.getSize() - filePos;
+						piecePos += (int) (file.getSize() - filePos);
 
 						// If EQUALS than get the iterates to the next piece
 						if (piecePos == piece.size()) {
@@ -528,13 +608,11 @@ public class Torrent {
 		}
 	}
 
-	private boolean isFirstStart_ = true;
-
 	/** Starts the torrent. */
 	public void start() {
-		if (valid_) {
-			lastTime_ = SystemClock.elapsedRealtime();
+		lastTime_ = SystemClock.elapsedRealtime();
 
+		if (valid_) {
 			if (isFirstStart_) {
 				setTorrentActivePieces();
 				checkHash();
@@ -546,7 +624,9 @@ public class Torrent {
 				isFirstStart_ = false;
 			}
 			createFiles();
+		}
 
+		if (peerTPE_ == null) {
 			downloadSpeed_ = new Speed();
 			uploadSpeed_ = new Speed();
 			
@@ -557,23 +637,30 @@ public class Torrent {
 					30, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(5)
 			);
 			
-			notConnectedPeers_ = new Vector<Peer>();
+			notConnectedPeers_.removeAllElements();
 
 			for (int i = 0; i < peers_.size(); i++) {
 				Peer peer = peers_.elementAt(i);
 				peer.resetTcpTimeoutCount();
-				notConnectedPeers_.add(peer);
+				notConnectedPeers_.addElement(peer);
 			}
+		}
 
+		if (valid_) {
 			if (isComplete()) {
 				status_ = R.string.status_seeding;
 			} else {
 				status_ = R.string.status_downloading;
 			}
-
-			if (torrentManager_.isEnabled()) {
-				for (int i = 0; i < trackers_.size(); i++) {
-					trackers_.elementAt(i).changeEvent(Tracker.EVENT_STARTED);
+		} else {
+			status_ = R.string.status_metadata;
+		}
+		
+		if (torrentManager_.isEnabled()) {
+			for (int i = 0; i < trackers_.size(); i++) {
+				Tracker tracker = trackers_.elementAt(i);
+				if (tracker.getStatus() == Tracker.STATUS_FAILED || tracker.getStatus() == Tracker.STATUS_UNKNOWN) {
+					tracker.changeEvent(Tracker.EVENT_STARTED);
 				}
 			}
 		}
@@ -609,9 +696,9 @@ public class Torrent {
 			for (int i = 0; i < connectedPeers_.size(); i++) {
 				connectedPeers_.get(i).disconnect();
 			}
-			connectedPeers_ = new Vector<Peer>();
-			notConnectedPeers_ = new Vector<Peer>();
-			interestedPeers_ = new Vector<Peer>();
+			connectedPeers_.removeAllElements();
+			notConnectedPeers_.removeAllElements();
+			interestedPeers_.removeAllElements();
 			
 			peerTPE_.shutdown();
 			peerTPE_ = null;
@@ -627,7 +714,9 @@ public class Torrent {
 		if (peer.getTcpTimeoutCount() >= 3) {
 			peers_.removeElement(peer);
 		} else {
-			notConnectedPeers_.addElement(peer);
+			if (!notConnectedPeers_.contains(peer)) {
+				notConnectedPeers_.addElement(peer);
+			}
 		}
 	}
 
@@ -658,42 +747,43 @@ public class Torrent {
 		latestBytesUploaded_ = uploadedSize_;
 
 		if (isConnected() && torrentManager_.isEnabled()) {
+			
+			/*Log.v(LOG_TAG, name_ +  
+					" - peers: " + connectedPeers_.size() + " Blocks: " + requestedBlocks_.size() + " Downloadable: " + downloadablePieces_.size()
+							+ " Downloading: " + downloadingPieces_.size());*/
+
+			// Updates the peers
+			for (int i = 0; i < connectedPeers_.size(); i++) {
+				connectedPeers_.elementAt(i).onTimer();
+			}
+				
 			if (valid_) {
-				Log.v(LOG_TAG,
-						"peers: " + connectedPeers_.size() + " Blocks: " + requestedBlocks_.size() + " Downloadable: " + downloadablePieces_.size()
-								+ " Downloading: " + downloadingPieces_.size());
-
-				// Updates the peers
-				for (int i = 0; i < connectedPeers_.size(); i++) {
-					connectedPeers_.elementAt(i).onTimer();
-				}
-
 				if (Preferences.isUploadEnabled()) {
 					chokeAlgorithm();
 				}
+			}
 
-				// Updates the trackers
-				for (int i = 0; i < trackers_.size(); i++) {
-					trackers_.elementAt(i).onTimer();
-				}
+			// Updates the trackers
+			for (int i = 0; i < trackers_.size(); i++) {
+				trackers_.elementAt(i).onTimer();
+			}
 
-				// Connects to peers
-				if (status_ == R.string.status_downloading) {
-					try {
-						int activeCount = peerTPE_.getActiveCount();
-						for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize() && activeCount < peerTPE_.getCorePoolSize() && connectedPeers_.size() < peerTPE_.getCorePoolSize(); i++) {
-							Peer peer = notConnectedPeers_.elementAt(i);
-							if (peer.canConnect()) {
-								Runnable command = peer.connect(this);
-								peerTPE_.execute(command);
-								connectedPeers_.addElement(peer);
-								notConnectedPeers_.removeElement(peer);
-								i--;
-								activeCount++;
-							}
+			// Connects to peers
+			if (status_ == R.string.status_downloading || status_ == R.string.status_metadata) {
+				try {
+					int activeCount = peerTPE_.getActiveCount();
+					for (int i = 0; i < notConnectedPeers_.size() && peerTPE_.getActiveCount() < peerTPE_.getCorePoolSize() && activeCount < peerTPE_.getCorePoolSize() && connectedPeers_.size() < peerTPE_.getCorePoolSize(); i++) {
+						final Peer peer = notConnectedPeers_.elementAt(i);
+						if (peer.canConnect()) {
+							connectedPeers_.addElement(peer);
+							notConnectedPeers_.removeElement(peer);
+							Runnable command = peer.connect(this);
+							peerTPE_.execute(command);
+							i--;
+							activeCount++;
 						}
-					} catch (Exception e) {}
-				}
+					}
+				} catch (Exception e) {}
 			}
 		}
 	}
@@ -710,7 +800,7 @@ public class Torrent {
 			return;
 
 		if (interestedPeers_.size() > 0) {
-			Vector<Peer> peersToUnchoke = new Vector<Peer>();
+			final Vector<Peer> peersToUnchoke = new Vector<Peer>();
 
 			synchronized (interestedPeers_) {
 				// Choosing the optimistic unchoked peer (a random peer) in
@@ -727,9 +817,8 @@ public class Torrent {
 
 					// TODO: Choosing peers in seed mode!!!
 					// Tit for tat: unchoking the peers with the most upload.
-					Peer peer = null;
 					for (int i = 0; i < interestedPeers_.size(); i++) {
-						peer = interestedPeers_.elementAt(i);
+						final Peer peer = interestedPeers_.elementAt(i);
 
 						int speed = peer.getDownloadSpeed();
 						boolean isFound = false;
@@ -741,8 +830,9 @@ public class Torrent {
 									break;
 								}
 							}
-							if (!isFound)
+							if (!isFound) {
 								peersToUnchoke.add(peer);
+							}
 						}
 					}
 
@@ -755,7 +845,7 @@ public class Torrent {
 						peersToUnchoke.add(optimisticUnchokedPeer_);
 
 					for (int i = 0; i < interestedPeers_.size(); i++) {
-						peer = interestedPeers_.elementAt(i);
+						final Peer peer = interestedPeers_.elementAt(i);
 						if (peersToUnchoke.contains(peer)) {
 							peer.setChoking(false);
 						} else {
@@ -768,9 +858,25 @@ public class Torrent {
 			optimisticUnchokedPeer_ = null;
 	}
 
+	/** Returns a downloadable metadata block for the given peer. */
+	public int getMetadataBlockToDownload(PeerConnection peer) {
+		synchronized (metadata_) {
+			if (metadata_.hasUnrequestedBlock()) {
+				for (int i = 0; i < metadata_.getBlockCount(); i++) {
+					if (!metadata_.isRequested(i) && !peer.isMetadataBlockRejected(i)) {
+						metadata_.setRequested(i, true);
+						return i;
+					}
+				}
+			}
+		}
+		
+		return -1;
+	}
+	
 	/** Returns a downloadable block for the given peer. */
-	public synchronized ArrayList<Block> getBlockToDownload(Peer peer, int number) {
-		ArrayList<Block> blocks = new ArrayList<Block>();
+	public synchronized ArrayList<Block> getBlockToDownload(final Peer peer, final int number) {
+		final ArrayList<Block> blocks = new ArrayList<Block>();
 		Block block = null;
 		Piece piece = null;
 
@@ -783,8 +889,9 @@ public class Torrent {
 
 					for (int i = 0; i < activePieces_.size(); i++) {
 						piece = activePieces_.elementAt(i);
-						if (!piece.canDownload() || piece.priority() < priority)
+						if (!piece.canDownload() || piece.priority() < priority) {
 							continue;
+						}
 						if (downloadablePieces_.contains(piece) || downloadingPieces_.contains(piece)) {
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
@@ -813,8 +920,9 @@ public class Torrent {
 						// Get a block from the downloading pieces
 						for (int i = 0; i < downloadingPieces_.size(); i++) {
 							piece = downloadingPieces_.elementAt(i);
-							if (!piece.canDownload() || piece.priority() < priority)
+							if (!piece.canDownload() || piece.priority() < priority) {
 								continue;
+							}
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
 									block = piece.getUnrequestedBlock();
@@ -830,14 +938,16 @@ public class Torrent {
 						}
 					}
 
-					if (rarestPieces_.size() == 0 && downloadablePieces_.size() != 0)
+					if (rarestPieces_.size() == 0 && downloadablePieces_.size() != 0) {
 						calculateRarestPieces();
+					}
 					synchronized (rarestPieces_) {
 						// Get a block from the rarest pieces
 						for (int i = 0; i < rarestPieces_.size(); i++) {
 							piece = rarestPieces_.elementAt(i);
-							if (!piece.canDownload() || piece.priority() < priority)
+							if (!piece.canDownload() || piece.priority() < priority) {
 								continue;
+							}
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
 									block = piece.getUnrequestedBlock();
@@ -862,8 +972,9 @@ public class Torrent {
 						// Get a block from the downloadable pieces
 						for (int i = 0; i < downloadablePieces_.size(); i++) {
 							piece = downloadablePieces_.elementAt(i);
-							if (!piece.canDownload() || piece.priority() < priority)
+							if (!piece.canDownload() || piece.priority() < priority) {
 								continue;
+							}
 							if (peer.hasPiece(piece.index())) {
 								if (piece.hasUnrequestedBlock()) {
 									block = piece.getUnrequestedBlock();
@@ -934,9 +1045,9 @@ public class Torrent {
 	}
 
 	/** Creates a new file in the file system and reserves space for it as well. */
-	private int createFile(File file) {
-		String filePath = file.getFullPath();
-		long size = file.getSize();
+	private int createFile(final File file) {
+		final String filePath = file.getFullPath();
+		final long size = file.getSize();
 
 		// Creating the file
 		if (path_ != null && !path_.equals("")) {
@@ -965,7 +1076,7 @@ public class Torrent {
 	 * Writes a block into the file in the given position. The offset and the
 	 * length within the block is also given.
 	 */
-	public synchronized int writeFile(File file, long filePosition, byte[] block, int offset, int length) {
+	public /*synchronized*/ int writeFile(final File file, final long filePosition, final byte[] block, final int offset, final int length) {
 		return fileManager_.writeFile(file.getFullPath(), filePosition, block, offset, length);
 	}
 
@@ -973,12 +1084,36 @@ public class Torrent {
 	 * Reads a block from the file. The position and the length within the file
 	 * is also given.
 	 */
-	public synchronized byte[] read(String filepath, long position, int length) {
+	public /*synchronized*/ byte[] read(final String filepath, final long position, final int length) {
 		return fileManager_.read(filepath, position, length);
+	}
+	
+	/** Returns the metadata block at the given position. */
+	public byte[] readMetadataBlock(final int piece) {
+		try {
+			byte[] torrentContent = torrentManager_.readTorrentContent(infoHashString_);
+			Bencoded bencoded = Bencoded.parse(torrentContent);
+			torrentContent = null;
+			if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
+				bencoded = ((BencodedDictionary) bencoded).entryValue("info");
+				if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
+					final byte[] metadata = ((BencodedDictionary) bencoded).Bencode();
+					int size = Metadata.BLOCK_SIZE;
+					if ((piece + 1) * Metadata.BLOCK_SIZE > metadata.length) {
+						size = metadata.length - piece * Metadata.BLOCK_SIZE;
+					}
+					final byte[] data = new byte[size];
+					System.arraycopy(metadata, piece * Metadata.BLOCK_SIZE, data, 0, data.length);
+					return data;
+				}
+			}
+		} catch (Exception e) {
+		}
+		return null;
 	}
 
 	/** Adds a new peer to the list of the peers of the torrent. */
-	public int addPeer(String address, int port, String peerId) {
+	public int addPeer(final String address, final int port, final String peerId) {
 		// if (peers_.size() >= Preferences.getMaxConnections()) return
 		// ERROR_OVERFLOW;
 		if (hasPeer(address, port))
@@ -993,7 +1128,7 @@ public class Torrent {
 	}
 	
 	/** Adds a new tracker to the list of the trackers. */
-	public void addTracker(String url) {
+	public void addTracker(final String url) {
 		if (!hasTracker(url)) {
 			if (url.startsWith("http://")) {
 				if (URLUtil.isValidUrl(url)) {
@@ -1008,9 +1143,9 @@ public class Torrent {
 	}
 
 	/** Removes the given tracker from the tracker list. */
-	public void removeTracker(int trackerId) {
+	public void removeTracker(final int trackerId) {
 		for (int i = 0; i < trackers_.size(); i++) {
-			Tracker tracker = trackers_.elementAt(i);
+			final Tracker tracker = trackers_.elementAt(i);
 			if (tracker.getId() == trackerId) {
 				trackers_.removeElement(tracker);
 				return;
@@ -1019,13 +1154,13 @@ public class Torrent {
 	}
 	
 	/** Adds an incoming peer to the array of (connected) peers. */
-	public void addIncomingPeer(Peer peer) {
+	public void addIncomingPeer(final Peer peer) {
 		peers_.addElement(peer);
 		connectedPeers_.addElement(peer);
 	}
 
 	/** Returns whether there is a peer with the given IP and port in the list of peers or not. */
-	public boolean hasPeer(String address, int port) {
+	public boolean hasPeer(final String address, final int port) {
 		Peer tempPeer;
 		for (int i = 0; i < peers_.size(); i++) {
 			tempPeer = peers_.elementAt(i);
@@ -1036,7 +1171,7 @@ public class Torrent {
 	}
 	
 	/** Returns whether there is a tracker with the given URL in the list of trackers or not. */
-	public boolean hasTracker(String url) {
+	public boolean hasTracker(final String url) {
 		Tracker tracker;
 		for (int i = 0; i < trackers_.size(); i++) {
 			tracker = trackers_.elementAt(i);
@@ -1047,12 +1182,12 @@ public class Torrent {
 	}
 
 	/** Increments the number of peers having the given piece. */
-	public void incNumberOfPeersHavingPiece(int index) {
+	public void incNumberOfPeersHavingPiece(final int index) {
 		pieces_.elementAt(index).incNumberOfPeersHaveThis();
 	}
 
 	/** Decrements the number of peers having the given piece. */
-	public void decNumberOfPeersHavingPiece(int index) {
+	public void decNumberOfPeersHavingPiece(final int index) {
 		pieces_.elementAt(index).decNumberOfPeersHaveThis();
 	}
 
@@ -1061,21 +1196,23 @@ public class Torrent {
 		Piece piece = null;
 		int n = Integer.MAX_VALUE;
 
-		synchronized (downloadablePieces_) {
-			for (int i = 0; i < downloadablePieces_.size(); i++) {
-				piece = downloadablePieces_.elementAt(i);
-				int k = piece.getNumberOfPeersHaveThis();
-				if (k < n)
-					n = k;
-			}
+		synchronized (rarestPieces_) {
+			synchronized (downloadablePieces_) {
+				for (int i = 0; i < downloadablePieces_.size(); i++) {
+					piece = downloadablePieces_.elementAt(i);
+					int k = piece.getNumberOfPeersHaveThis();
+					if (k < n) {
+						n = k;
+					}
+				}
 
-			synchronized (rarestPieces_) {
 				rarestPieces_.removeAllElements();
 				for (int i = 0; i < downloadablePieces_.size(); i++) {
 					piece = downloadablePieces_.elementAt(i);
 					int k = piece.getNumberOfPeersHaveThis();
-					if (k == n)
+					if (k == n) {
 						rarestPieces_.add(piece);
+					}
 				}
 
 				Collections.shuffle(rarestPieces_);
@@ -1084,7 +1221,7 @@ public class Torrent {
 	}
 
 	/** Updates the downloaded bytes with the given amount of bytes. */
-	public void updateBytesDownloaded(int bytes) {
+	public void updateBytesDownloaded(final int bytes) {
 		if (bytes >= 0) {
 			downloadedSize_ += bytes;
 		}
@@ -1093,22 +1230,21 @@ public class Torrent {
 	}
 
 	/** Updates the uploaded bytes. */
-	public void updateBytesUploaded(int bytes) {
+	public void updateBytesUploaded(final int bytes) {
 		uploadedSize_ += bytes;
 	}
 
 	/** Called after a block has been refused to download (disconnected, choked etc.). */
-	public void blockNotRequested(Block block) {
+	public void blockNotRequested(final Block block) {
 		requestedBlocks_.removeElement(block);
 	}
 
 	/** Called after a block has been downloaded. */
-	public void blockDownloaded(Block block) {
+	public void blockDownloaded(final Block block) {
 		requestedBlocks_.removeElement(block);
 		if (isEndGame_) {
-			Peer peer = null;
 			for (int i = 0; i < connectedPeers_.size(); i++) {
-				peer = connectedPeers_.elementAt(i);
+				final Peer peer = connectedPeers_.elementAt(i);
 				if (peer.hasBlock(block)) {
 					peer.cancelBlock(block);
 				}
@@ -1117,11 +1253,12 @@ public class Torrent {
 	}
 
 	/** Called after a piece has been downloaded. */
-	public void pieceDownloaded(Piece piece, boolean calledBySavedTorrent) {
-		if (calledBySavedTorrent)
+	public synchronized void pieceDownloaded(final Piece piece, final boolean calledBySavedTorrent) {
+		if (calledBySavedTorrent) {
 			downloadablePieces_.removeElement(piece);
-		else
+		} else {
 			downloadingPieces_.removeElement(piece);
+		}
 
 		bitfield_.setBit(piece.index());
 		//downloadedPieceCount_++;
@@ -1147,35 +1284,35 @@ public class Torrent {
 				}
 
 				// Disconnect from peers if not interested
-				synchronized (connectedPeers_) {
+				/*synchronized (connectedPeers_) {
 					for (int i = 0; i < connectedPeers_.size(); i++) {
 						// if (!connectedPeers_.elementAt(i).isIncommingPeer())
 						if (!connectedPeers_.elementAt(i).isPeerInterested()) {
 							connectedPeers_.elementAt(i).disconnect();
 						}
 					}
-				}
+				}*/
 			}
 		}
 
 		// Notify peers about having a new piece
 		if (!calledBySavedTorrent) {
-			synchronized (connectedPeers_) {
+			/*synchronized (connectedPeers_) {*/
 				for (int i = 0; i < connectedPeers_.size(); i++) {
 					connectedPeers_.elementAt(i).notifyThatClientHavePiece(piece.index());
 				}
-			}
+			/*}*/
 		}
 	}
 
 	/** Called when the downloaded piece is wrong. */
-	public void pieceHashFailed(Piece piece) {
-		synchronized (downloadingPieces_) {
+	public void pieceHashFailed(final Piece piece) {
+		/*synchronized (downloadingPieces_) {*/
 			downloadingPieces_.removeElement(piece);
 			downloadingBitfield_.unsetBit(piece.index());
 			rarestPieces_.removeElement(piece);
 			downloadablePieces_.addElement(piece);
-		}
+		/*}*/
 		updateBytesDownloaded(-piece.size());
 
 		piece.addFilesDownloadedBytes(false);
@@ -1187,7 +1324,7 @@ public class Torrent {
 	}
 
 	/** Returns the index of the given piece. */
-	public int indexOfPiece(Piece piece) {
+	public int indexOfPiece(final Piece piece) {
 		return pieces_.indexOf(piece);
 	}
 
@@ -1202,7 +1339,7 @@ public class Torrent {
 	}
 
 	/** Returns the piece with the given index. */
-	public Piece getPiece(int index) {
+	public Piece getPiece(final int index) {
 		return pieces_.elementAt(index);
 	}
 
@@ -1279,6 +1416,11 @@ public class Torrent {
 	public Bitfield getDownloadingBitfield() {
 		return downloadingBitfield_;
 	}
+	
+	/** Returns the active bitfield of the torrent. */
+	public Bitfield getActiveBitfield() {
+		return activeBitfield_;
+	}
 
 	/** Returns the manager of the torrent. */
 	public TorrentManager getTorrentManager() {
@@ -1295,6 +1437,11 @@ public class Torrent {
 		return name_;
 	}
 
+	/** Returns whether the torrent is valid or not. */
+	public boolean isValid() {
+		return valid_;
+	}
+	
 	/** Returns the status of the torrent. */
 	public int getStatus() {
 		return status_;
@@ -1302,12 +1449,13 @@ public class Torrent {
 
 	/** Returns whether the torrent is working or not (hash checking/downloading/seeding). */
 	public boolean isWorking() {
-		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || status_ == R.string.status_hash_check;
+		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || 
+			   status_ == R.string.status_hash_check  || status_ == R.string.status_metadata;
 	}
 	
-	/** Returns whether the torrent is connected or not. (downloading/seeding) */
+	/** Returns whether the torrent is connected or not. (downloading/seeding/metadata downloading) */
 	public boolean isConnected() {
-		return status_ == R.string.status_downloading || status_ == R.string.status_seeding;
+		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || status_ == R.string.status_metadata;
 	}
 
 	/** Returns the number of seeds. */
@@ -1367,29 +1515,88 @@ public class Torrent {
 
 	/** Return whether the bitfield has changed since the latest check or not. */
 	public boolean isBitfieldChanged() {
-		return bitfield_.isChanged() || downloadingBitfield_.isChanged();
+		return bitfield_ != null && (bitfield_.isChanged() || downloadingBitfield_.isChanged());
 	}
 
 	/** Sets whether the bitfield has changed or not. */
-	public void setBitfieldChanged(boolean isChanged) {
+	public void setBitfieldChanged(final boolean isChanged) {
 		bitfield_.setChanged(isChanged);
 		downloadingBitfield_.setChanged(isChanged);
 	}
 
+	/** Returns the size of the metadata. */
+	public int getMetadataSize() {
+		return metadataSize_;
+	}
+	
+	/** Sets the size of the metadata. */
+	public void setMetadataSize(final int size) {
+		if (metadata_ == null) {
+			metadata_ = new Metadata(size);
+		}
+	}
+	
+	/** Adds the downloaded block to the metadata. */
+	public void addBlockToMetadata(final int index, final byte[] data) {
+		synchronized (metadata_) {
+			metadata_.add(index, data);
+			if (metadata_.isComplete()) {
+				final SHA1 sha1 = new SHA1();
+				sha1.update(metadata_.getData());
+				//final int[] hashResult = sha1.digest();
+				final String infoHash = SHA1.resultToByteString(sha1.digest());
+				metadataSize_ = metadata_.getSize();
+	
+				if (!infoHash.equals(infoHash_)) {
+					metadata_ = new Metadata(metadata_.getSize());
+					return;
+				}
+				
+				final Bencoded bencoded = Bencoded.parse(metadata_.getData());
+				if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
+					final BencodedDictionary info = (BencodedDictionary) bencoded;
+					processBencodedMetadata(info);
+					if (shouldStart_) {
+						start();
+					} else {
+						torrentManager_.updateMetadata(this);
+					}
+				}
+				
+				torrentManager_.saveTorrentMetadata(this, metadata_.getData());
+				metadata_ = null;
+			}
+		}
+	}
+	
+	/** The torrent should start after getting the metadata. */
+	public void shouldStart() {
+		shouldStart_ = true;
+	}
+	
+	/** Cancels the requested block of the metadata. */
+	public void cancelMetadataBlock(final int index) {
+		metadata_.setRequested(index, false);
+	}
+	
 	/** Returns information of the torrent in JSON. */
 	public JSONObject getStateInJSON() {
-		JSONObject json = new JSONObject();
+		final JSONObject json = new JSONObject();
 
 		try {
 			json.put("InfoHash", getInfoHashString());
+			
+			json.put("Name", getName());
 
 			json.put("DownloadFolder", downloadFolder_);
 			
-			JSONArray bitfield = new JSONArray();
-			for (int i = 0; i < bitfield_.data().length; i++) {
-				bitfield.put((int) bitfield_.data()[i]);
+			if (bitfield_ != null && !bitfield_.isNull()) {
+				JSONArray bitfield = new JSONArray();
+				for (int i = 0; i < bitfield_.data().length; i++) {
+					bitfield.put((int) bitfield_.data()[i]);
+				}
+				json.put("Bitfield", bitfield);
 			}
-			json.put("Bitfield", bitfield);
 
 			JSONArray filePriorities = new JSONArray();
 			for (File file : files_) {
@@ -1417,46 +1624,71 @@ public class Torrent {
 	}
 	
 	/** Sets the torrent from JSON. */
-	public boolean setStateFromJSON(JSONObject json) {
+	public boolean setStateFromJSON(final JSONObject json) {
 		try {
-			JSONArray filePriorities = json.getJSONArray("FilePriorities");
-			if (filePriorities.length() == files_.size()) {
-				for (int i = 0; i < filePriorities.length(); i++) {
-					int priority = filePriorities.getInt(i);
-					File file = files_.get(i);
-					file.setPriority(priority);
-					if (filePriorities.getInt(i) > File.PRIORITY_SKIP) {
-						addFileToFileManager(file);
+			if (json.has("Name") && (name_ == null || name_.equals(""))) {
+				name_ = json.getString("Name");
+			}
+			
+			if (infoHashString_ == null) {
+				infoHashString_ = json.getString("InfoHash");
+				int[] hashResult = SHA1.stringToIntArray(infoHashString_);
+				infoHash_ = SHA1.resultToByteString(hashResult);
+				infoHashByteArray_ = SHA1.resultToByte(hashResult);
+				shouldStart_ = true;
+			}
+			
+			if (valid_) {
+				JSONArray filePriorities = json.getJSONArray("FilePriorities");
+				if (filePriorities.length() == files_.size()) {
+					for (int i = 0; i < filePriorities.length(); i++) {
+						int priority = filePriorities.getInt(i);
+						File file = files_.get(i);
+						file.setPriority(priority);
+						if (filePriorities.getInt(i) > File.PRIORITY_SKIP) {
+							addFileToFileManager(file);
+						}
 					}
 				}
+				createFiles();
+				setTorrentActivePieces();
 			}
-			createFiles();
-			setTorrentActivePieces();
 			
-			JSONArray bitfield = json.getJSONArray("Bitfield");
-			ByteArrayBuffer bab = new ByteArrayBuffer(bitfield.length());
-			for (int i = 0; i < bitfield.length(); i++) {
-				bab.append((byte) bitfield.getInt(i));
-			}
-			bitfield_.set(bab.buffer());
-			
-			for (int i = 0; i < pieceCount(); i++) {
-				if (bitfield_.isBitSet(i)) {
-					Piece piece = pieces_.get(i);
-					pieceDownloaded(piece, true);
-					piece.setComplete();
-					status_ = R.string.status_opening;
+			if (valid_) {
+				if (json.has("Bitfield")) {
+					JSONArray bitfield = json.getJSONArray("Bitfield");
+					ByteArrayBuffer bab = new ByteArrayBuffer(bitfield.length());
+					for (int i = 0; i < bitfield.length(); i++) {
+						bab.append((byte) bitfield.getInt(i));
+					}
+					bitfield_.set(bab.buffer());
+				
+					for (int i = 0; i < pieceCount(); i++) {
+						if (bitfield_.isBitSet(i)) {
+							Piece piece = pieces_.get(i);
+							pieceDownloaded(piece, true);
+							piece.setComplete();
+							status_ = R.string.status_opening;
+						}
+					}
 				}
+				
+				isFirstStart_ = json.getBoolean("IsFirstStart");
 			}
 			
-			elapsedTime_ = json.getLong("ElapsedTime");
 			downloadedSize_ = json.getLong("Downloaded");
+			latestBytesDownloaded_ = downloadedSize_;
 			uploadedSize_ = json.getLong("Uploaded");
-			isFirstStart_ = json.getBoolean("IsFirstStart");
+			latestBytesUploaded_ = uploadedSize_;
+			elapsedTime_ = json.getLong("ElapsedTime");
 			status_ = json.getInt("Status");
 			
+			if (!valid_ && (status_ == R.string.status_downloading || status_ == R.string.status_hash_check || status_ == R.string.status_seeding)) {
+				status_ = R.string.status_metadata;
+			}
+			
 			JSONArray trackers = json.getJSONArray("Trackers");
-			trackers_ = new Vector<Tracker>();
+			trackers_.removeAllElements();
 			for (int i = 0; i < trackers.length(); i++) {
 				String trackerUrl = trackers.getString(i);
 				addTracker(trackerUrl);

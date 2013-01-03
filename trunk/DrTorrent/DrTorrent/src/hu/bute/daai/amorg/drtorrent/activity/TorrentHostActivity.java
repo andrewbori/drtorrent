@@ -8,6 +8,7 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 import android.app.Activity;
@@ -32,17 +33,18 @@ import com.actionbarsherlock.app.SherlockActivity;
 public abstract class TorrentHostActivity extends SherlockActivity {
 	public static final String KEY_TORRENT_ID = "id";
 	
-	protected static final int MENU_ADD_TORRENT    = 101;
-	protected static final int MENU_START_TORRENT  = 102;
-	protected static final int MENU_STOP_TORRENT   = 103;
-	protected static final int MENU_DELETE_TORRENT = 104;
-	protected static final int MENU_ADD_TRACKER    = 105;
-	protected static final int MENU_ADD_PEER 	   = 106;
-	protected static final int MENU_SEARCH_TORRENT = 110;
-	protected static final int MENU_SETTINGS       = 111;
-	protected static final int MENU_ABOUT 		   = 112;
-	protected static final int MENU_FEEDBACK	   = 113;
-	protected static final int MENU_SHUT_DOWN      = 114;
+	protected static final int MENU_ADD_TORRENT     = 101;
+	protected static final int MENU_START_TORRENT   = 102;
+	protected static final int MENU_STOP_TORRENT    = 103;
+	protected static final int MENU_DELETE_TORRENT  = 104;
+	protected static final int MENU_ADD_TRACKER     = 105;
+	protected static final int MENU_ADD_PEER 	    = 106;
+	protected static final int MENU_ADD_MAGNET_LINK = 107;
+	protected static final int MENU_SEARCH_TORRENT  = 110;
+	protected static final int MENU_SETTINGS        = 111;
+	protected static final int MENU_ABOUT 		    = 112;
+	protected static final int MENU_FEEDBACK	    = 113;
+	protected static final int MENU_SHUT_DOWN       = 114;
 	
 	protected final static String SHUT_DOWN = "shut_down";
 	protected boolean isShuttingDown_ = false; 
@@ -54,11 +56,10 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected int torrentId_ = -1;
 	
 	protected Messenger serviceMessenger_ = null;
-	protected final Messenger clientMessenger_ = new Messenger(new IncomingMessageHandler());
+	protected final Messenger clientMessenger_ = new Messenger(new IncomingMessageHandler(this));
 	private boolean isBound_ = false;
 	
-	protected AlertDialog dialog_;
-	protected ProgressDialog progressDialog_;
+	protected ProgressDialog progressDialog_ = null;
 
 	protected boolean isOpening_ = false;
 	protected Uri fileToOpen_ = null;
@@ -78,24 +79,13 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 			}
 		}
 		
-		Intent i = new Intent(context_, TorrentService.class);
+		final Intent i = new Intent(context_, TorrentService.class);
 		startService(i);
-
-		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
-		builder.setCancelable(false)
-		       .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-		           public void onClick(DialogInterface dialog, int id) {
-		        	   dialog.cancel();
-		           }
-		       });
-		dialog_ = builder.create();
-
-		progressDialog_ = new ProgressDialog(context_);
 	}
 
 	@Override
-	protected void onStart() {
-		super.onStart();
+	protected void onResume() {
+		super.onResume();
 		if (isShuttingDown_) {
 			finish();
 			return;
@@ -104,8 +94,8 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	}
 
 	@Override
-	protected void onStop() {
-		super.onStop();
+	protected void onPause() {
+		super.onPause();
 		if (isShuttingDown_) {
 			return;
 		}
@@ -170,86 +160,117 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	}
 
 	/** Handler of incoming Messages. */
-	protected class IncomingMessageHandler extends Handler {
+	private static class IncomingMessageHandler extends Handler {
+		
+		private final WeakReference<TorrentHostActivity> activity_; 
+
+		IncomingMessageHandler(TorrentHostActivity activity) {
+	    	activity_ = new WeakReference<TorrentHostActivity>(activity);
+	    }
 
 		@Override
 		public void handleMessage(Message msg) {
-			Bundle bundle = msg.getData();
-			String message;
-			
-			switch (msg.what) {
-				case TorrentService.MSG_SHOW_TOAST:
-					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
-					Toast.makeText(context_, message, Toast.LENGTH_SHORT).show();
-					break;
-					
-				case TorrentService.MSG_SHOW_DIALOG:
-					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
-					dialog_.setMessage(message);
-					dialog_.show();
-					break;
-				
-				case TorrentService.MSG_SHOW_PROGRESS:
-					message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
-					progressDialog_.setMessage(message);
-					progressDialog_.show();
-					break;
-					
-				case TorrentService.MSG_HIDE_PROGRESS:
-					progressDialog_.hide();
-					break;
-					
-				case TorrentService.MSG_SEND_TORRENT_ITEM:
-					TorrentListItem item = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
-					boolean isRemoved = bundle.getBoolean(TorrentService.MSG_KEY_IS_REMOVED, false); 
-					refreshTorrentItem(item, isRemoved);
-					break;
-
-				case TorrentService.MSG_SEND_TORRENT_LIST:
-					@SuppressWarnings("unchecked")
-					ArrayList<TorrentListItem> torrents = ((ArrayList<TorrentListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_LIST));
-					refreshTorrentList(torrents);
-					break;
-					
-				case TorrentService.MSG_SEND_PEER_ITEM:
-					PeerListItem peer = (PeerListItem) bundle.getSerializable(TorrentService.MSG_KEY_PEER_ITEM);
-					boolean isDisconnected = bundle.getBoolean(TorrentService.MSG_KEY_IS_DISCONNECTED);
-					refreshPeerItem(peer, isDisconnected);
-					break;
-					
-				case TorrentService.MSG_SEND_PEER_LIST:
-					@SuppressWarnings("unchecked")
-					ArrayList<PeerListItem> peers = ((ArrayList<PeerListItem>) bundle.getSerializable(TorrentService.MSG_KEY_PEER_LIST));
-					refreshPeerList(peers);
-					break;
-					
-				case TorrentService.MSG_SEND_FILE_LIST:
-					@SuppressWarnings("unchecked")
-					ArrayList<FileListItem> files = ((ArrayList<FileListItem>) bundle.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
-					refreshFileList(files);
-					break;
-					
-				case TorrentService.MSG_SEND_TORRENT_SETTINGS:
-					TorrentListItem torrent = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
-					@SuppressWarnings("unchecked")
-					ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) bundle.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
-					showTorrentSettings(torrent, fileList);
-					break;
-					
-				case TorrentService.MSG_SEND_TRACKER_LIST:
-					@SuppressWarnings("unchecked")
-					ArrayList<TrackerListItem> trackers = ((ArrayList<TrackerListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TRACKER_LIST));
-					refreshTrackerList(trackers);
-					break;
-					
-				case TorrentService.MSG_SEND_BITFIELD:
-					Bitfield bitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_BITFIELD);
-					Bitfield downloadingBitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_DOWNLOADING_BITFIELD);
-					refreshBitfield(bitfield, downloadingBitfield);
-					
-				default:
-					super.handleMessage(msg);
+			TorrentHostActivity activity = activity_.get();
+			if (activity != null) {
+				activity.handleMessage(msg);
 			}
+		}
+	}	
+
+	/** Handling the incoming message. */
+	public void handleMessage(Message msg) {
+		Bundle bundle = msg.getData();
+		String message;
+		
+		switch (msg.what) {
+			case TorrentService.MSG_SHOW_TOAST:
+				message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
+				Toast.makeText(context_, message, Toast.LENGTH_SHORT).show();
+				break;
+				
+			case TorrentService.MSG_SHOW_DIALOG:
+				message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
+				
+				final AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+				builder.setCancelable(false)
+				       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+				           public void onClick(DialogInterface dialog, int id) {
+				        	   dialog.cancel();
+				           }
+				       }).
+			    setMessage(message).
+			    create().show();
+				break;
+			
+			case TorrentService.MSG_SHOW_PROGRESS:
+				message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
+				progressDialog_ = new ProgressDialog(context_);
+				progressDialog_.setMessage(message);
+				progressDialog_.show();
+				break;
+				
+			case TorrentService.MSG_HIDE_PROGRESS:
+				if (progressDialog_ != null) {
+					progressDialog_.hide();
+					progressDialog_ = null;
+				}
+				break;
+				
+			case TorrentService.MSG_SEND_TORRENT_ITEM:
+				final TorrentListItem item = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
+				boolean isRemoved = bundle.getBoolean(TorrentService.MSG_KEY_IS_REMOVED, false); 
+				refreshTorrentItem(item, isRemoved);
+				break;
+
+			case TorrentService.MSG_SEND_TORRENT_LIST:
+				@SuppressWarnings("unchecked")
+				final ArrayList<TorrentListItem> torrents = ((ArrayList<TorrentListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_LIST));
+				refreshTorrentList(torrents);
+				break;
+				
+			case TorrentService.MSG_SEND_PEER_ITEM:
+				final PeerListItem peer = (PeerListItem) bundle.getSerializable(TorrentService.MSG_KEY_PEER_ITEM);
+				boolean isDisconnected = bundle.getBoolean(TorrentService.MSG_KEY_IS_DISCONNECTED);
+				refreshPeerItem(peer, isDisconnected);
+				break;
+				
+			case TorrentService.MSG_SEND_PEER_LIST:
+				@SuppressWarnings("unchecked")
+				final ArrayList<PeerListItem> peers = ((ArrayList<PeerListItem>) bundle.getSerializable(TorrentService.MSG_KEY_PEER_LIST));
+				refreshPeerList(peers);
+				break;
+				
+			case TorrentService.MSG_SEND_FILE_LIST:
+				@SuppressWarnings("unchecked")
+				final ArrayList<FileListItem> files = ((ArrayList<FileListItem>) bundle.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
+				refreshFileList(files);
+				break;
+			
+			case TorrentService.MSG_TORRENT_ALREADY_OPENED:
+				String infoHash = bundle.getString(TorrentService.MSG_KEY_TORRENT_INFOHASH);
+				final ArrayList<String> trackerUrls = bundle.getStringArrayList(TorrentService.MSG_KEY_TRACKER_LIST);
+				showTorrentAlreadyOpened(infoHash, trackerUrls);
+				break;	
+				
+			case TorrentService.MSG_SEND_TORRENT_SETTINGS:
+				TorrentListItem torrent = (TorrentListItem) bundle.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
+				@SuppressWarnings("unchecked")
+				final ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) bundle.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
+				showTorrentSettings(torrent, fileList);
+				break;
+				
+			case TorrentService.MSG_SEND_TRACKER_LIST:
+				@SuppressWarnings("unchecked")
+				final ArrayList<TrackerListItem> trackers = ((ArrayList<TrackerListItem>) bundle.getSerializable(TorrentService.MSG_KEY_TRACKER_LIST));
+				refreshTrackerList(trackers);
+				break;
+				
+			case TorrentService.MSG_SEND_BITFIELD:
+				Bitfield bitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_BITFIELD);
+				Bitfield downloadingBitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_DOWNLOADING_BITFIELD);
+				refreshBitfield(bitfield, downloadingBitfield);
+				
+			default:
 		}
 	}
 	
@@ -270,4 +291,37 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected void refreshFileList(ArrayList<FileListItem> list) {}
 	
 	protected void refreshTrackerList(ArrayList<TrackerListItem> list) {}
+	
+	protected void showTorrentAlreadyOpened(final String infoHash, final ArrayList<String> trackerUrls) {		
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+		builder.setCancelable(false).
+		setMessage(R.string.torrent_already_opened_add_trackers).
+		setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+    	   @Override
+    	   public void onClick(DialogInterface dialog, int id) {
+    		    Message msg = Message.obtain();
+    			
+    		    Bundle bundle = new Bundle();
+    			bundle.putString(TorrentService.MSG_KEY_TORRENT_INFOHASH, infoHash);
+    			bundle.putStringArrayList(TorrentService.MSG_KEY_TRACKER_LIST, trackerUrls);
+    			
+    			msg.what = TorrentService.MSG_TORRENT_ALREADY_OPENED;
+    			msg.setData(bundle);
+	   			msg.replyTo = clientMessenger_;
+	   			
+	   			try {
+	   				serviceMessenger_.send(msg);
+	   			} catch (RemoteException e) {}
+	   			
+        	    dialog.cancel();
+           }
+		}).
+		setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.cancel();
+			}
+		}).
+		create().show();
+	}
 }

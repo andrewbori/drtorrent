@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <string name="time_sec">\u0020mp\u0020</string>
+	<string name="time_min">\u0020perc\u0020</string>
+	<string name="time_hour">\u0020óra\u0020</string>
+	<string name="time_day">\u0020nap\u0020</string>
+	<string name="time_year">\u0020év\u0020</string>
+	
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">Torrent hozzáadása</string>
 	<string name="filebrowser_current">Könyvtár</string>
@@ -41,8 +46,8 @@
     <string name="failed">sikertelen kapcsolódás</string>
     <string name="empty_field"></string>
     <string name="download_folder">Letöltési könyvtár</string>
-    <string name="only_wifi">Csak WiFi</string>
-    <string name="only_wifi_sum">Letöltés csak WiFi-n keresztül</string>
+    <string name="only_wifi">Csak Wi-Fi</string>
+    <string name="only_wifi_sum">Letöltés csak Wi-Fi kapcsolat esetén</string>
     <string name="ready">Készen:</string>
     <string name="start">Indítás</string>
     <string name="stop">Leállítás</string>
@@ -72,20 +77,6 @@
     <string name="download">Letöltés</string>
     <string name="connection">Kapcsolat</string>
     <string name="back">Vissza</string>
-	<string-array name="search_sites">
-		<item>Google</item>
-		<item>1337x</item>
-		<item>BitSnoop</item>
-		<item>Extra Torrent</item>
-		<item>H33T</item>
-		<item>isoHunt</item>
-		<item>Kickass Torrents</item>
-		<item>mininova</item>
-		<item>Torrentz</item>
-		<item>The Pirate Bay</item>
-		<item>Torrent Reactor</item>
-		<item>RARBG</item>
-	</string-array>
 	<string name="destination">Célmappa:</string>
 	<string name="drtorrent_is_running">DrTorrent fut&#8230;</string>
 	<string name="download_complete">Letöltés kész.</string>
@@ -93,7 +84,14 @@
 	<string name="feedback">Visszajelzés</string>
 	<string name="reading_the_torrent_file">A torrent fájl olvasása&#8230;</string>
 	<string name="not_a_torrent_file">Nem torrent fájl!</string>
-	<string name="the_torrent_is_already_opened">A torrent már meg van nyitva!</string>
+	<string name="the_torrent_is_already_opened">Ez a torrent már meg van nyitva!</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Nincs elég szabad hely!</string>
 	<string name="error">Hiba!</string>
+	<string name="wrong_magnet_link">Hibás mágnes link!</string>
+	<string name="status_metadata">Metaadatok letöltése</string>
+	<string name="add_magnet_link">Mágnes link hozzáadása</string>
+	<string name="status_finished">Kész</string>
+	<string name="hash">Hash:</string>
+	<string name="torrent_already_opened_add_trackers">Ez a torrent már meg van nyitva. Be szeretné tölteni ebből a trackereket?</string>
+	<string name="inactive">inaktív</string>
 </resources>

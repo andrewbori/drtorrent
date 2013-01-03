@@ -14,12 +14,12 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import android.util.Log;
 
 public class HttpConnection {
-	private final static String LOG_TAG = "HttpConnection";
-	private String url_;
+	final private static String LOG_TAG = "HttpConnection";
+	final private String url_;
 	private String message_ = null;
 	
 	/** Constructor with the URL that has to be connecting to. */
-	public HttpConnection(String url) {
+	public HttpConnection(final String url) {
 		url_ = url;
 	}
 	

@@ -1,9 +1,11 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
-import hu.bute.daai.amorg.drtorrent.Tools;
+import hu.bute.daai.amorg.drtorrent.Quantity;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
 
 import java.io.Serializable;
+
+import android.content.Context;
 
 public class PeerListItem implements Serializable {
 
@@ -12,11 +14,14 @@ public class PeerListItem implements Serializable {
 	private int id_;
 	private String address_;
 	//private String requests_;
-	private String downloadSpeed_;
-	private String downloaded_;
-	private String uploadSpeed_;
-	private String uploaded_;
+	private Quantity downloadSpeed_;
+	private Quantity downloaded_;
+	private Quantity uploadSpeed_;
+	private Quantity uploaded_;
 	private String percent_;
+	private int state_;
+	private boolean isChoked_;
+	private boolean isPeerChoked_;
 	
 	public PeerListItem(Peer peer) {
 		set(peer);
@@ -32,20 +37,29 @@ public class PeerListItem implements Serializable {
 		//requests_ = item.requests_;
 		downloadSpeed_ = item.downloadSpeed_;
 		downloaded_ = item.downloaded_;
-		uploadSpeed_ = item.getUploadSpeed();
-		uploaded_ = item.getUploaded();
+		uploadSpeed_ = item.uploadSpeed_;
+		uploaded_ = item.uploaded_;
 		percent_ = item.percent_;
+		state_ = item.state_; 
+		isChoked_ = item.isChoked_;
+		isPeerChoked_ = item.isPeerChoked_;
 	}
 	
 	public void set(Peer peer) {
 		id_ = peer.getId();
-		address_ = peer.getAddressPort();
+		address_ = peer.getAddress();
+		if (peer.getClientName() != null) {
+			address_ += " (" + peer.getClientName() + ")";
+		}
 		//requests_ = peer.getRequestsCount() + "";
-		downloadSpeed_ = Tools.bytesToString(peer.getDownloadSpeed()) + "/s";
-		downloaded_ = Tools.bytesToString(peer.getDownloaded());
-		uploadSpeed_ = Tools.bytesToString(peer.getUploadSpeed()) + "/s";
-		uploaded_ = Tools.bytesToString(peer.getUploaded());
+		downloadSpeed_ = new Quantity(peer.getDownloadSpeed(), Quantity.SPEED);
+		downloaded_ = new Quantity(peer.getDownloaded(), Quantity.SIZE);
+		uploadSpeed_ = new Quantity(peer.getUploadSpeed(), Quantity.SPEED);
+		uploaded_ = new Quantity(peer.getUploaded(), Quantity.SIZE);
 		percent_ = peer.getPercent() + " %";
+		state_ = peer.getState();
+		isChoked_ = peer.isChoked();
+		isPeerChoked_ = peer.isPeerChocked();
 	}
 	
 	public int getId() {
@@ -60,24 +74,44 @@ public class PeerListItem implements Serializable {
 		return requests_;
 	}*/
 	
-	public String getDownloadSpeed() {
-		return downloadSpeed_;
+	public String getDownloadSpeed(final Context context) {
+		return downloadSpeed_.toString(context);
 	}
 	
-	public String getDownloaded() {
-		return downloaded_;
+	public String getDownloaded(final Context context) {
+		return downloaded_.toString(context);
 	}
 	
-	public String getUploadSpeed() {
-		return uploadSpeed_;
+	public String getUploadSpeed(final Context context) {
+		return uploadSpeed_.toString(context);
 	}
 	
-	public String getUploaded() {
-		return uploaded_;
+	public String getUploaded(final Context context) {
+		return uploaded_.toString(context);
+	}
+	
+	public String getDownloadStatus(final Context context) {
+		return downloaded_.toString(context).concat(" (").concat(downloadSpeed_.toString(context)).concat(")");
+	}
+	
+	public String getUploadStatus(final Context context) {
+		return uploaded_.toString(context).concat(" (").concat(uploadSpeed_.toString(context)).concat(")");
 	}
 	
 	public String getPercent() {
 		return percent_;
+	}
+	
+	public int getState() {
+		return state_;
+	}
+	
+	public boolean isChoked() {
+		return isChoked_;
+	}
+	
+	public boolean isPeerChoked() {
+		return isPeerChoked_;
 	}
 	
 	@Override

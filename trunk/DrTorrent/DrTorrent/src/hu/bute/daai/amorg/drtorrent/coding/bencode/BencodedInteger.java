@@ -7,7 +7,7 @@ public class BencodedInteger extends Bencoded {
 
 	private long value_;
 
-	/** Creates a new instance of MTBencodedInteger */
+	/** Creates a new instance of BencodedInteger */
 	public BencodedInteger(long value) {
 		value_ = value;
 	}

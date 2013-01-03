@@ -12,14 +12,16 @@ import android.util.Log;
 /** Class representing the Peer. */
 public class Peer {
 	private final static String LOG_TAG = "Peer";
-	private final static int TIMEOUT_RECONNECTION  = 1000 * 3 * 60;
+	private final static int TIMEOUT_RECONNECTION      = 1000 * 2 * 60;
+	private final static int TIMEOUT_RECONNECTION_PLUS = 1000 * 1 * 60;
 	
 	private static int ID = 0;
 	
-	private int id_;
-	private String address_;
-	private int port_;
+	final private int id_;
+	final private String address_;
+	final private int port_;
 	private String peerId_;
+	private String clientName_ = null;
 	private Bitfield bitfield_;
 	
 	private TorrentManager torrentManager_ = null;
@@ -27,7 +29,6 @@ public class Peer {
 	
 	private int failedPieceCount_ = 0;
 	
-	private boolean isIncomingConnection_ = false;
 	private PeerConnection connection_ = null;
 	
 	private Vector<Block> blocksDownloading_;
@@ -62,83 +63,96 @@ public class Peer {
 	}
 	
 	/** Connects to the peer. */
-	public Runnable connect(Torrent torrent) {
+	public Runnable connect(Torrent torrent) {		
 		downloadSpeed_ = new Speed();
 		uploadSpeed_ = new Speed();
 		torrent_ = torrent;
-		if (connection_ == null) connection_ = new PeerConnection(this, torrent, false);
+		if (connection_ == null) {
+			connection_ = new PeerConnection(this, torrent, false);
+		}
 		return connection_.connect();
 	}
 	
 	public void connect(Socket socket) {
 		downloadSpeed_ = new Speed();
 		uploadSpeed_ = new Speed();
-		if (connection_ == null) connection_ = new PeerConnection(this, null, true);
+		if (connection_ == null) {
+			connection_ = new PeerConnection(this, null, true);
+		}
 		connection_.connect(socket);
 	}
 	
 	/** Disconnects the peer. */
 	public void disconnect() {
-		if (connection_ != null) connection_.close("Peer has been disconnected...");
+		if (connection_ != null) {
+			connection_.close("Peer has been disconnected...");
+		}
 	}
 	
 	public void disconnected() {
-		torrent_.peerDisconnected(this);
+		if (torrent_ != null) {
+			torrent_.peerDisconnected(this);
+		}
 		cancelBlocks();
 		disconnectionTime_ = SystemClock.elapsedRealtime();
 		downloadSpeed_ = null;
 		uploadSpeed_ = null;
+		connection_ = null;
 	}
 	
 	/** Schedules the connection. */
 	public void onTimer() {
 		if (connection_ != null) {
 			connection_.onTimer();
+		} else {
+			disconnected();
 		}
 	}
 	
 	/** Issues the download requests. */
 	public synchronized ArrayList<Block> issueDownload() {
-		synchronized (blocksDownloading_) {
-			//int number =  getLatestBlocksCount() + 5 - (blocksToDownload_.size() + blocksDownloading_.size());
-			int number;
-			/*if (getLatestBlocksCount() == 0 && (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty())) number = 1;
-			else number =  (getLatestBlocksCount()) / 4 + 2 - (blocksToDownload_.size() + blocksDownloading_.size());*/
-			if (getLatestBlocksCount() == 0 && (blocksDownloading_.isEmpty())) number = 3;
-			else number =  (int) (getBlockSpeed() * 3.0) - blocksDownloading_.size();
-			if (number < blocksDownloading_.size() * 0.2) return null;
-			
-			ArrayList<Block> blocksToDownload = torrent_.getBlockToDownload(this, number);
-			/*for (int i = 0; i < blocksToDownload.size(); i++) {
-				Block blockToDownload = blocksToDownload.get(i);
-				Log.v(LOG_TAG, "BLOCK TO DOWNLOAD: " + blockToDownload.pieceIndex() + " - " + blockToDownload.begin());
-			}*/
-
-			if (!blocksToDownload.isEmpty()) {
-				blocksDownloading_.addAll(blocksToDownload);
-				return blocksToDownload;
-			}
+		//int number =  getLatestBlocksCount() + 5 - (blocksToDownload_.size() + blocksDownloading_.size());
+		int number;
+		/*if (getLatestBlocksCount() == 0 && (blocksToDownload_.isEmpty() && blocksDownloading_.isEmpty())) number = 1;
+		else number =  (getLatestBlocksCount()) / 4 + 2 - (blocksToDownload_.size() + blocksDownloading_.size());*/
+		if (getLatestBlocksCount() == 0 && (blocksDownloading_.isEmpty())) {
+			number = 3;
+		} else {
+			number = (int) (getBlockSpeed() * 3.0) - blocksDownloading_.size();
+		}
+		if (number < blocksDownloading_.size() * 0.2) {
 			return null;
 		}
+		
+		ArrayList<Block> blocksToDownload = torrent_.getBlockToDownload(this, number);
+		/*for (int i = 0; i < blocksToDownload.size(); i++) {
+			Block blockToDownload = blocksToDownload.get(i);
+			Log.v(LOG_TAG, "BLOCK TO DOWNLOAD: " + blockToDownload.pieceIndex() + " - " + blockToDownload.begin());
+		}*/
+
+		if (!blocksToDownload.isEmpty()) {
+			blocksDownloading_.addAll(blocksToDownload);
+			return blocksToDownload;
+		}
+		return null;
 	}
 	
-	public void blockDownloaded(int index, int begin, final byte[] data) {
+	public synchronized void blockDownloaded(int index, int begin, final byte[] data) {
 		downloaded_ += data.length;
 		
 		Block block = null;
 		Piece piece = null;
-		synchronized (blocksDownloading_) {
-			for (int i = 0; i < blocksDownloading_.size(); i++) {
-				block = blocksDownloading_.elementAt(i);
-				if (block.pieceIndex() == index && block.begin() == begin) {
-					if (block.isDownloaded()) {
-						Log.v(LOG_TAG, "This is an already received block.");
-						blocksDownloading_.removeElement(block);
-						return;
-					}
-					piece = torrent_.getPiece(block.pieceIndex());
-					break;
+
+		for (int i = 0; i < blocksDownloading_.size(); i++) {
+			block = blocksDownloading_.elementAt(i);
+			if (block.pieceIndex() == index && block.begin() == begin) {
+				if (block.isDownloaded()) {
+					Log.v(LOG_TAG, "This is an already received block.");
+					blocksDownloading_.removeElement(block);
+					return;
 				}
+				piece = torrent_.getPiece(block.pieceIndex());
+				break;
 			}
 		}
 
@@ -175,6 +189,11 @@ public class Peer {
 		}
 	}
 	
+	/** Sets the bitfield. */
+	public void setBitfield(Bitfield bitfield) {
+		bitfield_ = bitfield;
+	}
+	
 	/** Sets the bitfield of the peer. */
 	public void peerHasPieces(byte[] bitfield) {
 		Bitfield tempBitfield = new Bitfield(bitfield);
@@ -208,30 +227,30 @@ public class Peer {
 	}
 	
 	/** Cancels the request of the given block. */
-	public void cancelBlock(Block block) {
-		synchronized (blocksDownloading_) {
-			if (blocksDownloading_.contains(block)) {
-				if (connection_ != null) connection_.sendCancelMessage(block);
-				blocksDownloading_.removeElement(block);
+	public synchronized void cancelBlock(Block block) {
+		if (blocksDownloading_.contains(block)) {
+			if (connection_ != null) {
+				connection_.sendCancelMessage(block);
 			}
+			blocksDownloading_.removeElement(block);
 		}
 	}
 	
 	/** Notifies the torrent that the downloading blocks won't be received. */
-	public void cancelBlocks() {
-		synchronized (blocksDownloading_) {
-			if (blocksDownloading_ != null && !blocksDownloading_.isEmpty()) {
-				for (int i = 0; i < blocksDownloading_.size(); i++) {
-					torrent_.cancelBlock(blocksDownloading_.elementAt(i));
-				}
-				blocksDownloading_.removeAllElements();
+	public synchronized void cancelBlocks() {
+		if (blocksDownloading_ != null && !blocksDownloading_.isEmpty()) {
+			for (int i = 0; i < blocksDownloading_.size(); i++) {
+				torrent_.cancelBlock(blocksDownloading_.elementAt(i));
 			}
+			blocksDownloading_.removeAllElements();
 		}
 	}
 	
 	/** Notify the peer that the client have the given piece. */
 	public void notifyThatClientHavePiece(int pieceIndex) {
-		if (connection_ != null && connection_.isConnected()) connection_.sendHaveMessage(pieceIndex);
+		if (connection_ != null && connection_.isConnected()) {
+			connection_.sendHaveMessage(pieceIndex);
+		}
 	}
 	
 	/** Gives the torrent manager the infoHash of the torrent to be attached to the peer. */
@@ -244,7 +263,9 @@ public class Peer {
 	/** Sets the torrent which this peer is sharing. */
 	public void setTorrent(Torrent torrent) {
 		bitfield_ = new Bitfield(torrent.pieceCount(), false);
-		if (connection_ != null) connection_.setTorrent(torrent);
+		if (connection_ != null) {
+			connection_.setTorrent(torrent);
+		}
 		torrent_ = torrent;
 	}
 	
@@ -253,19 +274,19 @@ public class Peer {
 		peerId_ = peerId;
 	}
 	
-	/** True if this is an incoming connection. */
-	public boolean isIncomingConnection() {
-		return isIncomingConnection_;
-	}
-	
 	/** Sets our chocking state. */
 	public void setChoking(boolean choking) {
-		connection_.setChoking(choking);
+		if (connection_ != null) {
+			connection_.setChoking(choking);
+		}
 	}
 	
 	/** Returns whether the peer is interested in us or not. */
 	public boolean isPeerInterested() {
-		return connection_.isInterested();
+		if (connection_ != null) {
+			return connection_.isInterested();
+		}
+		return false;
 	}
 	
 	/** Resets the error counter. */
@@ -280,14 +301,18 @@ public class Peer {
 	
 	/** Returns the download speed. */
 	public int getDownloadSpeed() {
-		if (downloadSpeed_ == null) return 0;
+		if (downloadSpeed_ == null) {
+			return 0;
+		}
 		//return downloadSpeed_.getSpeed();
 		return (int) (downloadSpeed_.getBytes() / Speed.TIME_INTERVAL);
 	}
 	
 	/** Returns the upload speed. */
 	public int getUploadSpeed() {
-		if (uploadSpeed_ == null) return 0;
+		if (uploadSpeed_ == null) {
+			return 0;
+		}
 
 		return (int) (uploadSpeed_.getBytes() / Speed.TIME_INTERVAL);
 	}
@@ -338,6 +363,18 @@ public class Peer {
 		return peerId_;
 	}
 	
+	/** Sets the client's name. */
+	public void setClientName(String clientName) {
+		if (clientName != null && !clientName.equals("")) {
+			clientName_ = clientName;
+		}
+	}
+	
+	/** Returns the client's name. */
+	public String getClientName() {
+		return clientName_;
+	}
+	
 	/** Returns the bitfield. */
 	public Bitfield getBitfield() {
 		return bitfield_;
@@ -345,13 +382,23 @@ public class Peer {
 	
 	/** Returns the percent of the peer's download progress. */
 	public int getPercent() {
-		return bitfield_.countOfSet() * 100 / bitfield_.getLengthInBits();
+		if (torrent_.getBitfield() == null || torrent_.pieceCount() == 0) {
+			return 0;
+		}
+		
+		return bitfield_.countOfSet() * 100 / torrent_.pieceCount();
 	}
 	
 	/** Returns whether we can reconnect to the previously disconnected peer or not. */
 	public boolean canConnect() {
-		if (failedPieceCount_ >= 5) return false;
-		if ((SystemClock.elapsedRealtime() - disconnectionTime_) > TIMEOUT_RECONNECTION) return true;
+		if (failedPieceCount_ >= 5) {
+			return false;
+		}
+		
+		if ((SystemClock.elapsedRealtime() - disconnectionTime_) > TIMEOUT_RECONNECTION + (tcpTimeoutCount_ * TIMEOUT_RECONNECTION_PLUS)) {
+			return true;
+		}
+		
 		return false;
 	}
 	
@@ -360,7 +407,9 @@ public class Peer {
 			failedPieceCount_ -= 2;
 		} else {
 			failedPieceCount_++;
-			if (failedPieceCount_ >= 5) connection_.close("POOR CONNECTION!!!");
+			if (failedPieceCount_ >= 5) {
+				connection_.close("POOR CONNECTION!!!");
+			}
 		}
 	}
 	
@@ -375,5 +424,38 @@ public class Peer {
 	
 	public int getTcpTimeoutCount() {
 		return tcpTimeoutCount_;
+	}
+
+	/** Returns the state of the connection of the peer. */
+	public int getState() {
+		if (connection_ != null) {
+			return connection_.getState();
+		}
+		return PeerConnection.STATE_NOT_CONNECTED;
+	}
+
+	/** Returns whether we are choked (the peer is choking us) or not. */ 
+	public boolean isChoked() {
+		if (connection_ != null) {
+			return connection_.isPeerChoking();
+		}
+		return true;
+	}
+	
+	/** Returns whether the peer is choked (we are choking the peer) or not. */
+	public boolean isPeerChocked() {
+		if (connection_ != null) {
+			return connection_.isChoking();
+		}
+		return true;
+	}
+
+	/** Returns whether the peer has blocks we don't have. */
+	public boolean hasInterestingBlock() {
+		Bitfield tempBitfield = bitfield_.getBitfieldAnd(torrent_.getActiveBitfield());
+		if (tempBitfield.hasSettedCompearedTo(torrent_.getBitfield())) {
+			return true;
+		}
+		return false;
 	}
 }

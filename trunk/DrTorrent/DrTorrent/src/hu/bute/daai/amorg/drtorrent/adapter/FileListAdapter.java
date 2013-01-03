@@ -2,10 +2,12 @@ package hu.bute.daai.amorg.drtorrent.adapter;
 
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
+import hu.bute.daai.amorg.drtorrent.torrentengine.File;
 
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,11 +42,24 @@ public class FileListAdapter<T> extends ArrayAdapter<T> {
 		TextView tvSize = (TextView) reusableView.findViewById(tvSizeResource);
 
 		FileListItem item = (FileListItem) items_.get(position);
+		
+		int colorId = Color.LTGRAY;
+		if (item.getPriority() == File.PRIORITY_SKIP) {
+			colorId = Color.RED;
+		} else {
+			colorId = Color.CYAN;
+		}
+		
+		if (item.isComplete()) {
+			colorId = Color.LTGRAY;
+		}
 
 		tvName.setText(item.getName());
 		tvPriority.setText(item.getPriorityString(context_));
-		tvSize.setText(item.getSize());
+		tvSize.setText(item.getDownloadedAndFullSize(context_));
 
+		tvName.setTextColor(colorId);
+		
 		return reusableView;
 	}
 }

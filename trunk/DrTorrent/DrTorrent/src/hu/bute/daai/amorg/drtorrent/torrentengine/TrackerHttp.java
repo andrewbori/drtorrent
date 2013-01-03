@@ -25,7 +25,7 @@ public class TrackerHttp extends Tracker {
         	return Tracker.ERROR_WRONG_CONTENT;
         }
 
-        BencodedDictionary response = (BencodedDictionary) responseBencoded;  
+        final BencodedDictionary response = (BencodedDictionary) responseBencoded;  
         Bencoded value = null;
 
         // failure reason
@@ -70,18 +70,18 @@ public class TrackerHttp extends Tracker {
         value = response.entryValue("peers");
         // Normal tracker response
         if (value != null && (value.type() == Bencoded.BENCODED_LIST)) {
-            BencodedList bencodedPeers = (BencodedList) value;
+            final BencodedList bencodedPeers = (BencodedList) value;
 
             Log.v(LOG_TAG, "Number of peers received: " + bencodedPeers.count());
 
-            for (int i=0; i<bencodedPeers.count(); i++) {
+            for (int i = 0; i < bencodedPeers.count(); i++) {
                 value = bencodedPeers.item(i);
 
                 if (value.type() != Bencoded.BENCODED_DICTIONARY) {
                     return Tracker.ERROR_WRONG_CONTENT;
                 }
 
-                BencodedDictionary bencodedPeer = (BencodedDictionary) value;
+                final BencodedDictionary bencodedPeer = (BencodedDictionary) value;
 
                 String peerId = null;
                 // peer id
@@ -101,14 +101,16 @@ public class TrackerHttp extends Tracker {
 
                 // ip
                 value = bencodedPeer.entryValue("ip");
-                if (value==null || (value.type() != Bencoded.BENCODED_STRING))
+                if (value == null || (value.type() != Bencoded.BENCODED_STRING)) {
                     continue;
+                }
                 String ip = ((BencodedString) value).getStringValue();
 
                 // port
                 value = bencodedPeer.entryValue("port");
-                if (value==null || (value.type() != Bencoded.BENCODED_INTEGER))
+                if (value == null || (value.type() != Bencoded.BENCODED_INTEGER)) {
                     continue;
+                }
                 int port = (int) ((BencodedInteger) value).getValue();
 
                 Log.v(LOG_TAG, "Peer address: " + ip + ":" + port);                  
@@ -124,17 +126,17 @@ public class TrackerHttp extends Tracker {
         }
         // likely a compact response
         else if (value != null && (value.type() == Bencoded.BENCODED_STRING)) {
-            BencodedString bencodedPeers = (BencodedString) value;
+            final BencodedString bencodedPeers = (BencodedString) value;
 
             if ((bencodedPeers.getValue().length % 6) == 0) {
-                byte[] ips = bencodedPeers.getValue();
+                final byte[] ips = bencodedPeers.getValue();
 
                 for (int pos = 0; pos + 6 <= ips.length; pos += 6) {
-                    String address = Tools.readIp(ips, pos);
+                    final String address = Tools.readIp(ips, pos);
                     if (address == null) {
                     	break;
                     }
-                    int port = Tools.readInt16(ips, pos + 4);
+                    final int port = Tools.readInt16(ips, pos + 4);
 
                     Log.v(LOG_TAG, address + ":" + port);
                     /*if (Preferences.LocalAddress != null) {
@@ -145,12 +147,12 @@ public class TrackerHttp extends Tracker {
 
                     torrent_.addPeer(address, port, null);
                 }        
-            }
-            else
+            } else {
                 Log.v(LOG_TAG, "[Tracker] Compact response invalid (length cannot be devided by 6 without remainder)");
-        }        
-        else
+            }
+        } else {
         	Log.v(LOG_TAG, "[Tracker] No peers list / peers list invalid");
+        }
         
         // Log.v(LOG_TAG, "Response procesed, peers: " + peers_.size());
         
@@ -160,7 +162,7 @@ public class TrackerHttp extends Tracker {
 	/** Creates the query string from the current state of the tracker. */
 	private String createUri() {
         //String localAddress = NetTools.getLocalAddress(torrent.getAnnounce());
-		StringBuilder uriB = new StringBuilder("?");
+		final StringBuilder uriB = new StringBuilder("?");
 		uriB.append("info_hash=").append(UrlEncoder.encode(torrent_.getInfoHash()))        
         	.append("&peer_id=").append(TorrentManager.getPeerID())
         	.append("&key=").append(TorrentManager.getPeerKey())
@@ -203,14 +205,14 @@ public class TrackerHttp extends Tracker {
 	
 	@Override
 	protected void doConnect() {
-		String fullUrl = url_ + createUri();
+		final String fullUrl = url_ + createUri();
 		
-		HttpConnection conn = new HttpConnection(fullUrl);
-		byte[] response = conn.execute();
+		final HttpConnection conn = new HttpConnection(fullUrl);
+		final byte[] response = conn.execute();
 		
 		if (event_ != EVENT_STOPPED) {
 			if (response != null) {
-				Bencoded bencoded = Bencoded.parse(response);
+				final Bencoded bencoded = Bencoded.parse(response);
 			
 				if (bencoded == null) {
 					status_ = STATUS_FAILED;
@@ -220,7 +222,9 @@ public class TrackerHttp extends Tracker {
 				}
 				status_ = STATUS_WORKING;
 				Log.v(LOG_TAG, "Bencoded response processing...");
-				if (processResponse(bencoded) != ERROR_NONE) failCount_++;
+				if (processResponse(bencoded) != ERROR_NONE) {
+					failCount_++;
+				}
 			} else {
 				status_ = STATUS_FAILED;
 				interval_ = ERROR_REQUEST_INTERVAL;

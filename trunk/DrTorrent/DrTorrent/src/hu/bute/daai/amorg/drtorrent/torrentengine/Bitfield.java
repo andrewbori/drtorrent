@@ -10,7 +10,7 @@ public class Bitfield implements Serializable {
 	private byte[] bitfield_;
     private int lengthInBits_;
     
-    private boolean isChanged_ = false;
+    private boolean isChanged_ = true;
     
     /** Creates a new instance of Bitfield.
      * 
@@ -20,13 +20,18 @@ public class Bitfield implements Serializable {
     public Bitfield(int length, boolean setAllBits) {
     	lengthInBits_ = length;
 		int lengthInBytes = length / 8;
-		if ((length % 8) > 0) lengthInBytes++;
+		if ((length % 8) > 0) {
+			lengthInBytes++;
+		}
 		
         bitfield_ = new byte[lengthInBytes];
 		
 		byte value;
-		if (setAllBits) value = (byte) 255;
-		else value = (byte) 0;
+		if (setAllBits) {
+			value = (byte) 255;
+		} else {
+			value = (byte) 0;
+		}
 		
 		for (int i = 0; i < bitfield_.length; i++) bitfield_[i] = value;
     }
@@ -34,6 +39,7 @@ public class Bitfield implements Serializable {
     /** Copy constructor. */
     public Bitfield(byte[] bitField) {
         bitfield_ = bitField;
+        lengthInBits_ = bitfield_.length * 8;
     }
     
     /** Sets the bit. */
@@ -50,9 +56,11 @@ public class Bitfield implements Serializable {
     
     /** Returns whether all bits are unsetted or not. */
     public boolean isNull() {
-        for (int i = 0; i < bitfield_.length; i++)
-            if (bitfield_[i] != 0)
+        for (int i = 0; i < bitfield_.length; i++) {
+            if (bitfield_[i] != 0) {
                 return false;
+            }
+        }
         return true;
     }
     
@@ -80,27 +88,39 @@ public class Bitfield implements Serializable {
     }
 
     public Bitfield clone() {
-        byte[] clonedBitField = new byte[bitfield_.length];        
+        final byte[] clonedBitField = new byte[bitfield_.length];        
         System.arraycopy(bitfield_,0,clonedBitField,0,bitfield_.length);        
         return new Bitfield(clonedBitField);                
     }
     
     /** Inverts all bits. */
     public void bitwiseNot() {
-        for (int i=0; i<bitfield_.length; i++) bitfield_[i] = (byte)(~(bitfield_[i]));
+        for (int i=0; i<bitfield_.length; i++) {
+        	bitfield_[i] = (byte)(~(bitfield_[i]));
+        }
         isChanged_ = true;
     }
 
-    public void bitwiseAnd(Bitfield bitField) {
-        for (int i = 0; i < bitfield_.length; i++) bitfield_[i] = (byte)(bitfield_[i] & bitField.data()[i]);
+    public void bitwiseAnd(final Bitfield bitField) {
+        for (int i = 0; i < bitfield_.length; i++) {
+        	bitfield_[i] = (byte)(bitfield_[i] & bitField.data()[i]);
+        }
         isChanged_ = true;
     }
     
-    public void set(byte[] bitField) {
+    public Bitfield getBitfieldAnd(final Bitfield other) {
+        Bitfield newBitfield = new Bitfield(lengthInBits_, false);
+    	for (int i = 0; i < bitfield_.length && i < other.bitfield_.length; i++) {
+        	newBitfield.bitfield_[i] = (byte)(bitfield_[i] & other.bitfield_[i]);
+        }
+        return newBitfield;
+    }
+    
+    public void set(final byte[] bitField) {
         bitfield_ = bitField;
     }
         
-    public boolean isBitSet(int index) {
+    public boolean isBitSet(final int index) {
         return ((128 >> (index % 8)) & (bitfield_[index / 8])) > 0;
     }
 
@@ -124,12 +144,26 @@ public class Bitfield implements Serializable {
     	isChanged_ = isChanged;
     }
     
+    public boolean hasSettedCompearedTo(final Bitfield bitfield) {
+    	for (int i = 0; i < bitfield_.length && i < bitfield.bitfield_.length; i++) {
+    		if ((byte)((bitfield_[i] ^ bitfield.bitfield_[i]) & bitfield_[i]) != 0) {
+    			return true;
+    		}
+        }
+    	
+    	return false;
+    }
+    
     @Override
-    public boolean equals(Object o) {
-    	Bitfield other = (Bitfield) o;
-    	if (this.lengthInBits_ != other.lengthInBits_) return false;
+    public boolean equals(final Object o) {
+    	final Bitfield other = (Bitfield) o;
+    	if (this.lengthInBits_ != other.lengthInBits_) {
+    		return false;
+    	}
     	for (int i = 0; i < bitfield_.length; i++) {
-    		if (this.bitfield_[i] != other.bitfield_[i]) return false;
+    		if (this.bitfield_[i] != other.bitfield_[i]) {
+    			return false;
+    		}
     	}
     	
     	return true;

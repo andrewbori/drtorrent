@@ -56,7 +56,7 @@ public class FileSettingsListAdapter<T> extends ArrayAdapter<T> {
 			}
 		});
 		
-		tvSize.setText(item.getSize());
+		tvSize.setText(item.getSize(context_));
 
 		return reusableView;
 	}

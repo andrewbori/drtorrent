@@ -4,13 +4,24 @@
     android:layout_height="match_parent"
     android:orientation="vertical" >
     
-    <ListView 
-        android:id="@+id/torrent_settings_lvFiles"
+    <LinearLayout
+        android:orientation="vertical" 
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/torrent_settings_llButtons">
-        
-    </ListView>
+        android:layout_above="@+id/torrent_settings_llButtons"
+        android:gravity="center_vertical|center_horizontal">
+	    <ListView 
+	        android:id="@+id/torrent_settings_lvFiles"
+	        android:layout_width="match_parent"
+	        android:layout_height="match_parent"
+	        android:visibility="gone">
+	    </ListView>
+	    
+	    <ProgressBar
+            android:id="@+id/torrent_settings_progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
     
     <LinearLayout
         android:id="@+id/torrent_settings_llButtons"

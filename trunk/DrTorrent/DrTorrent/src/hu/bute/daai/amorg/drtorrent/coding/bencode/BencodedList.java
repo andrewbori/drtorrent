@@ -8,7 +8,7 @@ public class BencodedList extends Bencoded {
 
 	private Vector<Bencoded> items_;
 
-	/** Creates a new instance of MTBencodedList */
+	/** Creates a new instance of BencodedList */
 	public BencodedList() {
 		items_ = new Vector<Bencoded>();
 	}

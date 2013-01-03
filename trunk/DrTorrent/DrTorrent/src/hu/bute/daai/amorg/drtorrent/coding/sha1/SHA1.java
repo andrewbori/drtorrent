@@ -155,6 +155,18 @@ final public class SHA1 {
         }
 
         return ret.toString();
-
-    } 
+    }
+    
+    static public int[] stringToIntArray(String inp) {
+    	int[] result = new int[inp.length() / 8 ];
+    	String str = inp.toLowerCase();
+    	
+    	for (int i = 0; i < result.length; i++) {
+			String v = "0x" + str.substring(i * 8, i * 8 + 8);
+			long res = Long.decode(v);
+			result[i] = (int) res;
+		}
+    	
+    	return result;
+    }
 }

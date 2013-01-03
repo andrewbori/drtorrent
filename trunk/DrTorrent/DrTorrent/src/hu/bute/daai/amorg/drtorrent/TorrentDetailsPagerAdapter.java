@@ -32,7 +32,6 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.viewpagerindicator.TitleProvider;
 
@@ -63,6 +62,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	private TextView tvPeers_ = null;
 	private TextView tvElapsedTime_ = null;
 	private TextView tvRemainingTime_ = null;
+	private TextView tvHash_ = null;
 	
 	private Bitfield bitfield_ = null;
 	private Bitfield downloadingBitfield_ = null;
@@ -127,6 +127,7 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 	    			tvElapsedTime_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvElapsedTime);
 	    			tvRemainingTime_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvRemainingTime);
 	    			tvPeers_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvPeers);
+	    			tvHash_ = (TextView) infoView_.findViewById(R.id.torrent_details_tvHash);
 				}
 				
 				v = infoView_;
@@ -271,19 +272,41 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 			tvName_.setText(item.getName());
 			tvStatus_.setText(context_.getString(item.getStatus()));
 			
+			/*Rect bounds = progress_.getProgressDrawable().getBounds();
+			
+			if (item.getStatus() == R.string.status_stopped) {
+				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue_light));
+			} else if (item.getStatus() == R.string.status_finished) {
+				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green_light));
+			} else if (item.getStatus() == R.string.status_seeding) {
+				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green));
+			} else {
+				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue));
+			}
+			
+			progress_.getProgressDrawable().setBounds(bounds);*/
+			
 			DecimalFormat dec = new DecimalFormat("###.#");
 			tvPercent_.setText(dec.format(item.getPercent()).concat(" %"));
 			progress_.setProgress((int) item.getPercent());
+			//progress_.invalidate();
 			
-			tvSize_.setText(item.getSize());
-			tvReady_.setText(item.getReady());
-			tvDownloaded_.setText(item.getDownloaded());
-			tvDownSpeed_.setText(item.getDownloadSpeed());
-			tvUploaded_.setText(item.getUploaded());
-			tvUpSpeed_.setText(item.getUploadSpeed());
-			tvElapsedTime_.setText(item.getElapsedTime());
-			tvRemainingTime_.setText(item.getRemainingTime());
+			if (item.getStatus() == R.string.status_seeding || item.getStatus() == R.string.status_finished || item.getStatus() == R.string.status_metadata) {
+				tvPercent_.setVisibility(TextView.GONE);
+			} else {
+				tvPercent_.setVisibility(TextView.VISIBLE);
+			}
+			
+			tvSize_.setText(item.getSize(context_));
+			tvReady_.setText(item.getReady(context_));
+			tvDownloaded_.setText(item.getDownloaded(context_));
+			tvDownSpeed_.setText(item.getDownloadSpeed(context_));
+			tvUploaded_.setText(item.getUploaded(context_));
+			tvUpSpeed_.setText(item.getUploadSpeed(context_));
+			tvElapsedTime_.setText(item.getElapsedTime(context_));
+			tvRemainingTime_.setText(item.getRemainingTime(context_));
 			tvPeers_.setText(item.getPeers());
+			tvHash_.setText(item.getInfoHash());
 		}
 	}
 	

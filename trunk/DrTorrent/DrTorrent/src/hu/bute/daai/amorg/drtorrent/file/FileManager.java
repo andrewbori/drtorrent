@@ -16,20 +16,20 @@ import android.util.Log;
 public class FileManager {
 	private final static String LOG_TAG = "FileManager";
 	
-	private Torrent torrent_;
-	private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesCreated_;
-	private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesToCreate_;
+	final private Torrent torrent_;
+	final private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesCreated_;
+	final private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesToCreate_;
 
 	private boolean isCreating_ = false;
 	
-	public FileManager(Torrent torrent) {
+	public FileManager(final Torrent torrent) {
 		torrent_ = torrent;
 		filesToCreate_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
 		filesCreated_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
 	}	
 	
 	/** Adds a new file to create. Returns true if it has not been added yet. */
-	public boolean addFile(hu.bute.daai.amorg.drtorrent.torrentengine.File file) {
+	public boolean addFile(final hu.bute.daai.amorg.drtorrent.torrentengine.File file) {
 		if (!filesCreated_.contains(file) && !filesToCreate_.contains(file)) {
 			filesToCreate_.addElement(file);
 			return true;
@@ -58,21 +58,26 @@ public class FileManager {
 		isCreating_ = false;
 	}
 	
-	public void createFile(hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo) {
-		String filePath = fileInfo.getFullPath();
+	public void createFile(final hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo) {
+		final String filePath = fileInfo.getFullPath();
 		long fileSize = fileInfo.getSize();
 		
 		RandomAccessFile file = null;
 
 		try {
 			String dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-			File dir = new File(dirPath);
-			dir.mkdirs();
+			
+			{
+				final File dir = new File(dirPath);
+				dir.mkdirs();
+			}
 
-			File f = new File(filePath);
-			f.createNewFile();
-
-			file = new RandomAccessFile(f, "rw");
+			{
+				final File f = new File(filePath);
+				f.createNewFile();
+			
+				file = new RandomAccessFile(f, "rw");
+			}
 			
 			if (file.length() != fileSize) {
 				for (long size = file.length(); size < fileSize && torrent_.isWorking(); size += torrent_.getPieceLength()) {
@@ -87,10 +92,12 @@ public class FileManager {
 				fileInfo.setCreatedSize(fileSize);
 			}
 			
-			if (!torrent_.isWorking()) return;
+			if (!torrent_.isWorking()) {
+				return;
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			Log.v("FileManager", e.getMessage());
+			Log.v(LOG_TAG, e.getMessage());
 		} finally {
 			if (file != null) {
 				try {
@@ -105,7 +112,7 @@ public class FileManager {
 	/** Returns the size of free space in bytes. */
 	public static long freeSize(String path) {
 		try {
-			StatFs fs = new StatFs("/sdcard/"); // path);
+			StatFs fs = new StatFs(/*"/sdcard/"); //*/ path);
 			return (long) fs.getAvailableBlocks() * fs.getBlockSize();
 		} catch (Exception e) {
 			return 5 * 1024L * 1024L * 1024L;
@@ -154,12 +161,12 @@ public class FileManager {
 	}*/
 	
 	/** Returns the content of the file in a byte array. */
-	public static byte[] readFile(String filePath) {
+	public static byte[] readFile(final String filePath) {
 		BufferedInputStream bis = null;
 		try {
-			File file = new File(filePath);
+			final File file = new File(filePath);
 			bis = new BufferedInputStream(new FileInputStream(file));
-			byte[] bf = new byte[(int) file.length()];
+			final byte[] bf = new byte[(int) file.length()];
 			bis.read(bf);
 			return bf;
 		} catch (Exception ex) {
@@ -176,7 +183,7 @@ public class FileManager {
 	}
 	
 	/** Writes a block to the file in the given position. */
-	public int writeFile(String filePath, long filePosition, byte[] block) {
+	public int writeFile(final String filePath, final long filePosition, final byte[] block) {
 		return writeFile(filePath, filePosition, block, 0, block.length);
 	}
 
@@ -184,12 +191,12 @@ public class FileManager {
 	 * Writes a block to the file in the given position.
 	 * The offset and length within the block is also given. 
 	 */
-	public int writeFile(String filePath, long filePosition, byte[] block, int offset, int length) {
+	public int writeFile(final String filePath, final long filePosition, final byte[] block, final int offset, final int length) {
 		RandomAccessFile file = null;
 		try {
 			if (!fileExists(filePath)) {
-				String dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-				File dir = new File(dirPath);
+				final String dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+				final File dir = new File(dirPath);
 				dir.mkdirs();
 			}
 			
@@ -213,16 +220,20 @@ public class FileManager {
 	 */
 	public byte[] read(String filepath, long position, int length) {
 		RandomAccessFile file = null;
-		byte[] result = new byte[length];
+		final byte[] result = new byte[length];
 		try {
 			file = new RandomAccessFile(filepath, "r");
 			file.seek(position);
 			final int cnt = file.read(result);
 
-			if (cnt != length) result = null;
+			if (cnt != length) {
+				//result = null;
+				return null;
+			}
 		} catch (IOException e) {
 			Log.v(LOG_TAG, e.getMessage());
-			result = null;
+			//result = null;
+			return null;
 		} finally {
 			try {
 				file.close();

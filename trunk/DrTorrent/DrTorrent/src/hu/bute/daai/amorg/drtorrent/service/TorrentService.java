@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.service;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
+import hu.bute.daai.amorg.drtorrent.Quantity;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.activity.DrTorrentActivity;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
@@ -17,6 +18,7 @@ import hu.bute.daai.amorg.drtorrent.torrentengine.Tracker;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -35,6 +37,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 /** Torrent service. */
@@ -42,6 +45,8 @@ public class TorrentService extends Service {
 	private final static String LOG_TAG           = "TorrentService";
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
+	
+	public final static String APP_VERSION_NAME = "1.2"; // TODO: Refresh
 	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
@@ -70,6 +75,7 @@ public class TorrentService extends Service {
 	public final static int MSG_SEND_FILE_LIST_TO_SELECT = 313;
 	public final static int MSG_SEND_FILE_LIST_SELECTED  = 314;
 	public final static int MSG_SEND_TORRENT_SETTINGS	 = 315;
+	public final static int MSG_TORRENT_ALREADY_OPENED   = 316;
 	public final static int MSG_SHUT_DOWN				 = 321;
 	public static final int MSG_CONN_SETTINGS_CHANGED    = 400;
 	
@@ -81,6 +87,7 @@ public class TorrentService extends Service {
 	public final static int UPDATE_SOMETHING 	= 31;	// 0b00011111
 	
 	public final static String MSG_KEY_FILEPATH         	= "a";
+	public final static String MSG_KEY_TORRENT_INFOHASH		= "b";
 	public final static String MSG_KEY_TORRENT_ID		    = "c";
 	public final static String MSG_KEY_TORRENT_UPDATE 		= "d";
 	public final static String MSG_KEY_TORRENT_ITEM     	= "e";
@@ -99,10 +106,13 @@ public class TorrentService extends Service {
 	public final static String MSG_KEY_TRACKER_ID			= "r";
 	public final static String MSG_KEY_PEER_IP				= "s";
 	public final static String MSG_KEY_PEER_PORT			= "t";
+	public final static String MSG_KEY_IS_SETTINGS			= "u";
 	
 	private Context context_;
 	
-	private final Messenger serviceMessenger_ = new Messenger(new IncomingMessageHandler());
+	private static int latestVersion_ = 0;  
+	
+	private final Messenger serviceMessenger_ = new Messenger(new IncomingMessageHandler(this));
 
 	private TorrentManager torrentManager_;
 	private NetworkManager networkManager_;
@@ -110,6 +120,7 @@ public class TorrentService extends Service {
 
 	private Messenger clientAll_;
 	private Messenger clientSingle_;
+	private boolean isSettingsClient_ = false;
 	private int clientSingleTorrentId_ = -1;
 	private int clientSingleUpdateField_ = 0;
 
@@ -121,7 +132,9 @@ public class TorrentService extends Service {
 
 		context_ = getApplicationContext();
 		Preferences.set(context_);
-		showNotification();
+		showNotification(null);
+		
+		latestVersion_ = getVersionCode();
 		
 		torrents_ = new Vector<TorrentListItem>();
 		networkManager_ = new NetworkManager();
@@ -149,123 +162,163 @@ public class TorrentService extends Service {
 		
 		super.onDestroy();
 	}
+	
+	/** Returns the version code of the application. (for example: 3) */
+	public int getVersionCode() {
+		/*try {
+			PackageManager manager = getPackageManager();
+			PackageInfo info = manager.getPackageInfo(this.getPackageName(), 0);
+			return info.versionCode;
+		} catch (Exception e) {
+		}
+		return 0;*/
+		return 3; // TODO: Refresh!!
+	}
 
 	/** Handler of incoming Messages from clients. */
-	class IncomingMessageHandler extends Handler {
+	static class IncomingMessageHandler extends Handler {
+		private final WeakReference<TorrentService> service_; 
+
+		IncomingMessageHandler(TorrentService service) {
+			service_ = new WeakReference<TorrentService>(service);
+	    }
+		
 		@Override
 		public void handleMessage(Message msg) {
-			Bundle bundleMsg = msg.getData();
-			int torrentId = -1;
-
-			switch (msg.what) {
-
-				case MSG_SUBSCRIBE_CLIENT:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID, -1);
-					subscribeClient(msg.replyTo, torrentId);
-					break;
-
-				case MSG_UNSUBSCRIBE_CLIENT:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID, -1);
-					unSubscribeClient(msg.replyTo, torrentId);
-					break;
-					
-				case MSG_UPDATE_TORRENT:
-					clientSingleUpdateField_ = bundleMsg.getInt(MSG_KEY_TORRENT_UPDATE, 0);
-					break;
-					
-				case MSG_CHANGE_FILE_PRIORITY:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					FileListItem item = (FileListItem) bundleMsg.getSerializable(TorrentService.MSG_KEY_FILE_ITEM);
-					(new ChangeFilePriorityThread(torrentId, item)).start();
-					break;
-
-				case MSG_OPEN_TORRENT:
-					Uri torrentUri = bundleMsg.getParcelable(MSG_KEY_FILEPATH);
-					(new OpenTorrentThread(torrentUri)).start();
-					break;
-
-				case MSG_SEND_TORRENT_SETTINGS:
-					TorrentListItem torrent = (TorrentListItem) bundleMsg.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
-					@SuppressWarnings("unchecked")
-					ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) bundleMsg.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
-					(new SetTorrentThread(torrent, fileList)).start();
-					break;
-					
-				case MSG_START_TORRENT:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					(new StartTorrentThread(torrentId)).start();
-					break;
-
-				case MSG_STOP_TORRENT:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					torrentManager_.stopTorrent(torrentId);
-					break;
-
-				case MSG_CLOSE_TORRENT:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					torrentManager_.closeTorrent(torrentId);
-					break;
-				
-				case MSG_ADD_PEER:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					String ip = bundleMsg.getString(MSG_KEY_PEER_IP);
-					int port = bundleMsg.getInt(MSG_KEY_PEER_PORT);
-					torrentManager_.addPeer(torrentId, ip, port);
-					break;
-					
-				case MSG_ADD_TRACKER:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					String trackerUrl = bundleMsg.getString(MSG_KEY_TRACKER_URL);
-					torrentManager_.addTracker(torrentId, trackerUrl);
-					break;
-					
-				case MSG_REMOVE_TACKER:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					int trackerId = bundleMsg.getInt(MSG_KEY_TRACKER_ID);
-					torrentManager_.removeTracker(torrentId, trackerId);
-					break;
-					
-				case MSG_SEND_TORRENT_LIST:
-					sendTorrentList(msg.replyTo);
-					break;
-					
-				case MSG_SEND_TORRENT_ITEM:
-					torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
-					sendTorrentItem(msg.replyTo, torrentId);
-					break;
-					
-				case MSG_CONN_SETTINGS_CHANGED:
-					networkManager_.connectionSettingsChanged();
-					break;
-					
-				case MSG_SHUT_DOWN:
-					shutDown();
-					break;
-					
-				default:
-					super.handleMessage(msg);
+			TorrentService service = service_.get();
+			if (service != null) {
+				service.handleMessage(msg);
 			}
 		}
 	}
+	
+	/** Handling the incoming message. */
+	public void handleMessage(Message msg) {
+		Bundle bundleMsg = msg.getData();
+		int torrentId = -1;
+
+		switch (msg.what) {
+
+			case MSG_SUBSCRIBE_CLIENT:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID, -1);
+				isSettingsClient_ = bundleMsg.getBoolean(MSG_KEY_IS_SETTINGS, false);
+				subscribeClient(msg.replyTo, torrentId);
+				break;
+
+			case MSG_UNSUBSCRIBE_CLIENT:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID, -1);
+				unSubscribeClient(msg.replyTo, torrentId);
+				break;
+				
+			case MSG_UPDATE_TORRENT:
+				clientSingleUpdateField_ = bundleMsg.getInt(MSG_KEY_TORRENT_UPDATE, 0);
+				break;
+				
+			case MSG_CHANGE_FILE_PRIORITY:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				final FileListItem item = (FileListItem) bundleMsg.getSerializable(TorrentService.MSG_KEY_FILE_ITEM);
+				(new ChangeFilePriorityThread(torrentId, item)).start();
+				break;
+
+			case MSG_OPEN_TORRENT:
+				Uri torrentUri = bundleMsg.getParcelable(MSG_KEY_FILEPATH);
+				(new OpenTorrentThread(torrentUri)).start();
+				break;
+
+			case MSG_SEND_TORRENT_SETTINGS:
+				TorrentListItem torrent = (TorrentListItem) bundleMsg.getSerializable(TorrentService.MSG_KEY_TORRENT_ITEM);
+				@SuppressWarnings("unchecked")
+				final ArrayList<FileListItem> fileList = ((ArrayList<FileListItem>) bundleMsg.getSerializable(TorrentService.MSG_KEY_FILE_LIST));
+				final boolean isRemoved = bundleMsg.getBoolean(TorrentService.MSG_KEY_IS_REMOVED, true);
+				(new SetTorrentThread(torrent, isRemoved, fileList)).start();
+				break;
+				
+			case MSG_START_TORRENT:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				(new StartTorrentThread(torrentId)).start();
+				break;
+
+			case MSG_STOP_TORRENT:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				torrentManager_.stopTorrent(torrentId);
+				break;
+
+			case MSG_CLOSE_TORRENT:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				torrentManager_.closeTorrent(torrentId);
+				break;
+			
+			case MSG_ADD_PEER:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				String ip = bundleMsg.getString(MSG_KEY_PEER_IP);
+				int port = bundleMsg.getInt(MSG_KEY_PEER_PORT);
+				torrentManager_.addPeer(torrentId, ip, port);
+				break;
+				
+			case MSG_ADD_TRACKER:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				String trackerUrl = bundleMsg.getString(MSG_KEY_TRACKER_URL);
+				torrentManager_.addTracker(torrentId, trackerUrl);
+				break;
+				
+			case MSG_REMOVE_TACKER:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				int trackerId = bundleMsg.getInt(MSG_KEY_TRACKER_ID);
+				torrentManager_.removeTracker(torrentId, trackerId);
+				break;
+				
+			case MSG_SEND_TORRENT_LIST:
+				sendTorrentList(msg.replyTo);
+				break;
+				
+			case MSG_SEND_TORRENT_ITEM:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				sendTorrentItem(msg.replyTo, torrentId);
+				break;
+				
+			case MSG_CONN_SETTINGS_CHANGED:
+				networkManager_.connectionSettingsChanged();
+				break;
+				
+			case MSG_TORRENT_ALREADY_OPENED:
+				final String infoHash = bundleMsg.getString(TorrentService.MSG_KEY_TORRENT_INFOHASH);
+				final ArrayList<String> trackerUrls = bundleMsg.getStringArrayList(TorrentService.MSG_KEY_TRACKER_LIST);
+				torrentManager_.addTrackers(infoHash, trackerUrls);
+				break;	
+				
+			case MSG_SHUT_DOWN:
+				shutDown();
+				break;
+				
+			default:
+		}
+	}
+	
 
 	/** Subscribes client to the given torrent. */
 	private void subscribeClient(Messenger messenger, int torrentId) {
 		if (torrentId != -1) {
-			//Log.v(LOG_TAG, clients.size() + " Client subscried to the following torrent: " + infoHash);
-			Log.v(LOG_TAG, " Client subscried to the following torrent: " + torrentId);
+			Log.v(LOG_TAG, "Client subscried to the following torrent: " + torrentId);
 			clientAll_ = null;
 			clientSingleTorrentId_ = torrentId;
 			clientSingle_ = messenger;
-			sendTorrentItem(messenger, torrentId);
-			sendPeerList(messenger, torrentId);
-			sendTrackerList(messenger, torrentId);
-			sendFileList(messenger, torrentId);
-			updateBitfield(torrentManager_.getTorrent(torrentId));
+			if (!isSettingsClient_) {
+				sendTorrentItem(messenger, torrentId);
+				sendPeerList(messenger, torrentId);
+				sendTrackerList(messenger, torrentId);
+				sendFileList(messenger, torrentId);
+				updateBitfield(torrentManager_.getTorrent(torrentId));
+			} else {
+				Torrent torrent = torrentManager_.getOpeningTorrent(torrentId);
+				if (torrent != null && torrent.isValid()) {
+					updateMetadata(torrent);
+				}
+			}
 		} else {
-			//Log.v(LOG_TAG, clientsAll_.size() + " Client subscribed to the Torrent Service.");
-			Log.v(LOG_TAG, " Client subscribed to the Torrent Service.");
+			Log.v(LOG_TAG, "Client subscribed to the Torrent Service.");
 			clientSingle_ = null;
 			clientSingleTorrentId_ = -1;
+			isSettingsClient_ = false;
 			clientAll_ = messenger;
 			sendTorrentList(messenger);
 		}
@@ -285,24 +338,45 @@ public class TorrentService extends Service {
 		}
 	}
 	
+	/** Show Notification. */
+	public void showNotification(long downloadSpeed, long uploadSpeed) {
+		Quantity downSpeed = new Quantity(downloadSpeed, Quantity.SPEED);
+		Quantity upSpeed = new Quantity(uploadSpeed, Quantity.SPEED);
+		String message = context_.getString(R.string.arrow_down) + downSpeed.toString(context_) + " " +
+						 context_.getString(R.string.arrow_up) + upSpeed.toString(context_);
+		showNotification(message);
+	}
+	
+	/** Show Notification. */
+	public void showNotification(int resId) {
+		showNotification(context_.getString(resId));
+	}
+	
 	final static private int NOTIFICATION_TORRENT_SERVICE = 1;
 	/** Show Notification. */
-	private void showNotification() {
+	private void showNotification(String message) {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		
 		int icon = R.drawable.ic_notification;
 		String text = "DrTorrent";
-		long when = System.currentTimeMillis();
+		if (message != null) {
+			text = text + " (" + message + ")"; 
+		}
 		
-		Notification notification = new Notification(icon, text, when);
-		
+		NotificationCompat.Builder builder = new NotificationCompat.Builder(context_)
+			.setContentTitle(text)
+		    .setContentText(getString(R.string.drtorrent_is_running))
+		    .setSmallIcon(icon);
+
 		Context context = getApplicationContext();
 		Intent intent = new Intent(context, DrTorrentActivity.class);
 		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
 		
-		notification.setLatestEventInfo(context, text, getString(R.string.drtorrent_is_running), pendingIntent);
-		notification.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT;
+		builder.setContentIntent(pendingIntent);
+		Notification notification = builder.getNotification();
+		notification.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT | Notification.FLAG_ONLY_ALERT_ONCE;
+		
 		notificationManager.notify(NOTIFICATION_TORRENT_SERVICE, notification);
 	}
 	
@@ -365,7 +439,6 @@ public class TorrentService extends Service {
 			Log.v(LOG_TAG, e.getMessage());
 			return null;
 		}
-		
 	}
 	
 	/** Saves the content of a torrent file. */
@@ -377,11 +450,20 @@ public class TorrentService extends Service {
 		} catch (Exception e) {}
 	}
 	
+	/** Removes the torrent file. */
+	public void removeTorrentContent(String infoHash) {
+		try {
+			context_.deleteFile(infoHash + ".torrent");
+		} catch (Exception e) {}
+	}
+	
 	/** Loads the content of a torrent file. */
 	public byte[] loadTorrentContent(String infoHash) {
+		FileInputStream fis = null;
+		ByteArrayOutputStream baos = null;
 		try {
-			FileInputStream fis = openFileInput(infoHash + ".torrent");
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			fis = openFileInput(infoHash + ".torrent");
+			baos = new ByteArrayOutputStream();
 			int ch;
 			while ((ch = fis.read()) != -1) {
 				baos.write(ch);
@@ -390,6 +472,17 @@ public class TorrentService extends Service {
 		} catch (Exception e) {
 			Log.v(LOG_TAG, "Error while loading saved torrent: " + infoHash);
 			return null;
+		} finally {
+			if (fis != null) {
+				try {
+					fis.close();
+				} catch (Exception e) {}
+			}
+			if (baos != null) {
+				try {
+					baos.close();
+				} catch (Exception e) {}
+			}
 		}
 	}
 
@@ -400,8 +493,8 @@ public class TorrentService extends Service {
 			Bundle bundle = new Bundle();
 			bundle.putSerializable(MSG_KEY_TORRENT_ITEM, new TorrentListItem(torrent));
 			
-			Vector<File> files = torrent.getFiles();
-			ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
+			final Vector<File> files = torrent.getFiles();
+			final ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
 			for (int i = 0; i < files.size(); i++) {
 				fileListItems.add(new FileListItem(files.elementAt(i)));
 			}
@@ -482,10 +575,10 @@ public class TorrentService extends Service {
 		if (torrent == null) return;
 		if (clientSingleTorrentId_ != torrent.getId() || clientSingle_ == null) return;
 		
-		Vector<File> files = torrent.getFiles();
-		ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
+		final Vector<File> files = torrent.getFiles();
+		final ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
 		for (int i = 0; i < files.size(); i++) {
-			File file = files.elementAt(i);
+			final File file = files.elementAt(i);
 			if (file.isChanged()) {
 				fileListItems.add(new FileListItem(file));
 			}
@@ -510,8 +603,8 @@ public class TorrentService extends Service {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
-		Vector<Peer> peers = torrent.getConnectedPeers();
-		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
+		final Vector<Peer> peers = torrent.getConnectedPeers();
+		final ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
 		for (int i = 0; i < peers.size(); i++) {
 			try {
 				peerListItems.add(new PeerListItem(peers.elementAt(i)));
@@ -535,8 +628,8 @@ public class TorrentService extends Service {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
-		Vector<Tracker> trackers = torrent.getTrackers();
-		ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
+		final Vector<Tracker> trackers = torrent.getTrackers();
+		final ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
 		for (int i = 0; i < trackers.size(); i++) {
 			trackerListItems.add(new TrackerListItem(trackers.elementAt(i)));
 		}
@@ -587,6 +680,18 @@ public class TorrentService extends Service {
 		sendMessage(msg, -1);
 	}
 	
+	/** Shows the already opened dialog. */
+	public void showAlreadyOpenedDialog(String infoHash, ArrayList<String> trackerUrls) {
+		Message msg = Message.obtain();
+		Bundle bundle = new Bundle();
+		bundle.putString(MSG_KEY_TORRENT_INFOHASH, infoHash);
+		bundle.putStringArrayList(MSG_KEY_TRACKER_LIST, trackerUrls);
+		msg.what = MSG_TORRENT_ALREADY_OPENED;
+		msg.setData(bundle);
+		
+		sendMessage(msg, -1);
+	}
+	
 	/** Shows a progress dialog with a message. */
 	public void showProgress(String s) {
 		Message msg = Message.obtain();
@@ -606,8 +711,39 @@ public class TorrentService extends Service {
 		sendMessage(msg, -1);
 	}
 	
+	/** Updates the metadata of the torrent. (torrent name & file list) */
+	public void updateMetadata(Torrent torrent) {
+		if (clientSingle_ != null && torrent != null && clientSingleTorrentId_ == torrent.getId() && isSettingsClient_) {	
+			TorrentListItem item = new TorrentListItem(torrent); 
+			Message msg = Message.obtain();
+			Bundle bundle = new Bundle();
+			bundle.putSerializable(MSG_KEY_TORRENT_ITEM, item);
+			msg.what = MSG_SEND_TORRENT_ITEM;
+			msg.setData(bundle);
+
+			sendMessage(msg, torrent.getId());
+			
+			
+			final Vector<File> files = torrent.getFiles();
+			final ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
+			for (int i = 0; i < files.size(); i++) {
+				final File file = files.elementAt(i);
+				fileListItems.add(new FileListItem(file));
+			}
+			
+			bundle = new Bundle();
+			bundle.putSerializable(MSG_KEY_FILE_LIST, fileListItems);
+			
+			msg = Message.obtain();
+			msg.what = MSG_SEND_FILE_LIST;
+			msg.setData(bundle);
+
+			sendMessage(msg, torrent.getId());
+		}
+	}
+	
 	/** Returns whether the given field should be updated or not. <br>
-	 * <br>
+	 *  <br>
 	 *  MSG_UPDATE_INFO		    =  1;	// 0b00000001 <br>
 	 *  MSG_UPDATE_FILE_LIST    =  2;	// 0b00000010 <br>
 	 *	MSG_UPDATE_BITFIELD     =  4;	// 0b00000100 <br>
@@ -651,8 +787,8 @@ public class TorrentService extends Service {
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		if (torrent == null) return;
-		Vector<Peer> peers = torrent.getConnectedPeers();
-		ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
+		final Vector<Peer> peers = torrent.getConnectedPeers();
+		final ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
 		for (int i = 0; i < peers.size(); i++) {
 			peerListItems.add(new PeerListItem(peers.elementAt(i)));
 		}
@@ -675,8 +811,8 @@ public class TorrentService extends Service {
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		if (torrent == null) return;
-		Vector<File> files = torrent.getFiles();
-		ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
+		final Vector<File> files = torrent.getFiles();
+		final ArrayList<FileListItem> fileListItems = new ArrayList<FileListItem>();
 		for (int i = 0; i < files.size(); i++) {
 			fileListItems.add(new FileListItem(files.elementAt(i)));
 		}
@@ -699,8 +835,8 @@ public class TorrentService extends Service {
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		if (torrent == null) return;
-		Vector<Tracker> trackers = torrent.getTrackers();
-		ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
+		final Vector<Tracker> trackers = torrent.getTrackers();
+		final ArrayList<TrackerListItem> trackerListItems = new ArrayList<TrackerListItem>();
 		for (int i = 0; i < trackers.size(); i++) {
 			trackerListItems.add(new TrackerListItem(trackers.elementAt(i)));
 		}
@@ -769,26 +905,28 @@ public class TorrentService extends Service {
 	/** Thread for setting a torrent (download path, files to download etc.). */
 	private class SetTorrentThread extends Thread {
 
-		private TorrentListItem item_;
-		private ArrayList<FileListItem> fileList_;
+		final private TorrentListItem item_;
+		final private boolean isRemoved_;
+		final private ArrayList<FileListItem> fileList_;
 		
-		public SetTorrentThread(TorrentListItem item, ArrayList<FileListItem> fileList) {
+		public SetTorrentThread(final TorrentListItem item, final boolean isRemoved, final ArrayList<FileListItem> fileList) {
 			item_ = item;
+			isRemoved_ = isRemoved;
 			fileList_ = fileList;
 		}
 		
 		@Override
 		public void run() {
-			torrentManager_.setTorrentSettings(item_, fileList_);
+			torrentManager_.setTorrentSettings(item_, isRemoved_, fileList_);
 		}
 	}
 	
 	/** Thread for starting a torrent. */
 	private class StartTorrentThread extends Thread {
 
-		private int torrentId_;
+		final private int torrentId_;
 		
-		public StartTorrentThread(int torrentId) {
+		public StartTorrentThread(final int torrentId) {
 			torrentId_ = torrentId;
 		}
 		
@@ -800,10 +938,10 @@ public class TorrentService extends Service {
 	
 	/** Thread for changing the priority of a file. */
 	private class ChangeFilePriorityThread extends Thread {
-		private int torrentId_;
-		private FileListItem item_;
+		final private int torrentId_;
+		final private FileListItem item_;
 		
-		public ChangeFilePriorityThread(int torrentId, FileListItem item) {
+		public ChangeFilePriorityThread(final int torrentId, final FileListItem item) {
 			this.torrentId_ = torrentId;
 			this.item_ = item;
 		}
@@ -814,8 +952,8 @@ public class TorrentService extends Service {
 		}
 	}
 	
-	private Handler schedulerHandler = new Handler();
-	private Runnable schedulerRunnable = new Runnable() {
+	final private Handler schedulerHandler = new Handler();
+	final private Runnable schedulerRunnable = new Runnable() {
 		
 		@Override
 		public void run() {
