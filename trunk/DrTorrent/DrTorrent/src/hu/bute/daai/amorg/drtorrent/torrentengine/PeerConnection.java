@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
+import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
@@ -184,7 +185,7 @@ public class PeerConnection {
 						if (metadataBlockRequested_.isEmpty()) {
 							issueDownload();
 						}
-					} else if (peer_.getRequestsCount() == 0) {
+					} else if (peer_.getState() == R.string.status_downloading && !peer_.hasRequest()) {
 						if (isInterested()) {
 							issueDownload();
 						} else {
@@ -1028,8 +1029,9 @@ public class PeerConnection {
 				latestMessageSentTime_ = elapsedTime_;
 				latestRequestTime_ = elapsedTime_;
 				
+				Block block;
 				for (int i = 0; i < blocks.size(); i++) {
-					Block block = blocks.get(i);
+					block = blocks.get(i);
 					block.setRequested();
 					baos.write(Tools.int32ToByteArray(13));						// len = 13
 					baos.write(MESSAGE_ID_REQUEST);								// id = 6
@@ -1039,6 +1041,7 @@ public class PeerConnection {
 					
 					Log.v(LOG_TAG, "REQUEST sent: " + block.pieceIndex() + " - " + block.begin() + " (length: " + block.length() + ")");
 				}
+				block = null;
 				//Log.v(LOG_TAG, "Total: " + Tools.bytesToString(baos.size()));
 				baos.flush();
 

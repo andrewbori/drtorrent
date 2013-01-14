@@ -412,6 +412,8 @@ public class TorrentManager {
 					for (int j = 0; j < fileList.size(); j++) {
 						files.get(j).setPriority(fileList.get(j).getPriority());
 					}
+					torrent.setDownloadFolder(item.getDownloadFolder());
+					
 					openingTorrents_.remove(torrent);
 					addTorrent(torrent);
 					torrentService_.updateTorrentItem(torrent);
@@ -506,6 +508,14 @@ public class TorrentManager {
 		}
 	}
 
+	/** Updates a tracker from the torrent. */
+	public void updateTracker(final int torrentId, final int trackerId) {
+		final Torrent torrent = getTorrent(torrentId);
+		if (torrent != null) {
+			torrent.updateTracker(trackerId);
+		}
+	}
+	
 	/** Removes a tracker from the torrent. */
 	public void removeTracker(final int torrentId, final int trackerId) {
 		final Torrent torrent = getTorrent(torrentId);
@@ -618,7 +628,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR1200-";	// TODO: Refresh!
+        peerId_ = "-DR1210-";	// TODO: Refresh!
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }

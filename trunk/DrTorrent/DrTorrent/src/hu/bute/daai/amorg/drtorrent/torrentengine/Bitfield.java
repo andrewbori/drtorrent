@@ -121,7 +121,11 @@ public class Bitfield implements Serializable {
     }
         
     public boolean isBitSet(final int index) {
-        return ((128 >> (index % 8)) & (bitfield_[index / 8])) > 0;
+    	try {
+    		return ((128 >> (index % 8)) & (bitfield_[index / 8])) > 0;
+    	} catch (Exception e) {
+    		return false;
+    	}
     }
 
     public byte[] data()  {

@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.file;
 
+import hu.bute.daai.amorg.drtorrent.torrentengine.Piece;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
 import java.io.BufferedInputStream;
@@ -80,8 +81,8 @@ public class FileManager {
 			}
 			
 			if (file.length() != fileSize) {
-				for (long size = file.length(); size < fileSize && torrent_.isWorking(); size += torrent_.getPieceLength()) {
-					long newSize = size + torrent_.getPieceLength(); 
+				for (long size = file.length(); size < fileSize && torrent_.isWorking(); size += Piece.MAX_PIECE_SIZE_TO_READ_AT_ONCE) {
+					long newSize = size + Piece.MAX_PIECE_SIZE_TO_READ_AT_ONCE; 
 					if (newSize >= fileSize) {
 						newSize = fileSize;
 					}
@@ -218,7 +219,7 @@ public class FileManager {
 	 * Reads a block from the file.
 	 * The position and the length within the file is also given. 
 	 */
-	public byte[] read(String filepath, long position, int length) {
+	public byte[] read(final String filepath, final long position, final int length) {
 		RandomAccessFile file = null;
 		final byte[] result = new byte[length];
 		try {
@@ -241,6 +242,24 @@ public class FileManager {
 			}
 		}
 		return result;
+	}
+	
+	public int read(String filepath, long position, byte[] result) {
+		RandomAccessFile file = null;
+		try {
+			file = new RandomAccessFile(filepath, "r");
+			file.seek(position);
+			return file.read(result);
+		} catch (IOException e) {
+			Log.v(LOG_TAG, e.getMessage());
+			//result = null;
+			return 0;
+		} finally {
+			try {
+				file.close();
+			} catch (Exception e) {
+			}
+		}
 	}
 	
 }

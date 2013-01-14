@@ -135,6 +135,9 @@ public class NetworkManager implements NetworkStateListener {
 						}
 					}
 				}
+			} else {
+				stopListening();
+				torrentManager_.disable();
 			}
 		}
 	}

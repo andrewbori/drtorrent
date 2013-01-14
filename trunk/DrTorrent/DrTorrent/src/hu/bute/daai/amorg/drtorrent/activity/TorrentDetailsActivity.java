@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
 import android.support.v4.view.ViewPager;
+import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,7 +29,7 @@ import com.actionbarsherlock.view.MenuItem;
 import com.viewpagerindicator.TitlePageIndicator;
 
 public class TorrentDetailsActivity extends TorrentHostActivity {
-
+	
 	private TorrentDetailsPagerAdapter pagerAdapter_;
 	private int updateField_ = 0;
 	
@@ -38,6 +39,7 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);	
 		setContentView(R.layout.torrent_details);
+		getSupportActionBar().setDisplayShowTitleEnabled(false);
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
 		pagerAdapter_ = new TorrentDetailsPagerAdapter(this);
@@ -74,26 +76,26 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			menu.add(Menu.NONE, MENU_STOP_TORRENT, 0, R.string.stop)
 				//.setIcon(R.drawable.ic_pause)
 				.setIcon(R.drawable.ic_menu_pause)
-				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+				.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		} else {
 			menu.add(Menu.NONE, MENU_START_TORRENT, 0, R.string.start)
 				//.setIcon(R.drawable.ic_play)
 				.setIcon(R.drawable.ic_menu_play)
-				.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+				.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		}
 		menu.add(Menu.NONE, MENU_DELETE_TORRENT, 1, R.string.remove)
 			//.setIcon(R.drawable.ic_delete)
 			.setIcon(R.drawable.ic_menu_delete)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 
 		menu.add(Menu.NONE, MENU_ADD_PEER, 2, R.string.menu_add_peer)
 			//.setIcon(R.drawable.ic_add)
-			.setIcon(R.drawable.ic_menu_add)
+			//.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
 		menu.add(Menu.NONE, MENU_ADD_TRACKER, 3, R.string.menu_add_tracker)
 			//.setIcon(R.drawable.ic_add)
-			.setIcon(R.drawable.ic_menu_add)
+			//.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 	}
 
@@ -203,7 +205,9 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				builder.setTitle(R.string.menu_add_tracker);
 				
 				final EditText etTrackerUrl = new EditText(context_);
+				etTrackerUrl.setSingleLine(true);
 				etTrackerUrl.setHint("udp://...");
+				etTrackerUrl.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
 				builder.setView(etTrackerUrl);
 				
 				builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
@@ -252,6 +256,19 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 		b.putSerializable(TorrentService.MSG_KEY_FILE_ITEM, item);
 		msg.what = TorrentService.MSG_CHANGE_FILE_PRIORITY;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+	
+	/** Removes a tracker from the tracker list. */
+	public void updateTracker(int trackerId) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
+		b.putInt(TorrentService.MSG_KEY_TRACKER_ID, trackerId);
+		msg.what = TorrentService.MSG_UPDATE_TACKER;
 		msg.setData(b);
 		try {
 			serviceMessenger_.send(msg);

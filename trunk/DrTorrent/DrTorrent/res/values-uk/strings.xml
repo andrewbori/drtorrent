@@ -104,4 +104,6 @@
 	<string name="hash">Хеш:</string>
 	<string name="torrent_already_opened_add_trackers">Торрент вже відкритий! Хочете завантажити трекери з нього?</string>
 	<string name="inactive">неактивний</string>
+	<string name="update">Оновлення</string>
+	<string name="new_folder">Новая папка</string>
 </resources>

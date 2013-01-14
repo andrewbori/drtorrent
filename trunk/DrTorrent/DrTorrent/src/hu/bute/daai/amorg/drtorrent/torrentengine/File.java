@@ -15,7 +15,7 @@ public class File {
     final private Torrent torrent_;
     final private int index_;			// File index
     final private int begin_;			// The index of the first piece that contains parts of the file
-    private String path_;			// Torrent's path
+    //private String path_;			// Torrent's path
     private String relativePath_;	// Path relative to the torrent's parent directory.
     
     final private long size_;
@@ -27,11 +27,11 @@ public class File {
     private boolean isChanged_ = true;
     
     /** Constructor with the torrent and the file's properties. */
-    public File(final Torrent torrent, final int index, final int begin, final String path, final String relativePath, final long size) {
+    public File(final Torrent torrent, final int index, final int begin, /*final String path,*/ final String relativePath, final long size) {
     	torrent_ = torrent;
     	index_ = index;
     	begin_ = begin;
-    	path_ = path;
+    	//path_ = path;
     	relativePath_ = relativePath;
     	size_ = size;
     }
@@ -58,7 +58,7 @@ public class File {
     
     /** Returns the full path of the file. */
     public String getFullPath() {
-        return path_.concat(relativePath_);
+        return torrent_.getPath().concat(relativePath_);
     }
     
     /** Returns the file's path relative to the torrent. */

@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
+import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -44,6 +45,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
+		getSupportActionBar().setDisplayShowTitleEnabled(false);
 		
 		if (isShuttingDown_) {
 			finish();
@@ -156,7 +158,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		super.onActivityResult(requestCode, resultCode, data);
 		switch (requestCode) {
 			case RESULT_FILEBROWSER_ACTIVITY:
-				if (resultCode == Activity.RESULT_OK) {
+				if (resultCode == Activity.RESULT_OK && data != null) {
 					// data contains the full path of the torrent
 					final String filePath = data.getStringExtra(FileBrowserActivity.RESULT_KEY_FILEPATH);
 					openTorrent(Uri.fromFile(new File(filePath)));
@@ -164,6 +166,10 @@ public class DrTorrentActivity extends TorrentHostActivity {
 				break;
 				
 			case RESULT_TORRENT_SETTINGS:
+				if (data == null) {
+					return;
+				}
+				
 				Message msg = Message.obtain();
 				Bundle b = new Bundle();
 				if (resultCode == Activity.RESULT_OK) {
@@ -185,6 +191,8 @@ public class DrTorrentActivity extends TorrentHostActivity {
 					serviceMessenger_.send(msg);
 				} catch (Exception e) {}
 				break;
+			
+			default:
 		}
 	}
 	
@@ -300,6 +308,8 @@ public class DrTorrentActivity extends TorrentHostActivity {
 
 	    final EditText etMagnetLink = new EditText(context_);
 	    etMagnetLink.setHint("magnet:?xt=urn:btih:...");
+	    etMagnetLink.setSingleLine(true);
+	    etMagnetLink.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
 	    builder.setView(etMagnetLink).
 	    
 	    setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
@@ -368,16 +378,16 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			.setIcon(R.drawable.ic_menu_search)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		menu.add(Menu.NONE, MENU_ADD_MAGNET_LINK, Menu.NONE, R.string.add_magnet_link)
-			.setIcon(R.drawable.ic_menu_magnet)
+			//.setIcon(R.drawable.ic_menu_magnet)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		menu.add(Menu.NONE, MENU_ABOUT, Menu.NONE, R.string.about)
-			.setIcon(R.drawable.ic_menu_about)
+			//.setIcon(R.drawable.ic_menu_about)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		menu.add(Menu.NONE, MENU_FEEDBACK, Menu.NONE, R.string.feedback)
-			.setIcon(R.drawable.ic_menu_email)
+			//.setIcon(R.drawable.ic_menu_email)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		menu.add(Menu.NONE, MENU_SHUT_DOWN, Menu.NONE, R.string.shut_down)
-			.setIcon(R.drawable.ic_menu_close)
+			//.setIcon(R.drawable.ic_menu_close)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		return true;
 	}

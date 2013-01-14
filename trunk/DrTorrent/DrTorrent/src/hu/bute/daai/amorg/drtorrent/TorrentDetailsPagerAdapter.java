@@ -224,21 +224,46 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 						public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
 							final TrackerListItem item = trackersAdapter_.getItem(position);
 							
+							
+							
+							
+							
+							
+							CharSequence[] items = new CharSequence[] { context_.getString(R.string.update), context_.getString(R.string.remove) };
+							
 							AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 							builder.setTitle(item.getAddress()).
-							setMessage(R.string.tracker_remove_message).
-							setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+							setItems(items, new DialogInterface.OnClickListener() {
 								@Override
 								public void onClick(DialogInterface dialog, int which) {
-									((TorrentDetailsActivity) context_).removeTracker(item.getId());
-									trackersAdapter_.remove(item);
-									dialog.cancel();
-								}
-							}).
-							setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {	
-								@Override
-								public void onClick(DialogInterface dialog, int which) {
-									dialog.cancel();
+									switch (which) {
+										case 0:
+											((TorrentDetailsActivity) context_).updateTracker(item.getId());
+											
+											break;
+											
+										case 1:
+											AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+											builder.setTitle(item.getAddress()).
+											setMessage(R.string.tracker_remove_message).
+											setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+												@Override
+												public void onClick(DialogInterface dialog, int which) {
+													((TorrentDetailsActivity) context_).removeTracker(item.getId());
+													trackersAdapter_.remove(item);
+													dialog.cancel();
+												}
+											}).
+											setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {	
+												@Override
+												public void onClick(DialogInterface dialog, int which) {
+													dialog.cancel();
+												}
+											}).
+											create().show();
+											
+											break;
+									}
 								}
 							}).
 							create().show();
