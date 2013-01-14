@@ -13,7 +13,9 @@
     <EditText
         android:id="@+id/dialog_search_etSearch"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" >
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:singleLine="true" >
 
         <requestFocus />
     </EditText>

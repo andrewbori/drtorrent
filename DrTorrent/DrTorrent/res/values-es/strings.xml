@@ -88,4 +88,6 @@
 	<string name="hash">Hash:</string>
 	<string name="torrent_already_opened_add_trackers">El torrent ya está abierto. ¿Desea cargar los rastreadores de él?</string>
 	<string name="inactive">inactivo</string>
+	<string name="update">Actualizar</string>
+	<string name="new_folder">Nueva carpeta</string>
 </resources>

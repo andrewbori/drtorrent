@@ -94,4 +94,16 @@ public class Preferences {
 	public static int getSearchSite() {
 		return preferences_.getInt("search_site", 0);
 	}
+	
+	/** Sets the number of the latest version. */
+	public static void setLatestVersion(int latestVersion) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putInt("latest_version", latestVersion);
+		editor.commit();
+	}
+	
+	/** Returns the number of the latest version. */
+	public static int getLatestVersion() {
+		return preferences_.getInt("latest_version", 0);
+	}
 }

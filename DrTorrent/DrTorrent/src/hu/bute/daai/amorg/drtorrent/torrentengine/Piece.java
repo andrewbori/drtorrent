@@ -4,6 +4,7 @@ import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Vector;
 
 import android.util.Log;
@@ -13,13 +14,14 @@ public class Piece {
 	private final static String LOG_TAG = "Piece";
 	
 	public final static int DEFALT_BLOCK_LENGTH = 16384;	// default download block size 16kB (2^14)
+	public final static int MAX_PIECE_SIZE_TO_READ_AT_ONCE = 16384; // 16 kB //1048576; // 1MB
 	
 	final private Torrent torrent_;
 	final private byte[] hash_;
 	final private int index_;
 	final private int size_;
 	private int downloaded_;
-	final private Vector<FileFragment> fragments_;
+	final private ArrayList<FileFragment> fragments_;
 	private int priority_ = File.PRIORITY_NORMAL;
 	private int numberOfPeersHaveThis_ = 0;
 	private boolean isRequested_ = false;
@@ -46,7 +48,7 @@ public class Piece {
 		index_ = index;
 		size_ = length;
 		downloaded_ = 0;
-		fragments_ = new Vector<FileFragment>();
+		fragments_ = new ArrayList<FileFragment>();
 	}
 	
 	/** Calculates the blocks of the piece. */
@@ -59,8 +61,10 @@ public class Piece {
 		
 		int blockCount = size_ / DEFALT_BLOCK_LENGTH;
 		if (size_ % DEFALT_BLOCK_LENGTH > 0) blockCount++;
+		
+		Block block;
 		for (int i = 0; i < blockCount; i++) {
-			Block block = null;
+			block = null;
 			if (i + 1 < blockCount) {
 				block = new Block(this, i * DEFALT_BLOCK_LENGTH, DEFALT_BLOCK_LENGTH);
 			} else {
@@ -69,6 +73,7 @@ public class Piece {
 			blocks_.addElement(block);
 			unrequestedBlocks_.addElement(block);
 		}
+		block = null;
 		
 		peers_ = new Vector<Peer>();
 	}
@@ -81,7 +86,9 @@ public class Piece {
 	 * @param length The length of the file fragment.
 	 */
 	public void addFileFragment(final File file, final long offset, final int length) {
-        fragments_.addElement(new FileFragment(file, offset, length));
+        synchronized (fragments_) {
+        	fragments_.add(new FileFragment(file, offset, length));
+		}
     }
 	
 	/** 
@@ -107,13 +114,13 @@ public class Piece {
 			long filePosition = 0;
 			long pos = 0;
 			for (int i = 0; i < fragments_.size(); i++) {
-				FileFragment fragment = (FileFragment) fragments_.elementAt(i);
+				FileFragment fragment = (FileFragment) fragments_.get(i);
 				// If the already downloaded part doesn't extend beyond the current fragment...
 				// (...which means that a part of the current fragment was received.)
 				if (block.begin() + blockPosition < (pos + fragment.length())) {
 					file = fragment.file();
-					filePosition = fragment.offset() + ((block.begin() + blockPosition) - pos);//- pos);
-					i = fragments_.size(); // break
+					filePosition = fragment.offset() + ((block.begin() + blockPosition) - pos);
+					break;
 				} else {
 					pos += fragment.length();
 				}
@@ -208,7 +215,7 @@ public class Piece {
 		int i = 0;
 		long pos = 0;
 		for (; i < fragments_.size(); i++) {
-			final FileFragment fragment = (FileFragment) fragments_.elementAt(i);
+			final FileFragment fragment = (FileFragment) fragments_.get(i);
 			if (block.begin() < (pos + fragment.length())) {
 				file = fragment.file();
 				filePosition = fragment.offset() + (block.begin() - pos);
@@ -245,7 +252,7 @@ public class Piece {
 			if (i >= fragments_.size() - 1)
 				break;
 
-			file = ((FileFragment) fragments_.elementAt(++i)).file();
+			file = ((FileFragment) fragments_.get(++i)).file();
 			filePosition = 0;
 		}
 
@@ -265,8 +272,25 @@ public class Piece {
 			for (int i = 0; i < fragments_.size(); i++) {
 				final FileFragment fragment = fragments_.get(i);
 				Log.v(LOG_TAG, "Checking hash: " + fragment.file().getRelativePath() + " " + fragment.offset() + " " +  fragment.length());
-				final byte[] content = torrent_.read(fragment.file().getFullPath(), fragment.offset(), fragment.length());
-				sha1.update(content);
+				
+				if (fragment.length() <= MAX_PIECE_SIZE_TO_READ_AT_ONCE) {
+					final byte[] content = torrent_.read(fragment.file().getFullPath(), fragment.offset(), fragment.length());
+					sha1.update(content);
+				} else {
+					byte[] content = null;
+					for (int processedLength = 0; processedLength < fragment.length();) {
+						int length = MAX_PIECE_SIZE_TO_READ_AT_ONCE;
+						if (processedLength + MAX_PIECE_SIZE_TO_READ_AT_ONCE > fragment.length()) {
+							length = fragment.length() - processedLength;
+						}
+						if (content == null || content.length != length) {
+							content = new byte[length];
+						}
+						torrent_.read(fragment.file().getFullPath(), fragment.offset() + processedLength, content);
+						sha1.update(content);
+						processedLength += length;
+					}
+				}
 				//Log.v(LOG_TAG, fragment.file().getRelativePath() + " " + fragment.offset() + " " + fragment.length());
 			}
 			
@@ -295,6 +319,9 @@ public class Piece {
 	/** Decrements the number of peers having this piece. */
 	public void decNumberOfPeersHaveThis() {
 		numberOfPeersHaveThis_--;
+		if (numberOfPeersHaveThis_ < 0) {
+			numberOfPeersHaveThis_ = 0;
+		}
 	}
 	
 	/** Returns the number of peers having this piece. */
@@ -305,7 +332,9 @@ public class Piece {
 	/** Returns the length of the block in the given position. */
 	public int getBlockLength(final int index) {
 		int lengthFromIndex = size_ - (index * DEFALT_BLOCK_LENGTH);
-		if (lengthFromIndex > DEFALT_BLOCK_LENGTH) return DEFALT_BLOCK_LENGTH;
+		if (lengthFromIndex > DEFALT_BLOCK_LENGTH) {
+			return DEFALT_BLOCK_LENGTH;
+		}
 		
 		return lengthFromIndex;
 	}
@@ -313,9 +342,13 @@ public class Piece {
 	/** Returns whether the piece has unrequested block(s). */
 	public boolean hasUnrequestedBlock() {
 		if (isRequested_) {
-			if (unrequestedBlocks_.size() > 0) return true;
+			if (unrequestedBlocks_.size() > 0) {
+				return true;
+			}
 		} else {
-			if (!isComplete_) return true;
+			if (!isComplete_) {
+				return true;
+			}
 		}
 		
 		return false;
@@ -326,11 +359,12 @@ public class Piece {
 		if (!isRequested_) {
 			if (!isComplete_) {
 				calculateBlocks();
+			} else {
+				return null;
 			}
-			else return null;
 		}
 		synchronized(unrequestedBlocks_) {
-			if (unrequestedBlocks_.size() > 0) {
+			if (!unrequestedBlocks_.isEmpty()) {
 				final Block block = unrequestedBlocks_.elementAt(0);
 				unrequestedBlocks_.removeElementAt(0);
 				return block;
@@ -347,11 +381,6 @@ public class Piece {
 		}
 	}
 	
-	/** Returns the file fragments of the piece. */
-	public Vector<FileFragment> getFragments() {
-		return fragments_;
-	}
-	
 	/** Returns whether the piece contains parts of the given file or not. */
 	public boolean hasFile(final File file) {
 		for (int i = 0; i < fragments_.size(); i++) {
@@ -366,8 +395,11 @@ public class Piece {
 		for (int j = 0; j < fragments_.size(); j++) {
 			final FileFragment fragment = fragments_.get(j);
 			
-			if (isPositive) fragment.file().addDownloadedBytes(fragment.length());
-			else 		    fragment.file().addDownloadedBytes(-fragment.length());
+			if (isPositive) {
+				fragment.file().addDownloadedBytes(fragment.length());
+			} else {
+				fragment.file().addDownloadedBytes(-fragment.length());
+			}
 		}
 	}
 	
@@ -375,7 +407,7 @@ public class Piece {
 	public void calculatePriority() {
 		priority_ = 0;
 		for (int i = 0; i < fragments_.size(); i++) {
-			final FileFragment fragment = fragments_.elementAt(i);
+			final FileFragment fragment = fragments_.get(i);
 			int priority = fragment.file().getPriority();
 			if (priority > priority_) priority_ = priority; 
 		}
@@ -404,7 +436,9 @@ public class Piece {
 	/** Returns whether the piece can be downloaded or not. It depends on whether the associated files are created or not. */
 	public boolean canDownload() {
 		for (FileFragment fragment : fragments_) {
-			if (!fragment.isCreated()) return false;
+			if (!fragment.isCreated()) {
+				return false;
+			}
 		}
 		return true;
 	}

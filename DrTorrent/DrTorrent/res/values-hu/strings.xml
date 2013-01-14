@@ -94,4 +94,6 @@
 	<string name="hash">Hash:</string>
 	<string name="torrent_already_opened_add_trackers">Ez a torrent már meg van nyitva. Be szeretné tölteni ebből a trackereket?</string>
 	<string name="inactive">inaktív</string>
+	<string name="update">Frissítés</string>
+	<string name="new_folder">Új mappa</string>
 </resources>

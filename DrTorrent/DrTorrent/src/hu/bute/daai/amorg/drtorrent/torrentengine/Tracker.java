@@ -115,7 +115,10 @@ public abstract class Tracker {
 	
 	/** Resets the time of the last request. */
 	public void resetLastRequest() {
-		lastRequest_ = 0;
+		if (status_ != STATUS_UPDATING) {
+			interval_ = 0;
+			lastRequest_ = 0;
+		}
 	}
 	
 	/** Returns the remaining time (in seconds) until the next announce. */

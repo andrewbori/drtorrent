@@ -57,6 +57,7 @@ public class FileBrowserActivity extends Activity {
 		tvPath_ = (TextView) findViewById(R.id.file_browser_tvPath);
 		lwFolder_ = (ListView) findViewById(R.id.file_browser_listView);
 		btnBack_ = (ImageButton) findViewById(R.id.file_browser_btnBack);
+		((ImageButton) findViewById(R.id.file_browser_btnNewFolder)).setVisibility(ImageButton.GONE);
 		((LinearLayout) findViewById(R.id.file_browser_layoutButtons)).setVisibility(LinearLayout.GONE);
 		
 		lwFolder_.setOnItemClickListener(new OnItemClickListener() {

@@ -23,20 +23,28 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup.LayoutParams;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 public class TorrentSettingsActivity extends Activity implements OnClickListener{
 
+	private final static int RESULT_FOLDER_CHOOSER_ACTIVITY = 1;
+	
 	private TorrentListItem torrent_ = null;
 	private ArrayList<FileListItem> fileList_ = null;
 	private ListView fileListView_ = null;
 	private FileSettingsListAdapter<FileListItem> adapter_ = null;
 	private ProgressBar progressBar_ = null;
+	private TextView tvTorrentName_ = null;
+	private TextView tvDownloadPath_ = null;
 	
 	private Messenger serviceMessenger_ = null;
 	private final Messenger clientMessenger_ = new Messenger(new IncomingMessageHandler(this));
@@ -46,8 +54,10 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
+
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.torrent_settings_files);
+		getWindow().setLayout(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT);
 		
 		Intent intent = getIntent();
 		if (intent != null) {
@@ -60,8 +70,13 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 		
 		((Button) findViewById(R.id.torrent_settings_btnOk)).setOnClickListener(this);
 		((Button) findViewById(R.id.torrent_settings_btnCancel)).setOnClickListener(this);
+		((ImageButton) findViewById(R.id.torrent_settings_btnDownloadFolder)).setOnClickListener(this);
 		
-		setTitle(torrent_.getName());
+		tvTorrentName_ = (TextView) findViewById(R.id.torrent_settings_tvTorrentName);
+		tvDownloadPath_ = (TextView) findViewById(R.id.torrent_settings_tvDownloadPath);
+		
+		tvTorrentName_.setText(torrent_.getName());
+		tvDownloadPath_.setText(torrent_.getDownloadFolder());
 		
 		progressBar_ = (ProgressBar) findViewById(R.id.torrent_settings_progressBar);
 		fileListView_ = (ListView) findViewById(R.id.torrent_settings_lvFiles);
@@ -113,7 +128,27 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 				setResult(RESULT_CANCELED, intent);
 				finish();
 				break;
+				
+			case R.id.torrent_settings_btnDownloadFolder:
+				intent = new Intent(this, FolderChooserActivity.class);
+	        	intent.putExtra(FolderChooserActivity.KEY_PATH, torrent_.getDownloadFolder());
+				this.startActivityForResult(intent, RESULT_FOLDER_CHOOSER_ACTIVITY);
+				break;
 			default:
+		}
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		switch (requestCode) {
+			case RESULT_FOLDER_CHOOSER_ACTIVITY:
+				if (resultCode == Activity.RESULT_OK) {
+					final String path = data.getStringExtra(FolderChooserActivity.RESULT_KEY_PATH);
+					torrent_.setDownloadFolder(path);
+					tvDownloadPath_.setText(path);
+				}
+				break;
 		}
 	}
 	
@@ -224,7 +259,7 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 	private void refreshTorrentItem(TorrentListItem item) {
 		if (torrent_.equals(item)) {
 			torrent_ = item;
-			setTitle(torrent_.getName());
+			tvTorrentName_.setText(torrent_.getName());
 		}
 	}
 

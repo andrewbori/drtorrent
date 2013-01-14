@@ -150,6 +150,10 @@ public class TorrentListItem implements Serializable {
 		return remainingTime_.toString(context);
 	}
 	
+	public void setDownloadFolder(String downloadFolder) {
+		downloadFolder_ = downloadFolder;
+	}
+	
 	@Override
 	public boolean equals(Object other) {
 		return this.id_ == ((TorrentListItem) other).id_;

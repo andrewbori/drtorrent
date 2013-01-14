@@ -122,4 +122,6 @@
 	<string name="hash">Hash:</string>
 	<string name="torrent_already_opened_add_trackers">The torrent is already opened. Do you want to load the trackers from it?</string>
 	<string name="inactive">inactive</string>
+	<string name="update">Update</string>
+	<string name="new_folder">New folder</string>
 </resources>

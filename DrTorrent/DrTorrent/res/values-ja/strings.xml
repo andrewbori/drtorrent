@@ -104,4 +104,6 @@
 	<string name="hash">ハッシュ:</string>
 	<string name="torrent_already_opened_add_trackers">トレントは既に開いています！もし必要ならそのトレントのトラッカーを追加する事が出来ます。追加しますか？</string>
 	<string name="inactive">非活動</string>
+	<string name="update">更新</string>
+	<string name="new_folder">新しいフォルダ</string>
 </resources>

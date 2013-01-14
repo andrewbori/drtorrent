@@ -21,10 +21,19 @@
         
         <TextView
             android:id="@+id/file_browser_tvPath"
-            android:layout_marginLeft="2dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="/mnt/sdcard/download" />
+        
+        <ImageButton 
+            android:id="@+id/file_browser_btnNewFolder"
+            android:contentDescription="@string/new_folder"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="/mnt/sdcard/download" />
+            android:padding="5dp"
+            android:src="@drawable/ic_menu_new_folder"
+            android:background="@color/button_background" />
         
     </LinearLayout>
     

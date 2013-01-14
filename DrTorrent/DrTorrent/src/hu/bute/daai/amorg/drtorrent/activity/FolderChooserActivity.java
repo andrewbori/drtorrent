@@ -10,6 +10,9 @@ import java.util.Collections;
 import java.util.List;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
@@ -21,6 +24,7 @@ import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -39,6 +43,9 @@ public class FolderChooserActivity extends Activity {
 	private Button btnOk_ = null;
 	private Button btnCancel_ = null;
 	private ImageButton btnBack_ = null;
+	private ImageButton btnNewFolder_ = null;
+	
+	private Context context_ = this;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -61,6 +68,7 @@ public class FolderChooserActivity extends Activity {
 		btnOk_ = (Button) findViewById(R.id.file_browser_btnOk);
 		btnCancel_ = (Button) findViewById(R.id.file_browser_btnCancel);
 		btnBack_ = (ImageButton) findViewById(R.id.file_browser_btnBack);
+		btnNewFolder_ = (ImageButton) findViewById(R.id.file_browser_btnNewFolder);
 		
 		lwFolder_.setOnItemClickListener(new OnItemClickListener() {
 			@Override
@@ -105,6 +113,47 @@ public class FolderChooserActivity extends Activity {
 					currentDir_ = currentDir_.getParentFile();
 					showContent(currentDir_);
 				}
+			}
+		});
+		
+		btnNewFolder_.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+				builder.setTitle(R.string.new_folder);
+				
+				final EditText etNewFolderName = new EditText(context_);
+				etNewFolderName.setSingleLine(true);
+				builder.setView(etNewFolderName);
+				
+				builder.setPositiveButton(context_.getString(android.R.string.yes), new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						String newFolderName = etNewFolderName.getText().toString();
+						if (newFolderName != null && newFolderName.length() > 0) {
+							String path = currentDir_.getPath();
+							if (!path.equals("/")) {
+								path = path + "/" + newFolderName;
+							} else {
+								path = path + newFolderName;
+							}
+							
+							final File dir = new File(path);
+							dir.mkdirs();
+							
+							showContent(currentDir_);
+							
+							dialog.cancel();
+						}
+					}
+				}).
+				setNegativeButton(context_.getString(android.R.string.no), new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.cancel();
+					}
+				}).
+				create().show();
 			}
 		});
 		

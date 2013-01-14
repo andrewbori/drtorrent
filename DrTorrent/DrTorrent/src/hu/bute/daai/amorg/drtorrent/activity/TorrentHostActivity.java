@@ -66,9 +66,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		setTheme(R.style.Theme_Sherlock);
+		setTheme(R.style.Theme_Sherlock_ForceOverflow);
 		super.onCreate(savedInstanceState);
-
+		
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
 			torrentId_ = extras.getInt(KEY_TORRENT_ID, -1);

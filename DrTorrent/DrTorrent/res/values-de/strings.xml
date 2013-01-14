@@ -4,7 +4,7 @@
     <string name="menu_addtorrent">Torrent hinzufügen</string>
     <string name="filebrowser_current">Verzeichnis</string>
     <string name="filebrowser_parent">Übergeordnetes Verzeichnis</string>
-    <string name="filebrowser_folder">Mappe</string>
+    <string name="filebrowser_folder">Ordner</string>
     <string name="downloaded">Geladen:</string>
     <string name="uploaded">Gesendet:</string>
     <string name="peers">Seeds/peers:</string>
@@ -51,7 +51,7 @@
     <string name="menu_add_tracker">Tracker hinzufügen</string>
     <string name="tracker_remove_message">Möchten Sie den gewählten Tracker wirklich löschen?</string>
     <string name="menu_add_peer">Peer hinzufügen</string>
-    <string name="ip_address">IP-Addresse:</string>
+    <string name="ip_address">IP-Adresse:</string>
     <string name="port">Port:</string>
     <string name="incoming_connections">Eingehende Verbindungen</string>
     <string name="enable_incoming_connections">Aktivieren eingehende Verbindungen</string>
@@ -88,4 +88,6 @@
 	<string name="hash">Prüfsumme:</string>
 	<string name="torrent_already_opened_add_trackers">Dieser Torrent ist bereits geöffnet! Möchten Sie die entsprechenden Tracker geladen werden?</string>
 	<string name="inactive">inaktiv</string>
+	<string name="update">Aktualisieren</string>
+	<string name="new_folder">Neuer Ordner</string>
 </resources>

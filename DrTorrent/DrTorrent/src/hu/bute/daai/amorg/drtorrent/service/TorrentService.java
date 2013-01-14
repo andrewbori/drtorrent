@@ -46,16 +46,18 @@ public class TorrentService extends Service {
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
 	
-	public final static String APP_VERSION_NAME = "1.2"; // TODO: Refresh
+	public final static String APP_VERSION_NAME = "1.2.1";	// TODO: Refresh!
+	public final static int APP_VERSION_CODE = 4;			// TODO: Refresh!
 	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
 	public final static int MSG_STOP_TORRENT        	 = 103;
 	public final static int MSG_CLOSE_TORRENT       	 = 104;
 	public final static int MSG_ADD_TRACKER 			 = 105;
-	public final static int MSG_REMOVE_TACKER 			 = 106;
-	public final static int MSG_ADD_PEER 				 = 107;
-	public final static int MSG_REMOVE_PEER 			 = 108;
+	public final static int MSG_UPDATE_TACKER 			 = 106;
+	public final static int MSG_REMOVE_TACKER 			 = 107;
+	public final static int MSG_ADD_PEER 				 = 108;
+	public final static int MSG_REMOVE_PEER 			 = 109;
 	public final static int MSG_SUBSCRIBE_CLIENT    	 = 201;
 	public final static int MSG_UNSUBSCRIBE_CLIENT  	 = 202;
 	public final static int MSG_UPDATE_TORRENT			 = 203;
@@ -108,9 +110,7 @@ public class TorrentService extends Service {
 	public final static String MSG_KEY_PEER_PORT			= "t";
 	public final static String MSG_KEY_IS_SETTINGS			= "u";
 	
-	private Context context_;
-	
-	private static int latestVersion_ = 0;  
+	private Context context_; 
 	
 	private final Messenger serviceMessenger_ = new Messenger(new IncomingMessageHandler(this));
 
@@ -134,7 +134,7 @@ public class TorrentService extends Service {
 		Preferences.set(context_);
 		showNotification(null);
 		
-		latestVersion_ = getVersionCode();
+		Preferences.setLatestVersion(APP_VERSION_CODE);
 		
 		torrents_ = new Vector<TorrentListItem>();
 		networkManager_ = new NetworkManager();
@@ -161,18 +161,6 @@ public class TorrentService extends Service {
 		hideNotification();
 		
 		super.onDestroy();
-	}
-	
-	/** Returns the version code of the application. (for example: 3) */
-	public int getVersionCode() {
-		/*try {
-			PackageManager manager = getPackageManager();
-			PackageInfo info = manager.getPackageInfo(this.getPackageName(), 0);
-			return info.versionCode;
-		} catch (Exception e) {
-		}
-		return 0;*/
-		return 3; // TODO: Refresh!!
 	}
 
 	/** Handler of incoming Messages from clients. */
@@ -261,9 +249,15 @@ public class TorrentService extends Service {
 				torrentManager_.addTracker(torrentId, trackerUrl);
 				break;
 				
-			case MSG_REMOVE_TACKER:
+			case MSG_UPDATE_TACKER:
 				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
 				int trackerId = bundleMsg.getInt(MSG_KEY_TRACKER_ID);
+				torrentManager_.updateTracker(torrentId, trackerId);
+				break;
+				
+			case MSG_REMOVE_TACKER:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				trackerId = bundleMsg.getInt(MSG_KEY_TRACKER_ID);
 				torrentManager_.removeTracker(torrentId, trackerId);
 				break;
 				
@@ -357,7 +351,6 @@ public class TorrentService extends Service {
 	private void showNotification(String message) {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		
-		int icon = R.drawable.ic_notification;
 		String text = "DrTorrent";
 		if (message != null) {
 			text = text + " (" + message + ")"; 
@@ -366,7 +359,7 @@ public class TorrentService extends Service {
 		NotificationCompat.Builder builder = new NotificationCompat.Builder(context_)
 			.setContentTitle(text)
 		    .setContentText(getString(R.string.drtorrent_is_running))
-		    .setSmallIcon(icon);
+		    .setSmallIcon(R.drawable.ic_notification);
 
 		Context context = getApplicationContext();
 		Intent intent = new Intent(context, DrTorrentActivity.class);
@@ -384,23 +377,24 @@ public class TorrentService extends Service {
 	/** Shows a new notificaion for download completed. */
 	public void showCompletedNotification(String torrentName) {
 		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		
-		int icon = R.drawable.ic_notification;
-		String text = torrentName;
-		long when = System.currentTimeMillis();
-		
-		Notification notification = new Notification(icon, text, when);
-		
+
+		NotificationCompat.Builder builder = new NotificationCompat.Builder(context_)
+			.setContentTitle(torrentName)
+		    .setContentText(getString(R.string.download_complete))
+		    .setSmallIcon(R.drawable.ic_notification);
+
 		Context context = getApplicationContext();
 		Intent intent = new Intent(context, DrTorrentActivity.class);
 		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
 		
+		builder.setContentIntent(pendingIntent);
+		Notification notification = builder.getNotification();
 		notification.ledARGB = 0xff00ff00;
 		notification.ledOnMS = 300;
 		notification.ledOffMS = 1000;
 		notification.flags |= Notification.FLAG_AUTO_CANCEL | Notification.FLAG_SHOW_LIGHTS;
-		notification.setLatestEventInfo(context, text, getString(R.string.download_complete), pendingIntent);
+		
 		notificationManager.notify(notifiacionId++, notification);
 	}
 	
@@ -603,11 +597,11 @@ public class TorrentService extends Service {
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		
-		final Vector<Peer> peers = torrent.getConnectedPeers();
+		final Peer[] peers = torrent.getConnectedPeers();
 		final ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
-		for (int i = 0; i < peers.size(); i++) {
+		for (int i = 0; i < peers.length; i++) {
 			try {
-				peerListItems.add(new PeerListItem(peers.elementAt(i)));
+				peerListItems.add(new PeerListItem(peers[i]));
 			} catch (Exception e) {
 				break;
 			}
@@ -787,10 +781,10 @@ public class TorrentService extends Service {
 		
 		Torrent torrent = torrentManager_.getTorrent(torrentId);
 		if (torrent == null) return;
-		final Vector<Peer> peers = torrent.getConnectedPeers();
+		final Peer[] peers = torrent.getConnectedPeers();
 		final ArrayList<PeerListItem> peerListItems = new ArrayList<PeerListItem>();
-		for (int i = 0; i < peers.size(); i++) {
-			peerListItems.add(new PeerListItem(peers.elementAt(i)));
+		for (int i = 0; i < peers.length; i++) {
+			peerListItems.add(new PeerListItem(peers[i]));
 		}
 		bundle.putSerializable(MSG_KEY_PEER_LIST, peerListItems);
 		
