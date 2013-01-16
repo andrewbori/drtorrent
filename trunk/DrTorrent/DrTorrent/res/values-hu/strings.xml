@@ -14,8 +14,8 @@
     <string name="downloaded">Letöltve:</string>
     <string name="uploaded">Feltöltve:</string>
     <string name="peers">Seedek/peerek:</string>
-    <string name="download_speed">Letöltési sebesség:</string>
-    <string name="upload_speed">Feltöltési sebesség:</string>
+    <string name="download_speed">Letöltési seb.:</string>
+    <string name="upload_speed">Feltöltési seb.:</string>
     <string name="size">Méret:</string>
     <string name="elapsed_time">Eltelt idő:</string>
     <string name="remaining_time">Hátralévő idő:</string>

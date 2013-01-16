@@ -766,16 +766,16 @@ public class Torrent {
 			// Updates the peers
 			if (!connectedPeers_.isEmpty()) {
 				final Peer[] peers;
-				//Log.v(LOG_TAG, "onTimer: get peersx");
+				Log.v(LOG_TAG, "onTimer: get peersx");
 				synchronized (connectedPeers_) {
 					peers = new Peer[connectedPeers_.size()];
 					connectedPeers_.copyInto(peers);
 				}
-				//Log.v(LOG_TAG, "onTimer: iterate peers");
+				Log.v(LOG_TAG, "onTimer: iterate peers");
 				for (int i = 0; i < peers.length; i++) {
 					peers[i].onTimer();
 				}
-				//Log.v(LOG_TAG, "onTimer: finished with peers");
+				Log.v(LOG_TAG, "onTimer: finished with peers");
 			}
 				
 			if (valid_) {

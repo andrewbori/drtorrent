@@ -7,7 +7,7 @@
     <string name="filebrowser_folder">Carpeta</string>
     <string name="downloaded">Descargado:</string>
     <string name="uploaded">Subido:</string>
-    <string name="peers">Semillas/Sanguijuelas:</string>
+    <string name="peers">Semillas/puntos:</string>
     <string name="download_speed">Bajada:</string>
     <string name="upload_speed">Subida:</string>
     <string name="size">Tamaño:</string>

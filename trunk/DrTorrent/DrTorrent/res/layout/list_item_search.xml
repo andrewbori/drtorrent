@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:padding="5dp" >
+
+    <TextView
+        android:id="@+id/list_item_search_tvName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Name of the torrent"
+        android:textStyle="bold"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvAddedLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left"
+        android:text="@string/added"
+        android:textSize="5pt"
+        android:paddingRight="4dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvAdded"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2000.01.01."
+        android:textSize="5pt"
+        android:paddingRight="4dp"
+        android:textStyle="bold"
+        android:layout_gravity="left"
+        android:layout_toRightOf="@+id/list_item_search_tvAddedLabel"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvSizeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/size"
+        android:textSize="5pt"
+        android:paddingRight="4dp"
+        android:layout_gravity="right"
+        android:layout_toLeftOf="@+id/list_item_search_tvSize"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0 B"
+        android:textSize="5pt"
+        android:textStyle="bold"
+        android:layout_gravity="right"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvPeersLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left"
+        android:text="@string/peers"
+        android:textSize="5pt"
+        android:paddingRight="4dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/list_item_search_tvAdded" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvPeers"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0/0"
+        android:textSize="5pt"
+        android:paddingRight="4dp"
+        android:textStyle="bold"
+        android:layout_gravity="left"
+        android:layout_toRightOf="@+id/list_item_search_tvPeersLabel"
+        android:layout_below="@+id/list_item_search_tvAdded" />
+    
+</RelativeLayout>
