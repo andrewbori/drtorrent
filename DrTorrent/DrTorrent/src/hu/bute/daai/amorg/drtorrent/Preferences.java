@@ -82,17 +82,10 @@ public class Preferences {
 			return 0;
 		}
 	}*/
-	
-	/** Sets the number of the default search site. */
-	public static void setSearchSite(int searchSite) {
-		SharedPreferences.Editor editor = preferences_.edit();
-		editor.putInt("search_site", searchSite);
-		editor.commit();
-	}
-	
-	/** Returns the number of the default search site. */
-	public static int getSearchSite() {
-		return preferences_.getInt("search_site", 0);
+
+	/** Returns the siteCode of the search engine. */
+	public static String getSearchEngine() {
+		return preferences_.getString("search_engine", "KickassTorents");
 	}
 	
 	/** Sets the number of the latest version. */

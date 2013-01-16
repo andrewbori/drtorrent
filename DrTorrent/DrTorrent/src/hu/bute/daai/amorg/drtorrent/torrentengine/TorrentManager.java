@@ -293,7 +293,7 @@ public class TorrentManager {
 			path = torrentUri.getPath();
 			Log.v(LOG_TAG, "Reading the torrent: " + path);
 			torrentContent = FileManager.readFile(path);
-		} else if (scheme.equalsIgnoreCase("http")) {
+		} else if (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")) {
 			path = "http://" + torrentUri.getHost() + torrentUri.getPath();
 			Log.v(LOG_TAG, "Downloading the torrent: " + path);
 			torrentContent = (new HttpConnection(path)).execute();

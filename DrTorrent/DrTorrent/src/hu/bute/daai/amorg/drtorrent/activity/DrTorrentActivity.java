@@ -1,6 +1,5 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
-import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.TorrentListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
@@ -20,6 +19,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
+import android.preference.PreferenceManager;
 import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -29,17 +29,27 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.Toast;
 
+import com.actionbarsherlock.app.ActionBar;
+import com.actionbarsherlock.app.ActionBar.OnNavigationListener;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 
-public class DrTorrentActivity extends TorrentHostActivity {
+public class DrTorrentActivity extends TorrentHostActivity implements OnNavigationListener {
+	
+	private final static int VIEW_ALL 		  = 0;
+	private final static int VIEW_DOWNLOADING = 1;
+	private final static int VIEW_COMPLETED   = 2;
 	
 	private ListView lvTorrent_;
 	private ArrayList<TorrentListItem> torrents_;
+	private ArrayList<TorrentListItem> completedTorrents_;
+	private ArrayList<TorrentListItem> downloadingTorrents_;
 	private ArrayAdapter<TorrentListItem> adapter_;
+	
+	private int viewId_ = VIEW_ALL;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -47,12 +57,25 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		setContentView(R.layout.main);
 		getSupportActionBar().setDisplayShowTitleEnabled(false);
 		
+		ActionBar actionBar = getSupportActionBar();
+		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+		
+		SpinnerAdapter spinnerAdapter = ArrayAdapter.createFromResource(this,
+	            R.array.torrent_list_views,
+	            R.layout.sherlock_spinner_dropdown_item);
+		
+		actionBar.setListNavigationCallbacks(spinnerAdapter, this);
+		
 		if (isShuttingDown_) {
 			finish();
 			return;
 		}
 		
+		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+		
 		torrents_ = new ArrayList<TorrentListItem>();
+		completedTorrents_ = new ArrayList<TorrentListItem>();
+		downloadingTorrents_ = new ArrayList<TorrentListItem>();
 		lvTorrent_ = (ListView) findViewById(R.id.main_lvTorrent);
 		adapter_ = new TorrentListAdapter<TorrentListItem>(this, torrents_);
 		lvTorrent_.setAdapter(adapter_);
@@ -71,7 +94,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 		lvTorrent_.setOnItemLongClickListener(new OnItemLongClickListener() {
 			@Override
 			public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-				final TorrentListItem torrent = torrents_.get(position);
+				final TorrentListItem torrent = adapter_.getItem(position);
 				
 				CharSequence[] items = null;
 				if (torrent.getStatus() == R.string.status_stopped || torrent.getStatus() == R.string.status_finished) {
@@ -145,7 +168,8 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			intent.setData(Uri.parse("nothing://"));
 			
 			if (data != null) {
-				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http") || 
+				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http") ||
+															     data.getScheme().equalsIgnoreCase("https") ||
 																 data.getScheme().equalsIgnoreCase("magnet")) {
 					fileToOpen_ = data;
 				}
@@ -223,6 +247,11 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	
 	/** Shows the search dialog. */
 	protected void search() {
+		onSearchRequested();
+		/*Intent intent = new Intent(context_, SearchActivity.class);
+		startActivity(intent);*/
+		
+		/*
 		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 		builder.setTitle(R.string.search);
 
@@ -299,6 +328,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 			}
 		}).
 		create().show();
+		*/
 	}
 	
 	/** Shows the "Add magnet link" dialog. */
@@ -370,7 +400,7 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, R.string.settings)
 			.setIcon(R.drawable.ic_menu_settings)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		menu.add(Menu.NONE, MENU_ADD_TORRENT, Menu.NONE, R.string.menu_addtorrent)
 			.setIcon(R.drawable.ic_menu_add2)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
@@ -457,20 +487,24 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	protected void refreshTorrentItem(TorrentListItem item, boolean isRemoved) {
 		boolean found = false;
 		TorrentListItem tempItem;
-		for (int i = 0; i < adapter_.getCount(); i++) {
-			tempItem = adapter_.getItem(i);
+		for (int i = 0; i < torrents_.size(); i++) {
+			tempItem = torrents_.get(i);
 			if (tempItem.equals(item)) {
 				found = true;
 				if (!isRemoved) {
-					adapter_.getItem(i).set(item);
+					tempItem.set(item);
+					addTorrent(tempItem);
 				} else {
-					adapter_.remove(tempItem);
+					torrents_.remove(tempItem);
+					completedTorrents_.remove(tempItem);
+					downloadingTorrents_.remove(tempItem);
 				}
 				break;
 			}
 		}
 		if (!found && !isRemoved) {
-			adapter_.add(item);
+			torrents_.add(item);
+			addTorrent(item);
 		}
 
 		lvTorrent_.invalidateViews();
@@ -479,25 +513,83 @@ public class DrTorrentActivity extends TorrentHostActivity {
 	@Override
 	protected void refreshTorrentList(ArrayList<TorrentListItem> itemList) {
 		boolean foundOld = false;
-		for (int i = 0; i < adapter_.getCount(); i++) {
+		TorrentListItem tempItem;
+		for (int i = 0; i < torrents_.size(); i++) {
+			tempItem = torrents_.get(i);
 			foundOld = false;
 			for (int j = 0; j < itemList.size(); j++) {
-				if (adapter_.getItem(i).equals(itemList.get(j))) {
+				if (tempItem.equals(itemList.get(j))) {
 					foundOld = true;
-					adapter_.getItem(i).set(itemList.get(j));
+					tempItem.set(itemList.get(j));
+					addTorrent(tempItem);
 					itemList.remove(j);
 				}
 			}
 			if (!foundOld) {
-				adapter_.remove(adapter_.getItem(i));
+				torrents_.remove(tempItem);
+				completedTorrents_.remove(tempItem);
+				downloadingTorrents_.remove(tempItem);
+				
 				i--;
 			}
 		}
 
 		for (int i = 0; i < itemList.size(); i++) {
-			adapter_.add(itemList.get(i));
+			tempItem = itemList.get(i);
+			
+			torrents_.add(tempItem);
+			addTorrent(tempItem);
 		}
 
 		lvTorrent_.invalidateViews();
+	}
+
+	private void addTorrent(TorrentListItem item) {
+		if (isDownloading(item)) {
+			if (!downloadingTorrents_.contains(item)) {
+				downloadingTorrents_.add(item);
+			}
+			completedTorrents_.remove(item);
+		} else {
+			if (!completedTorrents_.contains(item)) {
+				completedTorrents_.add(item);
+			}
+			downloadingTorrents_.remove(item);
+		}
+	}
+	
+	private boolean isDownloading(TorrentListItem item) {
+		if (item.getStatus() == R.string.status_finished || item.getStatus() == R.string.status_seeding) {
+			return false;
+		}
+		return true;
+	}
+	
+	@Override
+	public boolean onNavigationItemSelected(int itemPosition, long itemId) {
+		if (itemPosition >= 0 && itemPosition < 3) {
+			if (viewId_ != itemPosition) {
+				viewId_ = itemPosition;
+				
+				ArrayList<TorrentListItem> list;
+				switch (viewId_) {
+					case VIEW_COMPLETED:
+						list = completedTorrents_;
+						break;
+					
+					case VIEW_DOWNLOADING:
+						list = downloadingTorrents_;
+						break;
+	
+					default:
+						list = torrents_;
+						break;
+				}
+				adapter_ = new TorrentListAdapter<TorrentListItem>(this, list);
+				lvTorrent_.setAdapter(adapter_);
+			}
+		}
+		
+		return false;
 	}
 }

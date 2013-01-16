@@ -8,6 +8,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Message;
@@ -16,7 +18,7 @@ import android.os.RemoteException;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 
-public class SettingsActivity extends PreferenceActivity {
+public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
 	final private static int RESULT_FOLDER_CHOOSER_ACTIVITY = 1;
 	private Activity context_ = this;
 	
@@ -48,17 +50,23 @@ public class SettingsActivity extends PreferenceActivity {
 		isIncomingConnectionsEnabled_ = Preferences.isIncomingConnectionsEnabled();
 		isWifiOnly_ = Preferences.isWiFiOnly();
 		
-		update();
+		findPreference("download_folder").setSummary(Preferences.getDownloadFolder());
+		findPreference("port").setSummary(Integer.toString(Preferences.getPort()));
+		findPreference("connections").setSummary(Integer.toString(Preferences.getMaxConnectedPeers()));
+		findPreference("search_engine").setSummary(getSearchEngine());
 	}
 	
 	@Override
 	protected void onStart() {
+		getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 		bindService(new Intent(this, TorrentService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 		super.onStart();
 	}
 	
 	@Override
 	protected void onStop() {
+		getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+		
 		if (port_ != Preferences.getPort() || isIncomingConnectionsEnabled_ != Preferences.isIncomingConnectionsEnabled() ||
 											  isWifiOnly_ != Preferences.isWiFiOnly()) {
 			port_ = Preferences.getPort();
@@ -72,13 +80,18 @@ public class SettingsActivity extends PreferenceActivity {
 		super.onStop();
 	}
 	
+	
 	@Override
-	public void onWindowFocusChanged(boolean hasFocus) {
-		super.onWindowFocusChanged(hasFocus);
-		
-		if (hasFocus) {
-			update();
-		}		
+	public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+		if (key.equals("port")) {
+			findPreference(key).setSummary(Integer.toString(Preferences.getPort()));
+			
+		} else if (key.equals("connections")) {
+			findPreference(key).setSummary(Integer.toString(Preferences.getMaxConnectedPeers()));
+			
+		} else if (key.equals("search_engine")) {
+			findPreference(key).setSummary(getSearchEngine());
+		}
 	}
 	
 	@Override
@@ -89,33 +102,15 @@ public class SettingsActivity extends PreferenceActivity {
 				if (resultCode == Activity.RESULT_OK) {
 					final String path = data.getStringExtra(FolderChooserActivity.RESULT_KEY_PATH);
 					Preferences.setDownloadFolder(path);
+					
+					findPreference("download_folder").setSummary(path);
 				}
 				break;
 		}
 	}
 	
-	protected void update() {
-		findPreference("download_folder").setSummary(Preferences.getDownloadFolder());
-		
-		findPreference("port").setSummary(Integer.toString(Preferences.getPort()));
-		
-		findPreference("connections").setSummary(Integer.toString(Preferences.getMaxConnectedPeers()));
-		
-		/*if (Preferences.getDownloadSpeedLimit() > 0) {
-			findPreference("download_speed").setSummary(Preferences.getDownloadSpeedLimit() + " kB/s");
-		} else {
-			findPreference("download_speed").setSummary("Unlimited");
-		}
-		
-		if (Preferences.getUploadSpeedLimit() > 0) {
-			findPreference("upload_speed").setSummary(Preferences.getUploadSpeedLimit() + " kB/s");
-		} else {
-			findPreference("upload_speed").setSummary("Unlimited");
-		}*/
-	}
-	
 	/** Sends a message to the torrent service. */
-	public void sendMessage (int msgWhat) {
+	public void sendMessage(int msgWhat) {
 		if (serviceMessenger_ != null) {
 			Message msg = Message.obtain();
 			msg.what = msgWhat;
@@ -137,4 +132,21 @@ public class SettingsActivity extends PreferenceActivity {
 			serviceMessenger_ = null;
 		}
 	};
+	
+	/** Returns the human readable name of the search engine. */
+	public String getSearchEngine() {
+		String[] values = getResources().getStringArray(R.array.search_engine_values);
+		String value = Preferences.getSearchEngine();
+		int i = 0;
+		for(;i < values.length - 1; i++) {
+			if (values[i].equals(value)) {
+				break;
+			}
+		}
+		values = getResources().getStringArray(R.array.search_engine_names);
+		if (i < values.length) {
+			return values[i];
+		}
+		return "";
+	}
 }

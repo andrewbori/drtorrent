@@ -1,19 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<string-array name="search_sites">
-		<item>Google</item>
-		<item>1337x</item>
-		<item>BitSnoop</item>
-		<item>Extra Torrent</item>
-		<item>H33T</item>
-		<item>isoHunt</item>
-		<item>Kickass Torrents</item>
-		<item>mininova</item>
-		<item>Torrentz</item>
-		<item>The Pirate Bay</item>
-		<item>Torrent Reactor</item>
-		<item>RARBG</item>
-	</string-array>
 	<string name="unit_b">B</string>
 	<string name="unit_kb">kB</string>
 	<string name="unit_mb">MB</string>
@@ -30,9 +16,6 @@
 	<string name="time_hour">시\u0020</string>
 	<string name="time_day">일\u0020</string>
 	<string name="time_year">년\u0020</string>
-	<string name="infinity">∞</string>
-	<string name="arrow_up">↑</string>
-	<string name="arrow_down">↓</string>
 	
     <string name="app_name">DrTorrent</string>
     <string name="menu_addtorrent">토렌트 추가</string>

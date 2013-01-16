@@ -6,11 +6,11 @@
     <string name="filebrowser_parent">Diretório pai</string>
     <string name="filebrowser_folder">Dobrador</string>
     <string name="downloaded">Recebido:</string>
-    <string name="uploaded">Enviado</string>
+    <string name="uploaded">Enviado:</string>
     <string name="peers">Sementes/pares:</string>
     <string name="download_speed">Vel. recepção:</string>
     <string name="upload_speed">Vel. envio:</string>
-    <string name="size">Tamanho</string>
+    <string name="size">Tamanho:</string>
     <string name="elapsed_time">Tempo decorrido:</string>
     <string name="remaining_time">Tempo restante:</string>
     <string name="tab_info">Info</string>
@@ -30,7 +30,7 @@
     <string name="preferences_port">Porta P2P</string>
     <string name="preferences_connections">Conexões por torrente</string>
     <string name="all">Tudo</string>
-    <string name="priority">Prioridade: </string>
+    <string name="priority">"Prioridade: "</string>
     <string name="priority_normal">normal</string>
     <string name="priority_skip">saltar</string>
     <string name="priority_low">baixa</string>

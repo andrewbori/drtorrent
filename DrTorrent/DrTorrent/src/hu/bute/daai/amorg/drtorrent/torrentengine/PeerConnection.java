@@ -186,7 +186,9 @@ public class PeerConnection {
 							issueDownload();
 						}
 					} else if (peer_.getState() == R.string.status_downloading && !peer_.hasRequest()) {
+						Log.v(LOG_TAG, "onTimer: Peer doesn't have request");
 						if (isInterested()) {
+							Log.v(LOG_TAG, "onTimer: Peer doesn't have request: issueDownload");
 							issueDownload();
 						} else {
 							if (peer_.hasInterestingBlock()) {

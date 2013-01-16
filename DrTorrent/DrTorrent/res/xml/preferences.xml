@@ -21,6 +21,14 @@
 	        android:summary="@string/enable_upload"
 	        android:title="@string/upload" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="@string/search">
+        <ListPreference
+            android:key="search_engine"
+            android:title="Search engine"
+            android:entries="@array/search_engine_names"
+            android:entryValues="@array/search_engine_values"
+            android:defaultValue="KickassTorents" />
+    </PreferenceCategory>
     <PreferenceCategory android:title="@string/connection">
         <CheckBoxPreference
 	        android:key="wifi_only"
