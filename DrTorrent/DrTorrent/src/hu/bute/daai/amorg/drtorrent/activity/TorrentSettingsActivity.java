@@ -258,8 +258,11 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 	
 	private void refreshTorrentItem(TorrentListItem item) {
 		if (torrent_.equals(item)) {
+			String downloadFolder = torrent_.getDownloadFolder();
 			torrent_ = item;
+			torrent_.setDownloadFolder(downloadFolder);
 			tvTorrentName_.setText(torrent_.getName());
+
 		}
 	}
 

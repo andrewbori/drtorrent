@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 public class SearchResultListAdapter<T> extends ArrayAdapter<T> {
@@ -22,6 +23,7 @@ public class SearchResultListAdapter<T> extends ArrayAdapter<T> {
 	private final int tvSizeResource = R.id.list_item_search_tvSize;
 	private final int tvAddedResource = R.id.list_item_search_tvAdded;
 	private final int tvPeersResource = R.id.list_item_search_tvPeers;
+	private final int ivMagnetResource = R.id.list_item_search_ivMagnet;
 	
 	public SearchResultListAdapter(Activity context, ArrayList<T> items) {
 		super(context, R.layout.list_item_search, items);
@@ -41,6 +43,7 @@ public class SearchResultListAdapter<T> extends ArrayAdapter<T> {
 		TextView tvSize  = (TextView) reusableView.findViewById(tvSizeResource);
 		TextView tvAdded = (TextView) reusableView.findViewById(tvAddedResource);
 		TextView tvPeers = (TextView) reusableView.findViewById(tvPeersResource);
+		ImageView ivMagnet = (ImageView) reusableView.findViewById(ivMagnetResource);
 
 		SearchResultListItem item = (SearchResultListItem) items_.get(position);
 		
@@ -48,6 +51,11 @@ public class SearchResultListAdapter<T> extends ArrayAdapter<T> {
 		tvSize.setText(item.getSize());
 		tvAdded.setText(item.getAdded());
 		tvPeers.setText(item.getPeers());
+		if (item.getTorrentUrl().startsWith("magnet")) {
+			ivMagnet.setVisibility(ImageView.VISIBLE);
+		} else {
+			ivMagnet.setVisibility(ImageView.GONE);
+		}
 		
 		return reusableView;
 	}

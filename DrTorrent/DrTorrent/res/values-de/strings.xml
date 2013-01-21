@@ -40,8 +40,8 @@
     <string name="failed">gescheitert</string>
     <string name="empty_field"></string>
     <string name="download_folder">Download-Sammlung</string>
-    <string name="only_wifi">Nur WiFi</string>
-    <string name="only_wifi_sum">Download nur über WiFi</string>
+    <string name="only_wifi">Nur Wi-Fi</string>
+    <string name="only_wifi_sum">Download nur über Wi-Fi</string>
     <string name="ready">Ferig:</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
@@ -72,11 +72,11 @@
     <string name="connection">Verbindung</string>
     <string name="back">Zurück</string>
 	<string name="destination">Speicherort:</string>
-	<string name="drtorrent_is_running">DrTorrent läuft&#8230;</string>
+	<string name="drtorrent_is_running">DrTorrent läuft…</string>
 	<string name="download_complete">Download abgeschlossen.</string>
 	<string name="no_email_client">Kein E-Mail-Client gefunden wurde.</string>
-	<string name="feedback">Rückkopplung</string>
-	<string name="reading_the_torrent_file">Einlesen der Torrent-Datei&#8230;</string>
+	<string name="feedback">Feedback senden</string>
+	<string name="reading_the_torrent_file">Torrent-Datei einlesen…</string>
 	<string name="not_a_torrent_file">Falsche Torrent-Datei!</string>
 	<string name="the_torrent_is_already_opened">Dieser Torrent ist bereits geöffnet!</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Nicht genügend Speicherplatz verfügbar!</string>
@@ -90,4 +90,27 @@
 	<string name="inactive">inaktiv</string>
 	<string name="update">Aktualisieren</string>
 	<string name="new_folder">Neuer Ordner</string>
+	<string-array name="torrent_list_views">
+		<item>Alle</item>
+		<item>Beim Herunterladen</item>
+		<item>Fertig</item>
+		<item>Aktiv</item>
+		<item>Inaktiv</item>
+	</string-array>
+	<string name="rate_app">App bewerten</string>
+	<string name="refresh">Aktualisieren</string>
+	<string name="details">Details</string>
+	<string name="search_engine">Suchmaschine</string>
+	<string name="added">Hinzugefügt:</string>
+	<string name="no_results">Keine Ergebnisse</string>
+	<string name="search_unavailable">Suche nicht verfügbar</string>
+	<string name="clear_history">Suchverlauf löschen</string>
+	<string name="clear_history_message">Möchten Sie den Suchverlauf wirklich löschen?</string>
+	<string name="show_results_in_browser">Zeigen die Ergebnisse im Browser</string>
+	<string name="downloading_the_torrent">Torrent-Datei herunterladen…</string>
+	<string name="downloading_the_app">App herunterladen…</string>
+	<string name="could_not_download_app">Die App konnte nicht heruntergeladen werden.</string>
+	<string name="install">Installieren</string>
+	<string name="search_update_message">Transdroid Torrent Search ist nicht die neueste Version. Aktualisieren Sie die App, so dass Sie die Suchfunktion verwenden können!</string>
+	<string name="search_install_message">Transdroid Torrent Search kann nicht gefunden werden. Installieren Sie die App, so dass Sie die Suchfunktion verwenden können!</string>
 </resources>

@@ -72,11 +72,11 @@
     <string name="connection">Connexion</string>
     <string name="back">Arrière</string>
 	<string name="destination">Destination:</string>
-	<string name="drtorrent_is_running">DrTorrent est en marche&#8230;</string>
+	<string name="drtorrent_is_running">DrTorrent est en marche…</string>
 	<string name="download_complete">Téléchargement terminé.</string>
 	<string name="no_email_client">Client de messagerie ne peut pas être trouvé.</string>
-	<string name="feedback">Réaction</string>
-	<string name="reading_the_torrent_file">Lecture du fichier torrent&#8230;</string>
+	<string name="feedback">Envoie de commentaire</string>
+	<string name="reading_the_torrent_file">Lecture du fichier torrent…</string>
 	<string name="not_a_torrent_file">Pas un fichier torrent!</string>
 	<string name="the_torrent_is_already_opened">Le torrent est déjà ouvert.</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Il n\'y a pas assez d\'espace libre!</string>
@@ -90,4 +90,27 @@
 	<string name="inactive">inactif</string>
 	<string name="update">Mise à jour</string>
 	<string name="new_folder">Nouveau dossier</string>
+	<string-array name="torrent_list_views">
+		<item>Tout</item>
+		<item>Téléchargement</item>
+		<item>Terminé</item>
+		<item>Actif</item>
+		<item>Inactif</item>
+	</string-array>
+	<string name="rate_app">Évaluer l\'app</string>
+	<string name="refresh">Rafraîchir</string>
+	<string name="details">Détails</string>
+	<string name="search_engine">Moteur de recherche</string>
+	<string name="added">Ajouté:</string>
+	<string name="no_results">Aucun résultat</string>
+	<string name="search_unavailable">Recherche indisponible</string>
+	<string name="clear_history">Effacer l\'historique des recherches</string>
+	<string name="clear_history_message">Êtes-vous sûr de vouloir effacer l\'historique des recherches?</string>
+	<string name="show_results_in_browser">Afficher résultats en navigateur</string>
+	<string name="downloading_the_torrent">Téléchargement du fichier torrent…</string>
+	<string name="downloading_the_app">Téléchargement de l\'app…</string>
+	<string name="could_not_download_app">Impossible de télécharger l\'application.</string>
+	<string name="install">Installer</string>
+	<string name="search_update_message">Transdroid Torrent Search n\'est pas la dernière version. Mettre à jour de l\'application de sorte que vous pouvez utiliser la fonction de recherche!</string>
+	<string name="search_install_message">Transdroid Torrent Search ne peut pas être trouvé. Installer l\'application de sorte que vous pouvez utiliser la fonction de recherche!</string>
 </resources>

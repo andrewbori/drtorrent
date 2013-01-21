@@ -45,6 +45,8 @@ public class FolderChooserActivity extends Activity {
 	private ImageButton btnBack_ = null;
 	private ImageButton btnNewFolder_ = null;
 	
+	private AlertDialog dialog_ = null;
+	
 	private Context context_ = this;
 
 	@Override
@@ -143,17 +145,18 @@ public class FolderChooserActivity extends Activity {
 							
 							showContent(currentDir_);
 							
-							dialog.cancel();
+							dialog.dismiss();
 						}
 					}
 				}).
 				setNegativeButton(context_.getString(android.R.string.no), new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						dialog.cancel();
+						dialog.dismiss();
 					}
-				}).
-				create().show();
+				});
+				dialog_ = builder.create();
+				dialog_.show();
 			}
 		});
 		
@@ -195,5 +198,14 @@ public class FolderChooserActivity extends Activity {
 		/*}													// else: parent folder
 		currentDir_ = currentDir_.getParentFile();
 		showContent(currentDir_);*/
+	}
+	
+	@Override
+	protected void onDestroy() {
+		if (dialog_ != null) {
+			dialog_.dismiss();
+			dialog_ = null;
+		}
+		super.onDestroy();
 	}
 }

@@ -287,17 +287,30 @@ public class TorrentManager {
 			return;
 		}
 		
-		showProgress(torrentService_.getString(R.string.reading_the_torrent_file));
-		
 		if (scheme.equalsIgnoreCase("file")) {
+			showProgress(torrentService_.getString(R.string.reading_the_torrent_file));
+			
 			path = torrentUri.getPath();
 			Log.v(LOG_TAG, "Reading the torrent: " + path);
 			torrentContent = FileManager.readFile(path);
+			
 		} else if (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")) {
-			path = "http://" + torrentUri.getHost() + torrentUri.getPath();
+			showProgress(torrentService_.getString(R.string.downloading_the_torrent));
+			
+			path = "http:" + torrentUri.getEncodedSchemeSpecificPart();
 			Log.v(LOG_TAG, "Downloading the torrent: " + path);
 			torrentContent = (new HttpConnection(path)).execute();
+			if (torrentContent == null) {
+				path = "http://" + torrentUri.getHost() + torrentUri.getPath();
+				Log.v(LOG_TAG, "Downloading the torrent: " + path);
+				torrentContent = (new HttpConnection(path)).execute();
+			}
+			
+			showProgress(torrentService_.getString(R.string.reading_the_torrent_file));
+			
 		} else if (scheme.equalsIgnoreCase("magnet")) {
+			showProgress(torrentService_.getString(R.string.reading_the_torrent_file));
+			
 			MagnetUri magnetUri = new MagnetUri(torrentUri);
 			openTorrent(magnetUri, downloadPath);
 			return;
@@ -628,7 +641,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR1210-";	// TODO: Refresh!
+        peerId_ = "-DR1230-";	// TODO: Refresh!
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }

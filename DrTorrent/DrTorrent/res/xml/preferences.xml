@@ -24,7 +24,7 @@
     <PreferenceCategory android:title="@string/search">
         <ListPreference
             android:key="search_engine"
-            android:title="Search engine"
+            android:title="@string/search_engine"
             android:entries="@array/search_engine_names"
             android:entryValues="@array/search_engine_values"
             android:defaultValue="KickassTorents" />

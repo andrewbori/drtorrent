@@ -156,10 +156,11 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						dialog.cancel();
+						dialog.dismiss();
 					}
-				}).
-				create().show();
+				});
+				dialog_ = builder.create();
+				dialog_.show();
             
 				break;
 				
@@ -188,16 +189,17 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 								} catch (RemoteException e) {}
 							}
 						} catch (Exception e) {}
-						dialog.cancel();
+						dialog.dismiss();
 					}
 				}).
 				setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						dialog.cancel();
+						dialog.dismiss();
 					}
-				}).
-				create().show();
+				});
+				dialog_ = builder.create();
+				dialog_.show();
 				break;
 				
 			case MENU_ADD_TRACKER:
@@ -221,16 +223,17 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 								serviceMessenger_.send(msg);
 							} catch (RemoteException e) {}
 						}
-						dialog.cancel();
+						dialog.dismiss();
 					}
 				}).
 				setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						dialog.cancel();
+						dialog.dismiss();
 					}
-				}).
-				create().show();
+				});
+				dialog_ = builder.create();
+				dialog_.show();
 				break;
 		}
 		return true;

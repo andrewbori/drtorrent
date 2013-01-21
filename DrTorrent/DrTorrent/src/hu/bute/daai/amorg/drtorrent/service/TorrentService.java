@@ -20,6 +20,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Vector;
 
 import android.app.Notification;
@@ -46,8 +47,8 @@ public class TorrentService extends Service {
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
 	
-	public final static String APP_VERSION_NAME = "1.2.1";	// TODO: Refresh!
-	public final static int APP_VERSION_CODE = 4;			// TODO: Refresh!
+	public final static String APP_VERSION_NAME = "1.2.3";	// TODO: Refresh!
+	public final static int APP_VERSION_CODE = 5;			// TODO: Refresh!
 	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
@@ -848,6 +849,7 @@ public class TorrentService extends Service {
 	
 	/** Sends the actual torrent list to the subscribed client. */
 	private void sendTorrentList(Messenger messenger) {
+		Collections.sort(torrents_);
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		bundle.putSerializable(MSG_KEY_TORRENT_LIST, new ArrayList<TorrentListItem>(torrents_));
