@@ -72,22 +72,45 @@
     <string name="connection">Connessione</string>
     <string name="back">Indietro</string>
 	<string name="destination">Destinazione:</string>
-	<string name="drtorrent_is_running">DrTorrent è in funzione&#8230;</string>
+	<string name="drtorrent_is_running">DrTorrent è in funzione…</string>
 	<string name="download_complete">Download completato.</string>
 	<string name="no_email_client">Client di posta elettronica non può essere trovato.</string>
-	<string name="feedback">Feedback</string>
-	<string name="reading_the_torrent_file">Lettura del file torrent&#8230;</string>
+	<string name="feedback">Invia feedback</string>
+	<string name="reading_the_torrent_file">Lettura del file torrent…</string>
 	<string name="not_a_torrent_file">Non è un file torrent!</string>
 	<string name="the_torrent_is_already_opened">Il torrent è già aperto!</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Non c\'è abbastanza spazio libero!</string>
 	<string name="error">Errore!</string>
 	<string name="wrong_magnet_link">Link magnet non valido!</string>
-	<string name="status_metadata">In download dei metadati</string>
+	<string name="status_metadata">Download dei metadati</string>
 	<string name="add_magnet_link">Aggiungi link magnet</string>
 	<string name="status_finished">Completato</string>
 	<string name="hash">Hash:</string>
 	<string name="torrent_already_opened_add_trackers">Il torrent è già aperto. Vuoi caricarne i tracker?</string>
 	<string name="inactive">inattivo</string>
-	<string name="update">Aggiornare</string>
+	<string name="update">Aggiorna</string>
 	<string name="new_folder">Nuova cartella</string>
+	<string-array name="torrent_list_views">
+		<item>Tutti</item>
+		<item>In download</item>
+		<item>Completato</item>
+		<item>Attivo</item>
+		<item>Inattivo</item>
+	</string-array>
+	<string name="rate_app">Vota l\'applicazione</string>
+	<string name="refresh">Aggiorna</string>
+	<string name="details">Dettagli</string>
+	<string name="search_engine">Motore di ricerca</string>
+	<string name="added">Aggiunto:</string>
+	<string name="no_results">Nessun risultato</string>
+	<string name="search_unavailable">Ricerca non disponibile</string>
+	<string name="clear_history">Cancella cronologia ricerche</string>
+	<string name="clear_history_message">Sei sicuro di voler cancellare la cronologia ricerche?</string>
+	<string name="show_results_in_browser">Mostra risultati nel browser</string>
+	<string name="downloading_the_torrent">Download del file torrent…</string>
+	<string name="downloading_the_app">Download dell\'applicazione…</string>
+	<string name="could_not_download_app">Impossibile download dell\'applicazione.</string>
+	<string name="install">Installa</string>
+	<string name="search_update_message">Transdroid Torrent Search non è l\'ultima versione. Aggiorna l\'applicazione in modo da poter utilizzare la funzione di ricerca!</string>
+	<string name="search_install_message">Torrent Search Transdroid non può essere trovato. Installa l\'applicazione in modo da poter utilizzare la funzione di ricerca!</string>
 </resources>

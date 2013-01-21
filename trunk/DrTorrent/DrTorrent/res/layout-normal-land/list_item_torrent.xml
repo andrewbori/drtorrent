@@ -61,7 +61,7 @@
         	android:id="@+id/list_item_torrent_layoutDownload"
         	android:layout_width="wrap_content"
 	      	android:layout_height="wrap_content"
-	      	android:orientation="vertical"
+	      	android:orientation="horizontal"
 	      	android:layout_below="@id/list_item_torrent_progress"
 	      	android:layout_alignParentLeft="true"	      	
 	      	android:paddingLeft="2dp"
@@ -70,18 +70,18 @@
 	        android:id="@+id/list_item_torrent_layoutRemaining"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
-	        android:orientation="horizontal">
+	        android:orientation="horizontal"
+	        android:layout_marginRight="10dp">
             <TextView
 				  android:layout_width="wrap_content"
 			      android:layout_height="wrap_content"
-			      android:paddingRight="3dp"
+			      android:paddingRight="4dp"
 			      android:text="@string/remaining_time" />
             
             <TextView android:id="@+id/list_item_torrent_tvRemainingTime"
 				  android:layout_width="wrap_content"
 			      android:layout_height="wrap_content"
-			      android:paddingLeft="2dp"
-			      android:paddingRight="2dp"
+			      android:minWidth="64dp"
 			      android:textStyle="bold"
 			      android:text="1 m 0 s" />
         </LinearLayout>

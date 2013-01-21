@@ -136,7 +136,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 	/** Returns the human readable name of the search engine. */
 	public String getSearchEngine() {
 		String[] values = getResources().getStringArray(R.array.search_engine_values);
-		String value = Preferences.getSearchEngine();
+		String value = Preferences.getSearchEngine(this);
 		int i = 0;
 		for(;i < values.length - 1; i++) {
 			if (values[i].equals(value)) {

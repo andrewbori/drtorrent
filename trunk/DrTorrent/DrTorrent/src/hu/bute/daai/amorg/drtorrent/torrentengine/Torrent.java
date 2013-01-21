@@ -220,7 +220,7 @@ public class Torrent {
 
 		infoHashByteArray_ = SHA1.resultToByte(hashResult);
 		infoHashString_ = SHA1.resultToString(hashResult);
-		Log.v(LOG_TAG, "Infohash of the torrrent(hex): " + infoHashString_);
+		Log.v(LOG_TAG, "Infohash of the torrrent: " + infoHashString_);
 		hashResult = null;
 		
 		if (torrentManager_.hasTorrent(infoHash_)) {
@@ -480,9 +480,12 @@ public class Torrent {
 		int indexOfNextFile = file.index() + 1;
 		if (files_.size() > indexOfNextFile) {
 			lastPiece = pieces_.elementAt(files_.elementAt(indexOfNextFile).getIndexOfFirstPiece());
+			if (!lastPiece.hasFile(file) && lastPiece.index() > 0) {
+				lastPiece = pieces_.elementAt(lastPiece.index() - 1);
+			}
 		}
 		
-		for (int j = file.index() - 1; j > 0; j--) {
+		for (int j = file.index() - 1; j >= 0; j--) {
 			if (firstPiece.hasFile(files_.elementAt(j))) {
 				fileManager_.addFile(files_.elementAt(j));
 			} else {
@@ -762,20 +765,20 @@ public class Torrent {
 					" - peers: " + connectedPeers_.size() + " Blocks: " + requestedBlocks_.size() + " Downloadable: " + downloadablePieces_.size()
 							+ " Downloading: " + downloadingPieces_.size());*/
 
-			Log.v(LOG_TAG, "onTimer: are there peers?");
+			//Log.v(LOG_TAG, "onTimer: are there peers?");
 			// Updates the peers
 			if (!connectedPeers_.isEmpty()) {
 				final Peer[] peers;
-				Log.v(LOG_TAG, "onTimer: get peersx");
+				//Log.v(LOG_TAG, "onTimer: get peersx");
 				synchronized (connectedPeers_) {
 					peers = new Peer[connectedPeers_.size()];
 					connectedPeers_.copyInto(peers);
 				}
-				Log.v(LOG_TAG, "onTimer: iterate peers");
+				//Log.v(LOG_TAG, "onTimer: iterate peers");
 				for (int i = 0; i < peers.length; i++) {
 					peers[i].onTimer();
 				}
-				Log.v(LOG_TAG, "onTimer: finished with peers");
+				//Log.v(LOG_TAG, "onTimer: finished with peers");
 			}
 				
 			if (valid_) {
@@ -887,12 +890,14 @@ public class Torrent {
 
 	/** Returns a downloadable metadata block for the given peer. */
 	public int getMetadataBlockToDownload(PeerConnection peer) {
-		synchronized (metadata_) {
-			if (metadata_.hasUnrequestedBlock()) {
-				for (int i = 0; i < metadata_.getBlockCount(); i++) {
-					if (!metadata_.isRequested(i) && !peer.isMetadataBlockRejected(i)) {
-						metadata_.setRequested(i, true);
-						return i;
+		if (metadata_ != null) {
+			synchronized (metadata_) {
+				if (metadata_ != null && metadata_.hasUnrequestedBlock()) {
+					for (int i = 0; i < metadata_.getBlockCount(); i++) {
+						if (!metadata_.isRequested(i) && !peer.isMetadataBlockRejected(i)) {
+							metadata_.setRequested(i, true);
+							return i;
+						}
 					}
 				}
 			}
@@ -974,9 +979,12 @@ public class Torrent {
 						for (int i = 0; i < rarestPieces_.size(); i++) {
 							piece = rarestPieces_.elementAt(i);
 							if (!piece.canDownload() || piece.priority() < priority) {
+								//Log.v(LOG_TAG, "0Cant download " + priority);
 								continue;
 							}
+							//Log.v(LOG_TAG, "0Can download " + priority);
 							if (peer.hasPiece(piece.index())) {
+								//Log.v(LOG_TAG, "0Can download has peer " + priority);
 								if (piece.hasUnrequestedBlock()) {
 									block = piece.getUnrequestedBlock();
 									if (block != null) {
@@ -1001,9 +1009,12 @@ public class Torrent {
 						for (int i = 0; i < downloadablePieces_.size(); i++) {
 							piece = downloadablePieces_.elementAt(i);
 							if (!piece.canDownload() || piece.priority() < priority) {
+								//Log.v(LOG_TAG, "Cant download " + priority);
 								continue;
 							}
+							//Log.v(LOG_TAG, "Can download " + priority);
 							if (peer.hasPiece(piece.index())) {
+								//Log.v(LOG_TAG, "Can download has peer " + priority);
 								if (piece.hasUnrequestedBlock()) {
 									block = piece.getUnrequestedBlock();
 									if (block != null) {
@@ -1437,6 +1448,9 @@ public class Torrent {
 
 	/** Returns the percent of the downloaded data. */
 	public double getProgressPercent() {
+		if (status_ == R.string.status_metadata) {
+			return 0;
+		}
 		if (activeSize_ == 0) return 100.0;
 		if (status_ != R.string.status_hash_check) {
 			return activeDownloadedSize_ / (activeSize_ / 100.0);

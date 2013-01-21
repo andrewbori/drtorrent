@@ -426,6 +426,7 @@ public class PeerConnection {
 			System.arraycopy(handshake, 0, protocolId, 0, protLength);
 	
 			if (!MESSAGE_PROTOCOL_ID.equals(new String(protocolId))) {
+				Log.v(LOG_TAG, new String(protocolId));
 				close(ERROR_DELETE_PEER, "Protocol identifier doesn't match!");
 				return;
 			}

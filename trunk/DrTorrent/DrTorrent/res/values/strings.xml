@@ -121,7 +121,7 @@
 	<string name="drtorrent_is_running">DrTorrent is running…</string>
 	<string name="download_complete">Download complete.</string>
 	<string name="no_email_client">No e-mail client was found.</string>
-	<string name="feedback">Feedback</string>
+	<string name="feedback">Send feedback</string>
 	<string name="reading_the_torrent_file">Reading the torrent file…</string>
 	<string name="not_a_torrent_file">Not a torrent file!</string>
 	<string name="the_torrent_is_already_opened">The torrent is already opened!</string>
@@ -140,9 +140,23 @@
 		<item>All</item>
 		<item>Downloading</item>
 		<item>Completed</item>
+		<item>Active</item>
+		<item>Inactive</item>
 	</string-array>
-		<string name="added">Added:</string>
-		<string name="clear_history">Clear history</string>
-		<string name="no_results">No results</string>
-		<string name="clear_history_message">Are you sure you want to clear the history?</string>
+	<string name="rate_app">Rate this app</string>
+	<string name="refresh">Refresh</string>
+	<string name="details">Details</string>
+	<string name="search_engine">Search engine</string>
+	<string name="added">Added:</string>
+	<string name="no_results">No results</string>
+	<string name="search_unavailable">Search not available</string>
+	<string name="clear_history">Clear search history</string>
+	<string name="clear_history_message">Are you sure you want to clear the search history?</string>
+	<string name="show_results_in_browser">Show results in browser</string>
+	<string name="downloading_the_torrent">Downloading the torrent file…</string>
+	<string name="downloading_the_app">Downloading the app…</string>
+	<string name="could_not_download_app">Could not download the application.</string>
+	<string name="install">Install</string>
+	<string name="search_update_message">Transdroid Torrent Search is not the latest version. Update the app so you can use the search function!</string>
+	<string name="search_install_message">Transdroid Torrent Search cannot be found. Install the app so you can use the search function!</string>
 </resources>

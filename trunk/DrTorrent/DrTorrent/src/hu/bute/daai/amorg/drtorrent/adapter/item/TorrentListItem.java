@@ -11,7 +11,7 @@ import java.io.Serializable;
 import android.content.Context;
 
 /** Item of the torrent list adapter */
-public class TorrentListItem implements Serializable {
+public class TorrentListItem implements Serializable, Comparable<TorrentListItem> {
 	private static final long serialVersionUID = 1L;
 
 	private int id_;
@@ -157,5 +157,29 @@ public class TorrentListItem implements Serializable {
 	@Override
 	public boolean equals(Object other) {
 		return this.id_ == ((TorrentListItem) other).id_;
+	}
+
+	@Override
+	public int compareTo(TorrentListItem another) {
+		int thisOrder = TorrentListItem.getOrder(this.status_);
+		int anotherOrder = TorrentListItem.getOrder(another.status_);
+		if (thisOrder < anotherOrder) {
+			return -1;
+		}
+		if (thisOrder > anotherOrder) {
+			return 1;
+		}
+		return this.name_.compareToIgnoreCase(another.name_);
+	}
+	
+	private static int getOrder(int status) {
+		switch (status) {
+			case R.string.status_finished:
+			case R.string.status_seeding:
+				return 1;
+			
+			default:
+				return 0;
+		}		
 	}
 }

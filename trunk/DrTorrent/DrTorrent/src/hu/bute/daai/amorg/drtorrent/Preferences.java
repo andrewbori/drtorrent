@@ -52,7 +52,7 @@ public class Preferences {
 		try {
 			return Integer.valueOf(preferences_.getString("port", "6886"));
 		} catch (Exception e) {
-			return 0;
+			return 6886;
 		}
 	}
 	
@@ -61,7 +61,7 @@ public class Preferences {
 		try {
 			return Integer.valueOf(preferences_.getString("connections", "10"));
 		} catch (Exception e) {
-			return 0;
+			return 10;
 		}
 	}
 	
@@ -84,8 +84,57 @@ public class Preferences {
 	}*/
 
 	/** Returns the siteCode of the search engine. */
-	public static String getSearchEngine() {
-		return preferences_.getString("search_engine", "KickassTorents");
+	public static String getSearchEngine(Context context) {
+		try {
+			return preferences_.getString("search_engine", "KickassTorents");
+		} catch (NullPointerException e) {
+			SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+			return preferences.getString("search_engine", "KickassTorents");
+		}
+	}
+	
+	/** Returns the url of the search engine. */
+	public static String getSearchEngineUrl(Context context) {
+		String searchEngine;
+		try {
+			searchEngine = preferences_.getString("search_engine", "KickassTorents");
+		} catch (NullPointerException e) {
+			SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+			searchEngine = preferences.getString("search_engine", "KickassTorents");
+		}
+		
+		if (searchEngine.equals("BitSnoop")) {
+			return "http://bitsnoop.com/search/all/%1$s";
+			
+		} else if (searchEngine.equals("ExtraTorrent")) {
+			return "http://extratorrent.com/search/?search=%1$s";
+			
+		} else if (searchEngine.equals("Isohunt")) {
+			return "http://isohunt.com/torrents/?ihq=%1$s";
+			
+		} else if (searchEngine.equals("KickassTorents")) {
+			return "http://kat.ph/usearch/%1$s/";
+			
+		} else if (searchEngine.equals("LimeTorrents")) {
+			return "http://www.limetorrents.com/search/all/%1$s/";
+			
+		} else if (searchEngine.equals("Mininova")) {
+			return "http://www.mininova.org/search/?search=%1$s";
+			
+		} else if (searchEngine.equals("Monova")) {
+			return "http://www.monova.org/search.php?term=%1$s";
+			
+		} else if (searchEngine.equals("ThePirateBay")) {
+			return "http://thepiratebay.se/search/%1$s";
+					
+		} else if (searchEngine.equals("TorrentDownloads")) {
+			return "http://www.torrentdownloads.me/search/?search=%1$s";
+					
+		} else if (searchEngine.equals("TorrentReactor")) {
+			return "http://www.torrentreactor.net/torrent-search/%1$s";					
+		}
+		
+		return "http://www.vertor.com/index.php?mod=search&search=&cid=0&words=%1$s";
 	}
 	
 	/** Sets the number of the latest version. */

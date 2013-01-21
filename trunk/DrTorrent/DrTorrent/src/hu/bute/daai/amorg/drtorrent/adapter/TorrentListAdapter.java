@@ -7,6 +7,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.graphics.Rect;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -108,23 +109,21 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 			layoutUpload.setVisibility(LinearLayout.VISIBLE);
 		}
 		
-		/*Rect bounds = progress.getProgressDrawable().getBounds();
+		Rect bounds = progress.getProgressDrawable().getBounds();
 		
 		if (status == R.string.status_stopped) {
 			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue_light));
 		} else if (status == R.string.status_finished) {
-			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green_light));
-		} else if (status == R.string.status_seeding) {
 			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green));
+		} else if (status == R.string.status_seeding) {
+			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green_light));
 		} else {
 			progress.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue));
 		}
 		
-		progress.getProgressDrawable().setBounds(bounds);*/
-		
+		progress.getProgressDrawable().setBounds(bounds);
+		progress.setProgress(0);
 		progress.setProgress((int) item.getPercent());
-		
-		//progress.invalidate();
 		
 		return reusableView;
 	}

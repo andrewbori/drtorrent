@@ -17,21 +17,40 @@ public class SearchResultListItem {
 		this.torrentUrl_ = torrentUrl;
 		this.detailUrl_ = detailUrl;
 		
-		size = size.replace("kilobyte", "kB");
-		size = size.replace("megabyte", "MB");
-		size = size.replace("gigabyte", "GB");
-		size = size.replace("terabyte", "TB");
-		size = size.replace("byte", "B");
-		size = size.replace("b", "B");
-		size = size.replace("K", "k");
-		size = size.replace("m", "M");
-		size = size.replace("g", "G");
-		size = size.replace("t", "T");
-		size = size.replace("kiB", "kB");
-		size = size.replace("MiB", "MB");
-		size = size.replace("GiB", "GB");
-		size = size.replace("TiB", "TB");
-		
+		size = size.replaceAll(" ", "");
+		if (size.equals("")) {
+			size = "???";
+		} else {
+			size = size.toLowerCase(Locale.ENGLISH);
+			size = size.replace("kilobyte", "kB");
+			size = size.replace("megabyte", "MB");
+			size = size.replace("gigabyte", "GB");
+			size = size.replace("terabyte", "TB");
+			size = size.replace("byte", "B");
+			size = size.replace("b", "B");
+			size = size.replace("K", "k");
+			size = size.replace("m", "M");
+			size = size.replace("g", "G");
+			size = size.replace("t", "T");
+			size = size.replace("kiB", "kB");
+			size = size.replace("MiB", "MB");
+			size = size.replace("GiB", "GB");
+			size = size.replace("TiB", "TB");
+			
+			int i = size.indexOf("B");
+			if (size.length() > 0 && i > -1) {
+				size = size.substring(0, i + 1);
+			}
+			
+			i = 0;
+			while (i < size.length() && ((size.charAt(i) >= '0' && size.charAt(i) <= '9') || size.charAt(i) == '.' || size.charAt(i) == ',')) {
+				i++;
+			}
+			
+			if (i < size.length()) {
+				size = size.substring(0, i) + " " + size.substring(i, size.length());
+			}
+		}
 		this.size_ = size;
 		
 		long dateLong = -1;
@@ -39,10 +58,15 @@ public class SearchResultListItem {
 			dateLong = Long.parseLong(added);
 		} catch (Exception e) {
 		}
-		Date date = new Date(dateLong);
-		DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault());
+		if (dateLong > -1) {
+			Date date = new Date(dateLong);
+			DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
+			
+			this.added_ = dateFormat.format(date);
+		} else {
+			this.added_ = "???";
+		}
 		
-		this.added_ = dateFormat.format(date);
 		this.peers_ = seeds.concat("/").concat(peers);
 	}
 	

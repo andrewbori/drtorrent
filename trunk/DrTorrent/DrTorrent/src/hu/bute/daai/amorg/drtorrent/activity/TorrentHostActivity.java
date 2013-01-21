@@ -41,10 +41,12 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	protected static final int MENU_ADD_PEER 	    = 106;
 	protected static final int MENU_ADD_MAGNET_LINK = 107;
 	protected static final int MENU_SEARCH_TORRENT  = 110;
-	protected static final int MENU_SETTINGS        = 111;
-	protected static final int MENU_ABOUT 		    = 112;
-	protected static final int MENU_FEEDBACK	    = 113;
-	protected static final int MENU_SHUT_DOWN       = 114;
+	protected static final int MENU_SEARCH_TORRENT2 = 111;
+	protected static final int MENU_SETTINGS        = 112;
+	protected static final int MENU_ABOUT 		    = 113;
+	protected static final int MENU_FEEDBACK	    = 114;
+	protected static final int MENU_RATE_APP		= 115;
+	protected static final int MENU_SHUT_DOWN       = 116;
 	
 	protected final static String SHUT_DOWN = "shut_down";
 	protected boolean isShuttingDown_ = false; 
@@ -63,6 +65,8 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 
 	protected boolean isOpening_ = false;
 	protected Uri fileToOpen_ = null;
+	
+	protected AlertDialog dialog_ = null;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -101,7 +105,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 		}
 		doUnbindService();
 	}
-
+	
 	/** Connection of the Torrent Service. */
 	final protected ServiceConnection serviceConnection = new ServiceConnection() {
 		
@@ -191,18 +195,23 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 			case TorrentService.MSG_SHOW_DIALOG:
 				message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
 				
-				final AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 				builder.setCancelable(false)
 				       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 				           public void onClick(DialogInterface dialog, int id) {
-				        	   dialog.cancel();
+				        	   dialog.dismiss();
 				           }
 				       }).
-			    setMessage(message).
-			    create().show();
+			    setMessage(message);
+			    dialog_ = builder.create();
+			    dialog_.show();
 				break;
 			
 			case TorrentService.MSG_SHOW_PROGRESS:
+				if (progressDialog_ != null) {
+					progressDialog_.dismiss();
+					progressDialog_ = null;
+				}
 				message = bundle.getString(TorrentService.MSG_KEY_MESSAGE);
 				progressDialog_ = new ProgressDialog(context_);
 				progressDialog_.setMessage(message);
@@ -211,7 +220,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 				
 			case TorrentService.MSG_HIDE_PROGRESS:
 				if (progressDialog_ != null) {
-					progressDialog_.hide();
+					progressDialog_.dismiss();
 					progressDialog_ = null;
 				}
 				break;
@@ -313,15 +322,25 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	   				serviceMessenger_.send(msg);
 	   			} catch (RemoteException e) {}
 	   			
-        	    dialog.cancel();
+        	    dialog.dismiss();
            }
 		}).
 		setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
-				dialog.cancel();
+				dialog.dismiss();
 			}
-		}).
-		create().show();
+		});
+		dialog_ = builder.create();
+		dialog_.show();
+	}
+	
+	@Override
+	protected void onDestroy() {
+		if (dialog_ != null) {
+			dialog_.dismiss();
+			dialog_ = null;
+		}
+		super.onDestroy();
 	}
 }

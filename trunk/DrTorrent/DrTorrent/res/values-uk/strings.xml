@@ -45,7 +45,7 @@
     <string name="preferences_streaming_sum">Завантаження вмісту послідовно</string>
     <string name="preferences_port">P2P Порт</string>
     <string name="preferences_connections">Кількість пірів на торрент</string>
-    <string name="all">Все</string>
+    <string name="all">Всі</string>
     <string name="priority">"Пріоритет: "</string>
     <string name="priority_normal">нормальний</string>
     <string name="priority_skip">пропустити</string>
@@ -88,11 +88,11 @@
     <string name="connection">З\'єднання</string>
     <string name="back">Назад</string>
 	<string name="destination">Зберегти як:</string>
-	<string name="drtorrent_is_running">ДрТоррент працює&#8230;</string>
+	<string name="drtorrent_is_running">ДрТоррент працює…</string>
 	<string name="download_complete">Завантаження завершено.</string>
 	<string name="no_email_client">Немає поштового клієнта було знайдено.</string>
 	<string name="feedback">Зворотний зв\'язок</string>
-	<string name="reading_the_torrent_file">Читання торрент-файлу&#8230;</string>
+	<string name="reading_the_torrent_file">Читання торрент-файлу…</string>
 	<string name="not_a_torrent_file">Недійсний торрент-файлу!</string>
 	<string name="the_torrent_is_already_opened">Торрент вже відкритий!</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Існує не вистачає вільного простору!</string>
@@ -104,6 +104,29 @@
 	<string name="hash">Хеш:</string>
 	<string name="torrent_already_opened_add_trackers">Торрент вже відкритий! Хочете завантажити трекери з нього?</string>
 	<string name="inactive">неактивний</string>
-	<string name="update">Оновлення</string>
+	<string name="update">Оновити</string>
 	<string name="new_folder">Новая папка</string>
+	<string-array name="torrent_list_views">
+		<item>Всі</item>
+		<item>Завантажується</item>
+		<item>Завершені</item>
+		<item>Активні</item>
+		<item>Неактивні</item>
+	</string-array>
+	<string name="rate_app">Оцінити це додаток</string>
+	<string name="refresh">Оновити</string>
+	<string name="details">Деталі</string>
+	<string name="search_engine">Пошукова система</string>
+	<string name="added">Додано:</string>
+	<string name="no_results">Немає результаті</string>
+	<string name="search_unavailable">Пошук недоступні</string>
+	<string name="clear_history">Очистити історію пошуку</string>
+	<string name="clear_history_message">Ви дійсно бажаєте очистити історію пошуку?</string>
+	<string name="show_results_in_browser">Показати результати в браузері</string>
+	<string name="downloading_the_torrent">Завантажуються торрент-файл…</string>
+	<string name="downloading_the_app">Завантажуються додатків…</string>
+	<string name="could_not_download_app">Не вдалося завантажити додаток.</string>
+	<string name="install">Встановити</string>
+	<string name="search_update_message">Transdroid Torrent Search це не остання версія. Оновлення додатка так що ви можете використовувати функцію пошуку!</string>
+	<string name="search_install_message">Transdroid Torrent Search не може бути знайдене. Встановити додаток так що ви можете використовувати функцію пошуку!</string>
 </resources>

@@ -2,26 +2,25 @@ package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.activity.task.ApkInstallerTask;
 import hu.bute.daai.amorg.drtorrent.adapter.SearchResultListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.item.SearchResultListItem;
-import hu.bute.daai.amorg.drtorrent.network.HttpConnection;
 import hu.bute.daai.amorg.drtorrent.provider.TorrentSuggestionProvider;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.app.SearchManager;
 import android.content.ContentProviderClient;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.SearchRecentSuggestions;
 import android.view.View;
 import android.widget.AdapterView;
@@ -30,6 +29,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.SearchView;
 import android.widget.TextView;
 
 import com.actionbarsherlock.app.SherlockActivity;
@@ -38,26 +38,52 @@ import com.actionbarsherlock.view.MenuItem;
 
 public class SearchActivity extends SherlockActivity {
 	
-	private final int MENU_SETTINGS		  = 1;
-	private final int MENU_SEARCH_TORRENT = 2;
-	private final int MENU_CLEAR_HISTORY  = 3;
+	private final static int MENU_SETTINGS		  = 1;
+	private final static int MENU_SEARCH_TORRENT  = 2;
+	private final static int MENU_SEARCH_TORRENT2 = 3;
+	private final static int MENU_CLEAR_HISTORY   = 4;
+	private final static int MENU_SHOW_RESULTS	  = 5;
+	private final static int MENU_REFRESH		  = 6;
+	
+	private SearchView searchView_ = null;
+	private SearchTask searchTask_ = null;
 	
 	private String query_ = null;
 	private ListView lvResults_ = null;
+	private ArrayList<SearchResultListItem> items_ = null;
 	private ProgressBar progress_ = null;
 	private TextView tvMessage_ = null;
 	private ProgressDialog progressDialog_ = null;
+	
+	private AlertDialog dialog_ = null;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		setTheme(R.style.Theme_Sherlock_ForceOverflow);
 		super.onCreate(savedInstanceState);
+		
+		init();
+		
+		handleIntent(getIntent());
+	}
+	
+	private void init() {
 		setContentView(R.layout.search);
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		//setDefaultKeyMode(DEFAULT_KEYS_SEARCH_LOCAL);
 		
+		int visibility;
+		visibility = (lvResults_ != null) ? lvResults_.getVisibility() : ListView.VISIBLE;
 		lvResults_ = (ListView) findViewById(R.id.search_lvResults);
+		lvResults_.setVisibility(visibility);
+		
+		visibility = (tvMessage_ != null) ? tvMessage_.getVisibility() : TextView.GONE;
 		tvMessage_ = (TextView) findViewById(R.id.search_tvMessage); 
+		tvMessage_.setVisibility(visibility);
+		
+		visibility = (progress_ != null) ? progress_.getVisibility() : ProgressBar.GONE;
 		progress_ = (ProgressBar) findViewById(R.id.search_progress);
+		progress_.setVisibility(visibility);
 		
 		lvResults_.setOnItemLongClickListener(new OnItemLongClickListener() {
 			@Override
@@ -65,7 +91,7 @@ public class SearchActivity extends SherlockActivity {
 				
 				final SearchResultListItem item = (SearchResultListItem) lvResults_.getItemAtPosition(position);
 				
-				final CharSequence[] items = { "Details", "Download" };
+				final CharSequence[] items = { getString(R.string.details), getString(R.string.download) };
 				
 				AlertDialog.Builder builder = new AlertDialog.Builder(SearchActivity.this);
 				builder.setTitle(item.getName()).
@@ -77,6 +103,7 @@ public class SearchActivity extends SherlockActivity {
 							case 0:
 								Uri uri = Uri.parse(item.getDetailUrl());
 								Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+								intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 								startActivity(intent);
 								break;
 								
@@ -88,8 +115,9 @@ public class SearchActivity extends SherlockActivity {
 								break;
 						}
 					}
-				}).
-				create().show();
+				});
+				dialog_ = builder.create();
+				dialog_.show();
 				
 				return false;
 			}
@@ -104,14 +132,18 @@ public class SearchActivity extends SherlockActivity {
 				downloadTorrent(item.getTorrentUrl());
 			}
 		});
-		
-		handleIntent(getIntent());
 	}
 	
 	@Override
 	protected void onNewIntent(Intent intent) {
 		setIntent(intent);
 		handleIntent(intent);
+	}
+	
+	@Override
+	public boolean onSearchRequested() {
+		startSearch(query_, false, null, false);
+	    return true;
 	}
 	
 	/** Handles the incoming intent. */
@@ -122,24 +154,96 @@ public class SearchActivity extends SherlockActivity {
 	    	SearchRecentSuggestions suggestions = new SearchRecentSuggestions(this, TorrentSuggestionProvider.AUTHORITY, TorrentSuggestionProvider.MODE);
 	    	suggestions.saveRecentQuery(query_, null);
 	    	
-	    	new SearchTask().execute(query_, Preferences.getSearchEngine());
+	    	startSearchTask();
 	    }
+	}
+	
+	private void startSearchTask() {
+		if (searchTask_ != null && searchTask_.getStatus() == AsyncTask.Status.RUNNING) {
+    		searchTask_.cancel(true);	
+    	}
+    	searchTask_ = new SearchTask();
+    	searchTask_.execute(query_, Preferences.getSearchEngine(this));
+	}
+	
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
+
+		init();
+		
+		if (items_ != null) {
+			lvResults_.setAdapter(new SearchResultListAdapter<SearchResultListItem>(this, items_));
+		}
 	}
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-        
-		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, R.string.settings)
-			.setIcon(R.drawable.ic_menu_settings)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		
+		try {
+			 // Get the SearchView and set the searchable configuration
+			searchView_ = new SearchView(this);
+			SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+	    	searchView_.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
+		    searchView_.setIconifiedByDefault(false); // Do not iconify the widget; expand it by default
+		    searchView_.setQueryRefinementEnabled(true);
+		     
+		    searchView_.setOnSuggestionListener(new SearchView.OnSuggestionListener() {
+				@Override
+				public boolean onSuggestionSelect(int position) {
+					return false;
+				}
+				
+				@Override
+				public boolean onSuggestionClick(int position) {
+					if (searchView_ != null) {
+						Cursor cursor = null;
+						try {
+				    		cursor = searchView_.getSuggestionsAdapter().getCursor();
+				    		if (cursor.moveToPosition(position)) {
+					    		query_ = cursor.getString(2);
+					    		searchView_.setQuery(query_, true);
+					    		return true;
+				    		}
+						} catch (Exception e) {
+						} finally {
+							if (cursor != null) {
+								cursor.close();
+							}
+						}
+				    }
+					return false;
+				}
+			});
+		    
+		    menu.add(Menu.NONE, MENU_SEARCH_TORRENT2, Menu.NONE, R.string.search)
+				.setIcon(R.drawable.ic_menu_search)
+				.setActionView(searchView_)
+				.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		    
+		    if (query_ != null) {
+		    	searchView_.setQuery(query_, false);
+		    }
+		    
+		} catch (NoClassDefFoundError e) {
+			menu.add(Menu.NONE, MENU_SEARCH_TORRENT, Menu.NONE, R.string.search)
+				.setIcon(R.drawable.ic_menu_search)
+				.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+	    }
+	
+		menu.add(Menu.NONE, MENU_REFRESH, Menu.NONE, R.string.refresh)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		
+		menu.add(Menu.NONE, MENU_SHOW_RESULTS, Menu.NONE, R.string.show_results_in_browser)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
 		menu.add(Menu.NONE, MENU_CLEAR_HISTORY, Menu.NONE, R.string.clear_history)
 			.setIcon(R.drawable.ic_menu_delete)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
-		menu.add(Menu.NONE, MENU_SEARCH_TORRENT, Menu.NONE, R.string.search)
-			.setIcon(R.drawable.ic_menu_search)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, R.string.settings)
+			.setIcon(R.drawable.ic_menu_settings)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
 		return true;
 	}
@@ -184,9 +288,27 @@ public class SearchActivity extends SherlockActivity {
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.dismiss();
 					}
-				})
-				.create().show();
+				});
+				dialog_ = builder.create();
+				dialog_.show();
 				
+				break;
+				
+			case MENU_SHOW_RESULTS:
+				if (query_ != null) {
+					try {
+						String url = String.format(Preferences.getSearchEngineUrl(this), query_);
+						Uri uri = Uri.parse(url);
+						intent = new Intent(Intent.ACTION_VIEW, uri);
+						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+						startActivity(intent);
+					} catch (Exception e) {
+					}
+				}
+				break;
+				
+			case MENU_REFRESH:
+				startSearchTask();
 				break;
 				
 			default:
@@ -217,10 +339,6 @@ public class SearchActivity extends SherlockActivity {
 	}
 	
 	private void downloadTorrent(String url) {
-		/*Uri uri = Uri.parse(url);
-		Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-		startActivity(intent);*/
-		
 		Uri uri = Uri.parse(url);
 		Intent intent = new Intent(this, DrTorrentActivity.class);
 		intent.setData(uri);
@@ -284,9 +402,27 @@ public class SearchActivity extends SherlockActivity {
 		@Override
 		protected void onPostExecute(ArrayList<SearchResultListItem> results) {
 			progress_.setVisibility(ProgressBar.GONE);
+			items_ = results;
 			
 			if (results == null && shouldInstall_) {
-				new ApkInstallerTask().execute("http://transdroid-search.googlecode.com/files/transdroid-search-1.10.apk");
+				AlertDialog.Builder builder = new AlertDialog.Builder(SearchActivity.this);
+				builder.setTitle(R.string.search_unavailable)
+				.setMessage(R.string.search_install_message)
+				.setPositiveButton(R.string.install, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						new ApkInstallerTask(SearchActivity.this).execute("http://transdroid-search.googlecode.com/files/transdroid-search-1.10.apk");
+						dialog.dismiss();
+					}
+				})
+				.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss();
+					}
+				});
+				dialog_ = builder.create();
+				dialog_.show();
 			} else {
 				if (results != null && !results.isEmpty()) {
 					ArrayAdapter<SearchResultListItem> adapter = new SearchResultListAdapter<SearchResultListItem>(SearchActivity.this, results);
@@ -300,66 +436,18 @@ public class SearchActivity extends SherlockActivity {
 			
 			super.onPostExecute(results);
 		}
-		
 	}
 	
-	/** Task that downloads and installs the apk with the given url. */
-	public class ApkInstallerTask extends AsyncTask<String, Integer, Boolean> {
-		
-		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-			if (progressDialog_ == null) {
-				progressDialog_ = new ProgressDialog(SearchActivity.this);
-			}
-			progressDialog_.setMessage("Downloading the APK file...");
-			progressDialog_.show();
+	@Override
+	protected void onDestroy() {
+		if (searchTask_ != null && searchTask_.getStatus() == AsyncTask.Status.RUNNING) {
+    		searchTask_.cancel(true);
+    		searchTask_ = null;
+    	}
+		if (dialog_ != null) {
+			dialog_.dismiss();
+			dialog_ = null;
 		}
-		
-		@Override
-		protected Boolean doInBackground(String... params) {
-			if (params.length > 0) {
-				final String url = params[0];
-				final String filename = url.substring(url.lastIndexOf("/"));
-				
-				HttpConnection conn = new HttpConnection(url);
-				
-				byte[] content = conn.execute();
-				if (content == null) {
-					return false;
-				}
-				
-				final String path = Environment.getExternalStorageDirectory().getPath().concat(filename);
-				FileOutputStream fos = null;
-				try {
-					fos = new FileOutputStream(path);
-					fos.write(content);
-					fos.flush();
-				} catch (Exception e) {
-					return false;
-				} finally {
-					try {
-						fos.close();
-					} catch (Exception e) {
-					}
-				}
-				
-				Intent intent = new Intent(Intent.ACTION_VIEW);
-			    intent.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
-			    startActivity(intent);
-				
-				return true;
-			}
-			return false;
-		}
-		
-		 @Override
-		protected void onPostExecute(Boolean result) {
-			super.onPostExecute(result);
-			if (progressDialog_ != null) {
-				progressDialog_.dismiss();
-				progressDialog_ = null;
-			}
-		}
+		super.onDestroy();
 	}
 }

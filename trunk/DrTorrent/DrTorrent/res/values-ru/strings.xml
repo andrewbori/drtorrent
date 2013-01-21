@@ -88,11 +88,11 @@
     <string name="connection">Соединение</string>
     <string name="back">Назад</string>
 	<string name="destination">Расположение:</string>
-	<string name="drtorrent_is_running">ДрТоррент работает&#8230;</string>
+	<string name="drtorrent_is_running">ДрТоррент работает…</string>
 	<string name="download_complete">Загрузка завершена.</string>
 	<string name="no_email_client">Нет почтового клиента было найдено.</string>
-	<string name="feedback">Обратная связь</string>
-	<string name="reading_the_torrent_file">Чтение торрент-файл&#8230;</string>
+	<string name="feedback">Отправить отзыв</string>
+	<string name="reading_the_torrent_file">Чтение торрент-файл…</string>
 	<string name="not_a_torrent_file">Не торрент-файл!</string>
 	<string name="the_torrent_is_already_opened">Торрент уже открыт!</string>
 	<string name="there_is_not_enough_free_space_on_the_sd_card">Существует не хватает свободного пространства!</string>
@@ -104,6 +104,29 @@
 	<string name="hash">Хеш:</string>
 	<string name="torrent_already_opened_add_trackers">Торрент уже открыт! Хотите загрузить из него список трекеров?</string>
 	<string name="inactive">неактивный</string>
-	<string name="update">Обновление</string>
+	<string name="update">Обновить</string>
 	<string name="new_folder">Новая папка</string>
+	<string-array name="torrent_list_views">
+		<item>Все</item>
+		<item>Загрузка</item>
+		<item>Завершено</item>
+		<item>Активные</item>
+		<item>Неактивные</item>
+	</string-array>
+	<string name="rate_app">Оценить это приложение</string>
+	<string name="refresh">Обновить</string>
+	<string name="details">Детали</string>
+	<string name="search_engine">Поисковая система</string>
+	<string name="added">Добавлено:</string>
+	<string name="no_results">Нет результатов</string>
+	<string name="search_unavailable">Поиск недоступен</string>
+	<string name="clear_history">Очистить историю поиска</string>
+	<string name="clear_history_message">Вы действительно хотите очистить историю поиска?</string>
+	<string name="show_results_in_browser">Показать результаты в браузере</string>
+	<string name="downloading_the_torrent">Загрузка торрент-файл…</string>
+	<string name="downloading_the_app">Загрузить приложение…</string>
+	<string name="could_not_download_app">Не удалось загрузить приложение.</string>
+	<string name="install">Установить</string>
+	<string name="search_update_message">Transdroid Torrent Search это не последняя версия. Обновление приложение так что вы можете использовать функцию поиска!</string>
+	<string name="search_install_message">Transdroid Torrent Search не может быть найдено. Установите приложение так что вы можете использовать функцию поиска!</string>
 </resources>

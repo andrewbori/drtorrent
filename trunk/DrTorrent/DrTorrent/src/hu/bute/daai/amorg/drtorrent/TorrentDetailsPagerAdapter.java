@@ -19,6 +19,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Parcelable;
 import android.support.v4.view.PagerAdapter;
@@ -297,24 +298,24 @@ public class TorrentDetailsPagerAdapter extends PagerAdapter implements TitlePro
 			tvName_.setText(item.getName());
 			tvStatus_.setText(context_.getString(item.getStatus()));
 			
-			/*Rect bounds = progress_.getProgressDrawable().getBounds();
+			Rect bounds = progress_.getProgressDrawable().getBounds();
 			
 			if (item.getStatus() == R.string.status_stopped) {
 				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue_light));
 			} else if (item.getStatus() == R.string.status_finished) {
-				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green_light));
-			} else if (item.getStatus() == R.string.status_seeding) {
 				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green));
+			} else if (item.getStatus() == R.string.status_seeding) {
+				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_green_light));
 			} else {
 				progress_.setProgressDrawable(context_.getResources().getDrawable(R.drawable.progress_blue));
 			}
 			
-			progress_.getProgressDrawable().setBounds(bounds);*/
+			progress_.getProgressDrawable().setBounds(bounds);
 			
 			DecimalFormat dec = new DecimalFormat("###.#");
 			tvPercent_.setText(dec.format(item.getPercent()).concat(" %"));
+			progress_.setProgress(0);
 			progress_.setProgress((int) item.getPercent());
-			//progress_.invalidate();
 			
 			if (item.getStatus() == R.string.status_seeding || item.getStatus() == R.string.status_finished || item.getStatus() == R.string.status_metadata) {
 				tvPercent_.setVisibility(TextView.GONE);

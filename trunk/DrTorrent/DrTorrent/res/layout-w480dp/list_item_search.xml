@@ -30,38 +30,14 @@
         android:id="@+id/list_item_search_tvAdded"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="60dp"
         android:singleLine="true"
-        android:text="Jan 1, 2000"
+        android:text="2000.01.01."
         android:textSize="5pt"
-        android:paddingRight="4dp"
+        android:layout_marginRight="14dp"
         android:textStyle="bold"
         android:layout_gravity="left"
         android:layout_toRightOf="@+id/list_item_search_tvAddedLabel"
-        android:layout_below="@+id/list_item_search_tvName" />
-    
-    <TextView
-        android:id="@+id/list_item_search_tvSizeLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/size"
-        android:textSize="5pt"
-        android:paddingRight="4dp"
-        android:layout_gravity="right"
-        android:layout_toLeftOf="@+id/list_item_search_tvSize"
-        android:layout_below="@+id/list_item_search_tvName" />
-    
-    <TextView
-        android:id="@+id/list_item_search_tvSize"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="56dp"
-        android:maxWidth="96dp"
-        android:singleLine="true"
-        android:text="0 B"
-        android:textSize="5pt"
-        android:textStyle="bold"
-        android:layout_gravity="right"
-        android:layout_alignParentRight="true"
         android:layout_below="@+id/list_item_search_tvName" />
     
     <TextView
@@ -72,29 +48,53 @@
         android:text="@string/peers"
         android:textSize="5pt"
         android:paddingRight="4dp"
-        android:layout_toLeftOf="@+id/list_item_search_tvPeers"
-        android:layout_below="@+id/list_item_search_tvAdded" />
+        android:layout_toRightOf="@+id/list_item_search_tvAdded"
+        android:layout_below="@+id/list_item_search_tvName" />
     
     <TextView
         android:id="@+id/list_item_search_tvPeers"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:minWidth="56dp"
+        android:minWidth="80dp"
         android:maxWidth="128dp"
         android:singleLine="true"
         android:text="0/0"
         android:textSize="5pt"
+        android:layout_marginRight="12dp"
         android:textStyle="bold"
         android:layout_gravity="left"
-        android:layout_alignParentRight="true"
-        android:layout_below="@+id/list_item_search_tvAdded" />
-
+        android:layout_toRightOf="@+id/list_item_search_tvPeersLabel"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvSizeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/size"
+        android:textSize="5pt"
+        android:paddingRight="4dp"
+        android:layout_gravity="right"
+        android:layout_toRightOf="@+id/list_item_search_tvPeers"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
+    <TextView
+        android:id="@+id/list_item_search_tvSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:text="0 B"
+        android:textSize="5pt"
+        android:textStyle="bold"
+        android:layout_gravity="right"
+        android:layout_toRightOf="@+id/list_item_search_tvSizeLabel"
+        android:layout_below="@+id/list_item_search_tvName" />
+    
     <ImageView
         android:id="@+id/list_item_search_ivMagnet"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/list_item_search_tvAddedLabel"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/list_item_search_tvName"
         android:src="@drawable/ic_magnet_small"
         android:visibility="gone" />
     
