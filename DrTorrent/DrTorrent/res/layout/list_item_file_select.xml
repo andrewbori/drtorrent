@@ -8,11 +8,11 @@
         android:id="@+id/list_item_file_select_cbFile"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="8dp"
-        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingTop="6dp"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-        android:textSize="5pt"
+        android:textSize="14sp"
         android:text="File in torrent.txt"
         android:checked="true" />
     
@@ -22,7 +22,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="right"
         android:text="1 kB"
-        android:textSize="4pt"
+        android:textSize="12sp"
         android:layout_alignRight="@+id/list_item_file_select_cbFile"
         android:layout_alignBottom="@+id/list_item_file_select_cbFile" />
 

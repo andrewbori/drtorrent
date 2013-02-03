@@ -103,14 +103,9 @@
 	<string name="search_engine">Suchmaschine</string>
 	<string name="added">Hinzugefügt:</string>
 	<string name="no_results">Keine Ergebnisse</string>
-	<string name="search_unavailable">Suche nicht verfügbar</string>
 	<string name="clear_history">Suchverlauf löschen</string>
 	<string name="clear_history_message">Möchten Sie den Suchverlauf wirklich löschen?</string>
 	<string name="show_results_in_browser">Zeigen die Ergebnisse im Browser</string>
 	<string name="downloading_the_torrent">Torrent-Datei herunterladen…</string>
-	<string name="downloading_the_app">App herunterladen…</string>
-	<string name="could_not_download_app">Die App konnte nicht heruntergeladen werden.</string>
-	<string name="install">Installieren</string>
-	<string name="search_update_message">Transdroid Torrent Search ist nicht die neueste Version. Aktualisieren Sie die App, so dass Sie die Suchfunktion verwenden können!</string>
-	<string name="search_install_message">Transdroid Torrent Search kann nicht gefunden werden. Installieren Sie die App, so dass Sie die Suchfunktion verwenden können!</string>
+	<string name="delete_downloaded_files">Lösche heruntergeladene Dateien</string>
 </resources>

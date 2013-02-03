@@ -119,14 +119,9 @@
 	<string name="search_engine">Пошукова система</string>
 	<string name="added">Додано:</string>
 	<string name="no_results">Немає результаті</string>
-	<string name="search_unavailable">Пошук недоступні</string>
 	<string name="clear_history">Очистити історію пошуку</string>
 	<string name="clear_history_message">Ви дійсно бажаєте очистити історію пошуку?</string>
 	<string name="show_results_in_browser">Показати результати в браузері</string>
 	<string name="downloading_the_torrent">Завантажуються торрент-файл…</string>
-	<string name="downloading_the_app">Завантажуються додатків…</string>
-	<string name="could_not_download_app">Не вдалося завантажити додаток.</string>
-	<string name="install">Встановити</string>
-	<string name="search_update_message">Transdroid Torrent Search це не остання версія. Оновлення додатка так що ви можете використовувати функцію пошуку!</string>
-	<string name="search_install_message">Transdroid Torrent Search не може бути знайдене. Встановити додаток так що ви можете використовувати функцію пошуку!</string>
+	<string name="delete_downloaded_files">Видалити завантажені файли</string>
 </resources>

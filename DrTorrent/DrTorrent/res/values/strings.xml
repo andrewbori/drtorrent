@@ -149,14 +149,9 @@
 	<string name="search_engine">Search engine</string>
 	<string name="added">Added:</string>
 	<string name="no_results">No results</string>
-	<string name="search_unavailable">Search not available</string>
 	<string name="clear_history">Clear search history</string>
 	<string name="clear_history_message">Are you sure you want to clear the search history?</string>
 	<string name="show_results_in_browser">Show results in browser</string>
 	<string name="downloading_the_torrent">Downloading the torrent file…</string>
-	<string name="downloading_the_app">Downloading the app…</string>
-	<string name="could_not_download_app">Could not download the application.</string>
-	<string name="install">Install</string>
-	<string name="search_update_message">Transdroid Torrent Search is not the latest version. Update the app so you can use the search function!</string>
-	<string name="search_install_message">Transdroid Torrent Search cannot be found. Install the app so you can use the search function!</string>
+	<string name="delete_downloaded_files">Delete downloaded files</string>
 </resources>

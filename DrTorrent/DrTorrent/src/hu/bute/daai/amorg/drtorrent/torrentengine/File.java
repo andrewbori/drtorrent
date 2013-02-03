@@ -2,11 +2,7 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.R;
 
-public class File {
-	public static final int STATUS_NOT_DOWNLOADED = 0;
-    public static final int STATUS_DOWNLOADING    = 1;
-    public static final int STATUS_DOWNLOADED     = 2;
-    
+public class File {    
     public static final int PRIORITY_SKIP 	= 0;
     public static final int PRIORITY_LOW  	= 1;
     public static final int PRIORITY_NORMAL = 2;
@@ -15,15 +11,13 @@ public class File {
     final private Torrent torrent_;
     final private int index_;			// File index
     final private int begin_;			// The index of the first piece that contains parts of the file
-    //private String path_;			// Torrent's path
-    private String relativePath_;	// Path relative to the torrent's parent directory.
+    private String relativePath_;		// Path relative to the torrent's parent directory.
     
     final private long size_;
     private long createdSize_ = 0;
     private long downloadedSize_ = 0;
     
     private int priority_ = PRIORITY_NORMAL;
-    private int downloadState_;
     private boolean isChanged_ = true;
     
     /** Constructor with the torrent and the file's properties. */
@@ -31,7 +25,6 @@ public class File {
     	torrent_ = torrent;
     	index_ = index;
     	begin_ = begin;
-    	//path_ = path;
     	relativePath_ = relativePath;
     	size_ = size;
     }
@@ -107,17 +100,6 @@ public class File {
     		checkHash(true);
     	}
     	priority_ = priority;
-    	isChanged_ = true;
-    }
-    
-    /** Returns the download status of the file. */
-    public int getDownloadState() {
-    	return downloadState_;
-    }
-    
-    /** Sets the download status of the file. */
-    public void setDownloadState(final int downloadState) {
-    	downloadState_ = downloadState;
     	isChanged_ = true;
     }
     

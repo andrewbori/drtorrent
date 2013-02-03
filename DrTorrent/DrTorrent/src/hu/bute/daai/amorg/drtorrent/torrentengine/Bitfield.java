@@ -44,7 +44,7 @@ public class Bitfield implements Serializable {
     
     /** Sets the bit. */
     public void setBit(int index) {
-        bitfield_[index / 8] |= (128 >> (index % 8));
+    	bitfield_[index / 8] |= (128 >> (index % 8));
         isChanged_ = true;
     }
 
@@ -57,9 +57,17 @@ public class Bitfield implements Serializable {
     /** Returns whether all bits are unsetted or not. */
     public boolean isNull() {
         for (int i = 0; i < bitfield_.length; i++) {
-            if (bitfield_[i] != 0) {
-                return false;
-            }
+        	if ((i + 1 < bitfield_.length) || (lengthInBits_ % 8 == 0)) {
+        		if (bitfield_[i] != (byte) 0) {
+        			return false;
+        		}
+        	} else {
+        		byte lastFull = (byte) 255;
+            	lastFull <<= (8 - (lengthInBits_ % 8));
+            	if ((bitfield_[i] & lastFull) != 0) {
+            		return false;
+            	}
+        	}
         }
         return true;
     }
@@ -67,12 +75,16 @@ public class Bitfield implements Serializable {
     /** Returns whether all bits are setted or not. */
     public boolean isFull() {
         for (int i = 0; i < bitfield_.length; i++) {
-            if (i+1 < lengthInBits_) {
-            	if (bitfield_[i] != 255) return false;
+            if ((i + 1 < bitfield_.length) || (lengthInBits_ % 8 == 0)) {
+            	if (bitfield_[i] != (byte) 255) {
+            		return false;
+            	}
             } else {
             	byte lastFull = (byte) 255;
-            	lastFull <<= (8 - lengthInBits_ % 8);
-            	if (bitfield_[i] != lastFull) return false;
+            	lastFull <<= (8 - (lengthInBits_ % 8));
+            	if ((bitfield_[i] & lastFull) != lastFull) {
+            		return false;
+            	}
             }
         }
         return true;
@@ -126,6 +138,19 @@ public class Bitfield implements Serializable {
     	} catch (Exception e) {
     		return false;
     	}
+    }
+    
+    public int indexOfFirstSet() {
+    	for (int i = 0; i < bitfield_.length; i++) {
+			if (bitfield_[i] != 0) {
+				for (int j = i * 8; j < (i + 1) * 8 && j < lengthInBits_; j++) {
+					if (isBitSet(j)) {
+						return j;
+					}
+				}
+			}
+		}
+    	return -1;
     }
 
     public byte[] data()  {

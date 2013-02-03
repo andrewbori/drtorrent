@@ -14,7 +14,7 @@ import android.content.Context;
 public class TorrentListItem implements Serializable, Comparable<TorrentListItem> {
 	private static final long serialVersionUID = 1L;
 
-	private int id_;
+	private int id_ = -1;
 	private String infoHash_ = "";
 	private String downloadFolder_ = "";
 	private String name_ = "";
@@ -26,10 +26,16 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	private Quantity downloadSpeed_;
 	private Quantity uploaded_;
 	private Quantity uploadSpeed_;
-	private String peers_ = "0/0";
-	private Time elapsedTime_;
-	private Time remainingTime_;
+	private String peers_ = "";
+	private Time elapsedTime_ = null;
+	private Time remainingTime_ = null;
 
+	public TorrentListItem() {
+		/*size_ = ready_ = downloaded_ = uploaded_ = new Quantity(0, Quantity.SIZE);
+		downloadSpeed_ = uploadSpeed_ = new Quantity(0, Quantity.SPEED);
+		elapsedTime_ = remainingTime_ = new Time();*/
+	}
+	
 	public TorrentListItem(String name) {
 		this.name_ = name;
 	}
@@ -111,31 +117,52 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	}
 	
 	public String getSize(Context context) {
-		return size_.toString(context);
+		if (size_ != null) {
+			return size_.toString(context);
+		}
+		return "";
 	}
 
 	public String getReady(Context context) {
-		return ready_.toString(context);
+		if (ready_ != null) { 
+			return ready_.toString(context);
+		}
+		return "";
 	}
 	
 	public String getReadySize(Context context) {
-		return ready_.toString(context, size_.getUnit());
+		if (ready_ != null) {
+			return ready_.toString(context, size_.getUnit());
+		}
+		return "";
 	}
 	
 	public String getDownloaded(Context context) {
-		return downloaded_.toString(context);
+		if (downloaded_ != null) {
+			return downloaded_.toString(context);
+		}
+		return "";
 	}
 
 	public String getDownloadSpeed(Context context) {
-		return downloadSpeed_.toString(context);
+		if (downloadSpeed_ != null) {
+			return downloadSpeed_.toString(context);
+		}
+		return "";
 	}
 
 	public String getUploaded(Context context) {
-		return uploaded_.toString(context);
+		if (uploaded_ != null) {
+			return uploaded_.toString(context);
+		}
+		return "";
 	}
 
 	public String getUploadSpeed(Context context) {
-		return uploadSpeed_.toString(context);
+		if (uploadSpeed_ != null) {
+			return uploadSpeed_.toString(context);
+		}
+		return "";
 	}
 
 	public String getPeers() {
@@ -143,11 +170,17 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	}
 
 	public String getElapsedTime(Context context) {
-		return elapsedTime_.toString(context);
+		if (elapsedTime_ != null) {
+			return elapsedTime_.toString(context);
+		}
+		return "";
 	}
 	
 	public String getRemainingTime(Context context) {
-		return remainingTime_.toString(context);
+		if (remainingTime_ != null) {
+			return remainingTime_.toString(context);
+		}
+		return "";
 	}
 	
 	public void setDownloadFolder(String downloadFolder) {
@@ -156,23 +189,26 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 	
 	@Override
 	public boolean equals(Object other) {
-		return this.id_ == ((TorrentListItem) other).id_;
+		if (other != null) {
+			return this.id_ == ((TorrentListItem) other).id_;
+		}
+		return false;
 	}
 
 	@Override
 	public int compareTo(TorrentListItem another) {
-		int thisOrder = TorrentListItem.getOrder(this.status_);
+		/*int thisOrder = TorrentListItem.getOrder(this.status_);
 		int anotherOrder = TorrentListItem.getOrder(another.status_);
 		if (thisOrder < anotherOrder) {
 			return -1;
 		}
 		if (thisOrder > anotherOrder) {
 			return 1;
-		}
+		}*/
 		return this.name_.compareToIgnoreCase(another.name_);
 	}
 	
-	private static int getOrder(int status) {
+	/*private static int getOrder(int status) {
 		switch (status) {
 			case R.string.status_finished:
 			case R.string.status_seeding:
@@ -181,5 +217,5 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 			default:
 				return 0;
 		}		
-	}
+	}*/
 }

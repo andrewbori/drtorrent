@@ -5,6 +5,7 @@ import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Vector;
 
 import android.util.Log;
@@ -14,7 +15,7 @@ public class Piece {
 	private final static String LOG_TAG = "Piece";
 	
 	public final static int DEFALT_BLOCK_LENGTH = 16384;	// default download block size 16kB (2^14)
-	public final static int MAX_PIECE_SIZE_TO_READ_AT_ONCE = 16384; // 16 kB //1048576; // 1MB
+	public final static int MAX_PIECE_SIZE_TO_READ_AT_ONCE = 16384; // 16 kB
 	
 	final private Torrent torrent_;
 	final private byte[] hash_;
@@ -27,9 +28,9 @@ public class Piece {
 	private boolean isRequested_ = false;
 	private boolean isComplete_ = false;
 	
-	private Vector<Block> blocks_ = null;
-	private Vector<Block> unrequestedBlocks_ = null;
-	private Vector<Block> downloadedBlocks_ = null;
+	private Vector<Block> downloadingBlocks_ = null;
+	private Bitfield unrequestedBitfield_ = null;
+	private Bitfield downloadedBitfield_ = null;
 	
 	private Vector<Peer> peers_ = null;
 	
@@ -51,29 +52,17 @@ public class Piece {
 		fragments_ = new ArrayList<FileFragment>();
 	}
 	
-	/** Calculates the blocks of the piece. */
+	/** Calculates the blocks of the piece. - initialize the piece for download... */
 	public void calculateBlocks() {		
 		isRequested_ = true;
 		Log.v(LOG_TAG, "Calculate blocks.");
-		blocks_ = new Vector<Block>();
-		unrequestedBlocks_ = new Vector<Block>();
-		downloadedBlocks_ = new Vector<Block>();
 		
 		int blockCount = size_ / DEFALT_BLOCK_LENGTH;
 		if (size_ % DEFALT_BLOCK_LENGTH > 0) blockCount++;
 		
-		Block block;
-		for (int i = 0; i < blockCount; i++) {
-			block = null;
-			if (i + 1 < blockCount) {
-				block = new Block(this, i * DEFALT_BLOCK_LENGTH, DEFALT_BLOCK_LENGTH);
-			} else {
-				block = new Block(this, i * DEFALT_BLOCK_LENGTH, size_ - (i * DEFALT_BLOCK_LENGTH));
-			}
-			blocks_.addElement(block);
-			unrequestedBlocks_.addElement(block);
-		}
-		block = null;
+		unrequestedBitfield_ = new Bitfield(blockCount, true);
+		downloadedBitfield_ = new Bitfield(blockCount, false);
+		downloadingBlocks_ = new Vector<Block>();
 		
 		peers_ = new Vector<Peer>();
 	}
@@ -101,10 +90,11 @@ public class Piece {
 	 */
 	public int appendBlock(final byte[] data, final Block block, final Peer peer) {
 		// If received an already received part.
-		if (blocks_ == null || !blocks_.contains(block)) {
+		if (downloadingBlocks_ == null || !downloadingBlocks_.contains(block)) {
 			Log.v(LOG_TAG, "Wrong block has been received: " + block.begin());
 			return Torrent.ERROR_NONE;
 		}
+		downloadingBlocks_.removeElement(block);
 
 		int blockPosition = 0;
 		while (blockPosition < data.length) {
@@ -127,14 +117,6 @@ public class Piece {
 			}
 
 			if (file != null) {
-				// set the file to downloading state
-				/**
-				 * TODO: what if file is set not to be downloaded?
-				 */
-				if (file.getDownloadState() != File.STATUS_DOWNLOADING) {
-					file.setDownloadState(File.STATUS_DOWNLOADING);
-				}
-
 				int res = Torrent.ERROR_NONE;
 				long fileRemainingLength = file.getSize() - filePosition; // Remaining length from the position
 
@@ -164,14 +146,14 @@ public class Piece {
 		addPeer(peer);
 		
 		synchronized (this) {
-			if (!downloadedBlocks_.contains(block)) {
-				downloadedBlocks_.addElement(block);
+			if (downloadedBitfield_ != null && !downloadedBitfield_.isBitSet(block.index())) {
+				downloadedBitfield_.setBit(block.index());
 				torrent_.updateBytesDownloaded(data.length);
 				downloaded_ += data.length;
 			}
 	
 			// If the piece is complete...
-			if (downloadedBlocks_.size() >= blocks_.size()) {
+			if (downloadedBitfield_ != null && downloadedBitfield_.isFull()) {
 				// Hash check
 				boolean isHashCorrect = checkHash();
 				if (isHashCorrect) {
@@ -179,14 +161,15 @@ public class Piece {
 					//setFilesDownloaded();
 					torrent_.pieceDownloaded(this, false);
 					
-					blocks_ = null;
-					downloadedBlocks_ = null;
+					downloadingBlocks_ = null;
+					downloadedBitfield_ = null;
+					unrequestedBitfield_ = null;
 					
 				} else {
 					isRequested_ = false;
-					blocks_ = null;
-					downloadedBlocks_ = null;
-					unrequestedBlocks_ = null;
+					downloadingBlocks_ = null;
+					downloadedBitfield_ = null;
+					unrequestedBitfield_ = null;
 						
 					torrent_.pieceHashFailed(this);
 				}
@@ -194,9 +177,7 @@ public class Piece {
 				for (int i = 0; i < peers_.size(); i++) {
 					peers_.elementAt(i).pieceHashCorrect(isHashCorrect);
 				}
-				if (isHashCorrect) {
-					peers_ = null;
-				}
+				peers_ = null;
 			}
 		}
 			
@@ -245,7 +226,6 @@ public class Piece {
 					length = 0;
 					buf = null;
 				}
-
 				break;
 			}
 
@@ -342,13 +322,11 @@ public class Piece {
 	/** Returns whether the piece has unrequested block(s). */
 	public boolean hasUnrequestedBlock() {
 		if (isRequested_) {
-			if (unrequestedBlocks_.size() > 0) {
-				return true;
+			if (unrequestedBitfield_ != null) {
+				return !unrequestedBitfield_.isNull();
 			}
 		} else {
-			if (!isComplete_) {
-				return true;
-			}
+			return !isComplete_;
 		}
 		
 		return false;
@@ -363,12 +341,27 @@ public class Piece {
 				return null;
 			}
 		}
-		synchronized(unrequestedBlocks_) {
-			if (!unrequestedBlocks_.isEmpty()) {
-				final Block block = unrequestedBlocks_.elementAt(0);
-				unrequestedBlocks_.removeElementAt(0);
-				return block;
+		
+		int index = -1;
+		if (unrequestedBitfield_ != null) {
+			synchronized(unrequestedBitfield_) {
+			
+				index = unrequestedBitfield_.indexOfFirstSet();
+				if (index != -1) {
+					unrequestedBitfield_.unsetBit(index);
+				}
 			}
+		}
+				
+		if (index != -1) {
+			int length = DEFALT_BLOCK_LENGTH;
+			if (index + 1 == unrequestedBitfield_.getLengthInBits()) {
+				length = size_ - (index * DEFALT_BLOCK_LENGTH);
+			}
+			final Block block = new Block(this, index * DEFALT_BLOCK_LENGTH, length);
+			downloadingBlocks_.addElement(block);
+			
+			return block;
 		}
 		
 		return null;
@@ -376,8 +369,10 @@ public class Piece {
 	
 	/** Adds a block to the the array of blocks to be requested. */
 	public void addBlockToRequest(final Block block) {
-		if (unrequestedBlocks_ != null) {
-			unrequestedBlocks_.addElement(block);
+		if (unrequestedBitfield_ != null) {
+			synchronized (unrequestedBitfield_) {
+				unrequestedBitfield_.setBit(block.index());
+			}
 		}
 	}
 	
@@ -469,6 +464,36 @@ public class Piece {
 	public void addPeer(final Peer peer) {
 		if (peers_ != null && !peers_.contains(peer)) {
 			peers_.addElement(peer);
+		}
+	}
+	
+	/** Compares two pieces by their priority. */
+	public static class PiecePriorityComparator implements Comparator<Piece> {
+		@Override
+		public int compare(Piece lhs, Piece rhs) {
+			if (lhs.priority_ > rhs.priority_) {
+				return -1;
+			} else if (lhs.priority_ == rhs.priority_) {
+				return 0;
+			}
+			return 1;
+		}
+	}
+	
+	/** Compares two pieces by their index and priority. */
+	public static class PieceSequenceAndPriorityComparator implements Comparator<Piece> {
+		@Override
+		public int compare(Piece lhs, Piece rhs) {
+			if (lhs.priority_ > rhs.priority_) {
+				return -1;
+			} else if (lhs.priority_ == rhs.priority_) {
+				if (lhs.index_ < rhs.index_) {
+					return -1;
+				} else if (lhs.index_ == rhs.index_) {
+					return 0;
+				}
+			}
+			return 1;
 		}
 	}
 }

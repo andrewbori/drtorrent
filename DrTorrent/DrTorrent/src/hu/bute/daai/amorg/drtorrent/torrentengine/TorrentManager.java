@@ -13,6 +13,7 @@ import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Random;
 import java.util.Vector;
@@ -186,6 +187,7 @@ public class TorrentManager {
 	private void saveState() {
 		Log.v(LOG_TAG, "Saving state...");
 		
+		Collections.sort(torrents_);
 		final JSONArray jsonArray = new JSONArray();
 		for (int i = 0; i < torrents_.size(); i++) {
 			final Torrent torrent = torrents_.get(i);
@@ -483,13 +485,21 @@ public class TorrentManager {
 	}
 	
 	/** Closes a torrent. */
-	public void closeTorrent(final int torrentId) {
+	public void closeTorrent(final int torrentId, final boolean deleteFiles) {
 		final Torrent torrent = getTorrent(torrentId);
 		if (torrent != null) {
 			torrents_.removeElement(torrent);
 			torrentService_.removeTorrentItem(torrent);
 			torrentService_.removeTorrentContent(torrent.getInfoHashString());
 			torrent.stop();
+			
+			if (deleteFiles && torrent.isValid()) {
+				(new Thread() {
+					public void run() {
+						torrent.removeFiles();
+					};
+				}).start();
+			}
 			
 			latestSaveTime_ = SystemClock.elapsedRealtime() - STATE_SAVING_INTERVAL;
 		}
@@ -641,7 +651,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR1230-";	// TODO: Refresh!
+        peerId_ = "-DR1240-";	// TODO: Refresh!
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }

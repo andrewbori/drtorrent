@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="has_two_panes">false</bool>
+    <bool name="horizontal_style">false</bool>
+    <string name="adSize">SMART_BANNER</string>
+</resources>

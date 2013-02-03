@@ -132,7 +132,7 @@ public class Peer {
 			return null;
 		}
 		
-		ArrayList<Block> blocksToDownload = torrent_.getBlockToDownload(this, number);
+		ArrayList<Block> blocksToDownload = torrent_.getBlocksToDownload(this, number);
 
 		if (!blocksToDownload.isEmpty()) {
 			blocksDownloading_.addAll(blocksToDownload);
