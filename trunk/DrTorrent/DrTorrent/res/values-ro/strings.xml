@@ -103,14 +103,9 @@
 	<string name="search_engine">Motor de căutare</string>
 	<string name="added">Adăugat:</string>
 	<string name="no_results">Niciun rezultat</string>
-	<string name="search_unavailable">Căutați indisponibil</string>
 	<string name="clear_history">Ștergeți istoricul căutărilor</string>
 	<string name="clear_history_message">Sigur vrei să ștergeți istoricul de căutare?</string>
 	<string name="show_results_in_browser">Afișați rezultatele în browser</string>
 	<string name="downloading_the_torrent">Descărcarea fișier torrent…</string>
-	<string name="downloading_the_app">Descărcarea aplicației…</string>
-	<string name="could_not_download_app">Nu a putut descărca aplicația.</string>
-	<string name="install">Instalați</string>
-	<string name="search_update_message">Transdroid Torrent Search nu este cea mai recentă versiune. Actualizați aplicația astfel încât să puteți utiliza funcția de căutare!</string>
-	<string name="search_install_message">Transdroid Torrent Search nu poate fi găsit. Instalați aplicația astfel încât să puteți utiliza funcția de căutare!</string>
+	<string name="delete_downloaded_files">Ştergeţi fişierele descărcate</string>
 </resources>

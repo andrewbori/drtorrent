@@ -1,11 +1,12 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.R;
-import hu.bute.daai.amorg.drtorrent.TorrentDetailsPagerAdapter;
+import hu.bute.daai.amorg.drtorrent.adapter.TorrentPagerAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
+import hu.bute.daai.amorg.drtorrent.service.TorrentClient;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
@@ -17,43 +18,47 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.RemoteException;
+import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
-import android.text.InputType;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
+import android.widget.CheckBox;
 
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
-import com.viewpagerindicator.TitlePageIndicator;
 
 public class TorrentDetailsActivity extends TorrentHostActivity {
 	
-	private TorrentDetailsPagerAdapter pagerAdapter_;
-	private int updateField_ = 0;
+	private TorrentPagerAdapter pagerAdapter_ = null;
 	
 	boolean isStopped_ = false;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);	
+		super.onCreate(savedInstanceState);
+		
+		// If we are in two-pane layout mode, this activity is no longer necessary
+        if (getResources().getBoolean(R.bool.has_two_panes)) {
+        	Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent.putExtra(MainActivity.KEY_TORRENT_ID, torrentId_);
+            startActivity(intent);
+            
+            isShuttingDown_ = true;
+            return;
+        }
+		
 		setContentView(R.layout.torrent_details);
 		getSupportActionBar().setDisplayShowTitleEnabled(false);
 		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 		
-		pagerAdapter_ = new TorrentDetailsPagerAdapter(this);
-        ViewPager viewPager = (ViewPager) findViewById(R.id.torrent_details_viewpager);
-		TitlePageIndicator indicator = (TitlePageIndicator) findViewById(R.id.torrent_details_indicator);
+		pagerAdapter_ = new TorrentPagerAdapter(this);
+        ViewPager viewPager = (ViewPager) findViewById(R.id.viewPager);
+        PagerTabStrip pagerTabStrip = (PagerTabStrip) findViewById(R.id.pagerTabStrip);
+        pagerTabStrip.setTabIndicatorColor(0xFF6899FF);
         viewPager.setAdapter(pagerAdapter_);
-        indicator.setViewPager(viewPager);
-	}
-	
-	@Override
-	protected void onStart() {
-		super.onStart();
-
-		updateTorrent(updateField_);
+        
+        clientType_ = TorrentClient.CLIENT_TYPE_SINGLE;
 	}
 	
 	@Override
@@ -104,8 +109,9 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 	    switch (item.getItemId()) {
 	        case android.R.id.home:
 	            // app icon in action bar clicked; go home
-	            Intent intent = new Intent(this, DrTorrentActivity.class);
+	            Intent intent = new Intent(this, MainActivity.class);
 	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+	            intent.putExtra(MainActivity.KEY_TORRENT_ID, torrentId_);
 	            startActivity(intent);
 	            return true;
 	        default:
@@ -138,17 +144,22 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				break;
 				
 			case MENU_DELETE_TORRENT:
+				LayoutInflater inflater = TorrentDetailsActivity.this.getLayoutInflater();
+				ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.dialog_remove_torrent, null);
+				final CheckBox cbDeleteFiles = (CheckBox) layout.findViewById(R.id.dialog_remove_torrent_cbDeleteFiles);
+				
 				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
-				builder.setMessage(R.string.remove_dialog_title).
-				setTitle(getString(R.string.remove)).
+				builder.setTitle(getString(R.string.remove)).
+				setView(layout).
 				setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
+						bundle.putBoolean(TorrentService.MSG_KEY_DELETE_FILES, cbDeleteFiles.isChecked());
 						msg.what = TorrentService.MSG_CLOSE_TORRENT;
 						try {
 							serviceMessenger_.send(msg);
 						} catch (RemoteException e) {}
-						Intent intent = new Intent(context_, DrTorrentActivity.class);
+						Intent intent = new Intent(context_, MainActivity.class);
 			            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			            startActivity(intent);
 					}
@@ -165,130 +176,14 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				break;
 				
 			case MENU_ADD_PEER:
-				builder = new AlertDialog.Builder(context_);
-				builder.setTitle(R.string.menu_add_peer);
-				
-				LayoutInflater inflater = (LayoutInflater) context_.getSystemService(LAYOUT_INFLATER_SERVICE);
-				View layout = inflater.inflate(R.layout.dialog_add_peer, (ViewGroup) findViewById(R.id.dialog_add_peer_root));
-				builder.setView(layout);
-				final EditText etAddress = (EditText) layout.findViewById(R.id.dialog_add_peer_ip);
-				final EditText etPort = (EditText) layout.findViewById(R.id.dialog_add_peer_port);
-				
-				builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						try {
-							String address = etAddress.getText().toString();
-							int port = Integer.valueOf(etPort.getText().toString());
-							if ((address != null && address.length() > 0) && (port > 0 && port <= 65535)) {
-								msg.what = TorrentService.MSG_ADD_PEER;
-								bundle.putString(TorrentService.MSG_KEY_PEER_IP, address);
-								bundle.putInt(TorrentService.MSG_KEY_PEER_PORT, port);
-								try {
-									serviceMessenger_.send(msg);
-								} catch (RemoteException e) {}
-							}
-						} catch (Exception e) {}
-						dialog.dismiss();
-					}
-				}).
-				setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-					}
-				});
-				dialog_ = builder.create();
-				dialog_.show();
+				addPeer(torrentId_);
 				break;
 				
 			case MENU_ADD_TRACKER:
-				builder = new AlertDialog.Builder(context_);
-				builder.setTitle(R.string.menu_add_tracker);
-				
-				final EditText etTrackerUrl = new EditText(context_);
-				etTrackerUrl.setSingleLine(true);
-				etTrackerUrl.setHint("udp://...");
-				etTrackerUrl.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
-				builder.setView(etTrackerUrl);
-				
-				builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						String url = etTrackerUrl.getText().toString();
-						if (url != null && url.length() > 0) {
-							msg.what = TorrentService.MSG_ADD_TRACKER;
-							bundle.putString(TorrentService.MSG_KEY_TRACKER_URL, url);
-							try {
-								serviceMessenger_.send(msg);
-							} catch (RemoteException e) {}
-						}
-						dialog.dismiss();
-					}
-				}).
-				setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-					}
-				});
-				dialog_ = builder.create();
-				dialog_.show();
+				addTracker(torrentId_);
 				break;
 		}
 		return true;
-	}
-
-	/** Sends torrent file open request to the Torrent Service. */
-	public void updateTorrent(int updateField) {
-		updateField_ = updateField;
-		Message msg = Message.obtain();
-		Bundle b = new Bundle();
-		b.putInt(TorrentService.MSG_KEY_TORRENT_UPDATE, updateField);
-		msg.what = TorrentService.MSG_UPDATE_TORRENT;
-		msg.setData(b);
-		try {
-			serviceMessenger_.send(msg);
-		} catch (Exception e) {}
-	}
-	
-	/** Changes the priority of a file. */
-	public void changeFilePriority(FileListItem item) {
-		Message msg = Message.obtain();
-		Bundle b = new Bundle();
-		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
-		b.putSerializable(TorrentService.MSG_KEY_FILE_ITEM, item);
-		msg.what = TorrentService.MSG_CHANGE_FILE_PRIORITY;
-		msg.setData(b);
-		try {
-			serviceMessenger_.send(msg);
-		} catch (Exception e) {}
-	}
-	
-	/** Removes a tracker from the tracker list. */
-	public void updateTracker(int trackerId) {
-		Message msg = Message.obtain();
-		Bundle b = new Bundle();
-		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
-		b.putInt(TorrentService.MSG_KEY_TRACKER_ID, trackerId);
-		msg.what = TorrentService.MSG_UPDATE_TACKER;
-		msg.setData(b);
-		try {
-			serviceMessenger_.send(msg);
-		} catch (Exception e) {}
-	}
-	
-	/** Removes a tracker from the tracker list. */
-	public void removeTracker(int trackerId) {
-		Message msg = Message.obtain();
-		Bundle b = new Bundle();
-		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
-		b.putInt(TorrentService.MSG_KEY_TRACKER_ID, trackerId);
-		msg.what = TorrentService.MSG_REMOVE_TACKER;
-		msg.setData(b);
-		try {
-			serviceMessenger_.send(msg);
-		} catch (Exception e) {}
 	}
 	
 	@Override
@@ -309,26 +204,36 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			}
 		}
 
-		pagerAdapter_.refreshTorrentItem(item, isRemoved);
+		if (pagerAdapter_ != null) {
+			pagerAdapter_.refreshTorrentItem(item, isRemoved);
+		}
 	}
 	
 	@Override
 	protected void refreshPeerList(ArrayList<PeerListItem> itemList) {
-		pagerAdapter_.refreshPeerList(itemList);
+		if (pagerAdapter_ != null) {
+			pagerAdapter_.refreshPeerList(itemList);
+		}
 	}
 	
 	@Override
 	protected void refreshFileList(ArrayList<FileListItem> itemList) {
-		pagerAdapter_.refreshFileList(itemList);
+		if (pagerAdapter_ != null) {
+			pagerAdapter_.refreshFileList(itemList);
+		}
 	}
 	
 	@Override
 	protected void refreshTrackerList(ArrayList<TrackerListItem> itemList) {
-		pagerAdapter_.refreshTrackerList(itemList);
+		if (pagerAdapter_ != null) {
+			pagerAdapter_.refreshTrackerList(itemList);
+		}
 	}
 	
 	@Override
 	protected void refreshBitfield(Bitfield bitfield, Bitfield downloadingBitfield) {
-		pagerAdapter_.refreshBitfield(bitfield, downloadingBitfield);
+		if (pagerAdapter_ != null) {
+			pagerAdapter_.refreshBitfield(bitfield, downloadingBitfield);
+		}
 	}
 }

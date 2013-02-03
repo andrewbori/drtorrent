@@ -2,7 +2,6 @@ package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
-import hu.bute.daai.amorg.drtorrent.activity.task.ApkInstallerTask;
 import hu.bute.daai.amorg.drtorrent.adapter.SearchResultListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.item.SearchResultListItem;
 import hu.bute.daai.amorg.drtorrent.provider.TorrentSuggestionProvider;
@@ -232,7 +231,8 @@ public class SearchActivity extends SherlockActivity {
 	    }
 	
 		menu.add(Menu.NONE, MENU_REFRESH, Menu.NONE, R.string.refresh)
-			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+			.setIcon(R.drawable.ic_menu_refresh)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		
 		menu.add(Menu.NONE, MENU_SHOW_RESULTS, Menu.NONE, R.string.show_results_in_browser)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
@@ -321,7 +321,7 @@ public class SearchActivity extends SherlockActivity {
 	    switch (item.getItemId()) {
 	        case android.R.id.home:
 	            // app icon in action bar clicked; go home
-	            Intent intent = new Intent(this, DrTorrentActivity.class);
+	            Intent intent = new Intent(this, MainActivity.class);
 	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 	            startActivity(intent);
 	            return true;
@@ -332,7 +332,7 @@ public class SearchActivity extends SherlockActivity {
 	
 	@Override
 	public void onBackPressed() {
-		Intent intent = new Intent(this, DrTorrentActivity.class);
+		Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
 		super.onBackPressed();
@@ -340,15 +340,13 @@ public class SearchActivity extends SherlockActivity {
 	
 	private void downloadTorrent(String url) {
 		Uri uri = Uri.parse(url);
-		Intent intent = new Intent(this, DrTorrentActivity.class);
+		Intent intent = new Intent(this, MainActivity.class);
 		intent.setData(uri);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
 	}
 	
 	public class SearchTask extends AsyncTask<String, Integer, ArrayList<SearchResultListItem>> {
-
-		private boolean shouldInstall_ = false;
 		
 		@Override
 		protected void onPreExecute() {
@@ -369,16 +367,14 @@ public class SearchActivity extends SherlockActivity {
 				
 				Cursor result = null;
 				try {
-					Uri uri = Uri.parse("content://org.transdroid.search.torrentsearchprovider/search/" + query);
+					Uri uri = Uri.parse("content://org.transdroid.search.TorrentSearchProvider/search/" + query);
 					ContentProviderClient client = getContentResolver().acquireContentProviderClient(uri);
 					if (client != null) {
 						result = client.query(uri, null, "SITE = ?", new String[] { siteCode }, "BySeeders");
 					} else {
-						shouldInstall_ = true;
 						return null;
 					}
 				} catch (Exception e) {
-					shouldInstall_ = true;
 					return null;
 				}
 				
@@ -404,34 +400,13 @@ public class SearchActivity extends SherlockActivity {
 			progress_.setVisibility(ProgressBar.GONE);
 			items_ = results;
 			
-			if (results == null && shouldInstall_) {
-				AlertDialog.Builder builder = new AlertDialog.Builder(SearchActivity.this);
-				builder.setTitle(R.string.search_unavailable)
-				.setMessage(R.string.search_install_message)
-				.setPositiveButton(R.string.install, new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						new ApkInstallerTask(SearchActivity.this).execute("http://transdroid-search.googlecode.com/files/transdroid-search-1.10.apk");
-						dialog.dismiss();
-					}
-				})
-				.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-					}
-				});
-				dialog_ = builder.create();
-				dialog_.show();
+			if (results != null && !results.isEmpty()) {
+				ArrayAdapter<SearchResultListItem> adapter = new SearchResultListAdapter<SearchResultListItem>(SearchActivity.this, results);
+				lvResults_.setAdapter(adapter);
+				
+				lvResults_.setVisibility(ListView.VISIBLE);
 			} else {
-				if (results != null && !results.isEmpty()) {
-					ArrayAdapter<SearchResultListItem> adapter = new SearchResultListAdapter<SearchResultListItem>(SearchActivity.this, results);
-					lvResults_.setAdapter(adapter);
-					
-					lvResults_.setVisibility(ListView.VISIBLE);
-				} else {
-					tvMessage_.setVisibility(TextView.VISIBLE);
-				}
+				tvMessage_.setVisibility(TextView.VISIBLE);
 			}
 			
 			super.onPostExecute(results);

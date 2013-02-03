@@ -4,6 +4,7 @@ import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.FileSettingsListAdapter;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.service.TorrentClient;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.File;
 
@@ -38,6 +39,7 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 
 	private final static int RESULT_FOLDER_CHOOSER_ACTIVITY = 1;
 	
+	private int clientId_ = 0;
 	private TorrentListItem torrent_ = null;
 	private ArrayList<FileListItem> fileList_ = null;
 	private ListView fileListView_ = null;
@@ -171,8 +173,10 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 			msg.what = TorrentService.MSG_SUBSCRIBE_CLIENT;
 
 			Bundle bundle = new Bundle();
+			clientId_ = TorrentClient.generateId();
+			bundle.putInt(TorrentService.MSG_KEY_CLIENT_ID, clientId_);
 			bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrent_.getId());
-			bundle.putBoolean(TorrentService.MSG_KEY_IS_SETTINGS, true);
+			bundle.putInt(TorrentService.MSG_KEY_CLIENT_TYPE, TorrentClient.CLIENT_TYPE_SETTINGS);
 			msg.setData(bundle);
 
 			msg.replyTo = clientMessenger_;
@@ -200,6 +204,7 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 				msg.what = TorrentService.MSG_UNSUBSCRIBE_CLIENT;
 
 				Bundle bundle = new Bundle();
+				bundle.putInt(TorrentService.MSG_KEY_CLIENT_ID, clientId_);
 				bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrent_.getId());
 				msg.setData(bundle);
 

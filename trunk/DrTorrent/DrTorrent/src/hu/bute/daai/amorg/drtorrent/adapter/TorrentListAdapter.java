@@ -7,7 +7,10 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.content.res.TypedArray;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,7 +21,7 @@ import android.widget.TextView;
 
 /** Adapter of the torrent list. */
 public class TorrentListAdapter<T> extends ArrayAdapter<T> {
-	private final int rowResource = R.layout.list_item_torrent;
+	private final int rowResource;
 	private final int tvNameResource = R.id.list_item_torrent_tvName;
 	private final int tvStatusResource = R.id.list_item_torrent_tvStatus;
 	private final int tvPercentResource = R.id.list_item_torrent_tvPercent;
@@ -39,10 +42,11 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 	private Activity context_;
 	private ArrayList<T> torrents_;
 
-	public TorrentListAdapter(Activity context, ArrayList<T> torrents) {
-		super(context, R.layout.list_item_torrent, torrents);
+	public TorrentListAdapter(Activity context, int rowResource, ArrayList<T> torrents) {
+		super(context, rowResource, torrents);
 
 		this.context_ = context;
+		this.rowResource = rowResource;
 		this.torrents_ = torrents;
 	}
 
@@ -51,6 +55,13 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		if (reusableView == null) {
 			LayoutInflater inflater = context_.getLayoutInflater();
 			reusableView = inflater.inflate(this.rowResource, null);
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+				int[] attrs = new int[] { R.attr.activatedBackgroundIndicator };
+				TypedArray ta = context_.obtainStyledAttributes(attrs);
+				Drawable drawableFromTheme = ta.getDrawable(0);
+				reusableView.setBackgroundDrawable(drawableFromTheme);
+				ta.recycle();
+			}
 		}
 
 		TorrentListItem item = (TorrentListItem) torrents_.get(position);

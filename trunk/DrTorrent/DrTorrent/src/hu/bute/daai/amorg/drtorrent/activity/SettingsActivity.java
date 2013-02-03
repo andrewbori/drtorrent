@@ -3,6 +3,7 @@ package hu.bute.daai.amorg.drtorrent.activity;
 import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
@@ -35,6 +36,13 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		
 		addPreferencesFromResource(R.xml.preferences);
 		
+		try {
+			ActionBar actionBar = getActionBar();
+			actionBar.setDisplayHomeAsUpEnabled(true);
+		} catch (Error e) {
+			
+		}
+		
 		Preference folderPicker = findPreference("download_folder");
 		folderPicker.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
 	        @Override
@@ -56,6 +64,18 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		findPreference("search_engine").setSummary(getSearchEngine());
 	}
 	
+	@Override
+	public boolean onOptionsItemSelected(android.view.MenuItem item) {
+		switch (item.getItemId()) {
+	        case android.R.id.home:
+	            // app icon in action bar clicked; go home
+	        	onBackPressed();
+	            return true;
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
+	}
+		
 	@Override
 	protected void onStart() {
 		getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);

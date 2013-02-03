@@ -76,4 +76,12 @@ public class PiecesView extends View {
 		downloadingBitfield_ = downloadingBitfield;
 		invalidate();
 	}
+
+	public void reset() {
+		bitfield_ = null;
+		downloadingBitfield_ = null;
+		isMeasured_ = false;
+		
+		this.invalidate();
+	}
 }

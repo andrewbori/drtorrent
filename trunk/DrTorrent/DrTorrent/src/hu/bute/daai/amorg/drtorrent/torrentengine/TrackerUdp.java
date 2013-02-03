@@ -113,7 +113,7 @@ public class TrackerUdp extends Tracker {
 	
 	/** Processes the response of the tracker */
 	public int processResponse(final byte[] response) {
-		if (response.length < 8) {
+		if (response == null || response.length < 8) {
 			return ERROR_WRONG_CONTENT;
 		}
 		

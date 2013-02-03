@@ -59,6 +59,10 @@ public class Block {
 		return piece_.index();
 	}
 	
+	public int index() {
+		return begin_ / Piece.DEFALT_BLOCK_LENGTH;
+	}
+	
 	public int begin() {
 		return begin_;
 	}

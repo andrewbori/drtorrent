@@ -4,22 +4,27 @@
     android:orientation="vertical"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
-    <com.viewpagerindicator.TitlePageIndicator
-        android:id="@+id/torrent_details_indicator"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content" />
+
     <android.support.v4.view.ViewPager
-        android:id="@+id/torrent_details_viewpager"
+        android:id="@+id/viewPager"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+        
+        <android.support.v4.view.PagerTabStrip
+        	android:id="@+id/pagerTabStrip"
+        	android:layout_gravity="top" 
+        	android:layout_width="wrap_content"
+        	android:layout_height="wrap_content"
+        	android:textAppearance="@style/PagerTabStripText" />
+        
+    </android.support.v4.view.ViewPager>
     
     <com.google.ads.AdView android:id="@+id/adView"
-                         android:layout_width="wrap_content"
+                         android:layout_width="match_parent"
                          android:layout_height="wrap_content"
                          ads:adUnitId="a150b0b5a8dc405"
-                         ads:adSize="SMART_BANNER"
+                         ads:adSize="@string/adSize"
                          ads:testDevices="TEST_EMULATOR, 118365C26C39E4F219F83BAE00C80925"
-                         ads:loadAdOnCreate="true"
-                         android:visibility="gone"/>
+                         ads:loadAdOnCreate="true" />
 </LinearLayout>

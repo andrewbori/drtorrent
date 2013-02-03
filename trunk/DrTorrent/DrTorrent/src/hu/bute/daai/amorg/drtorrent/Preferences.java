@@ -7,6 +7,8 @@ import android.preference.PreferenceManager;
 
 public class Preferences {
 	
+	public static final String MY_AD_UNIT_ID = "a150b0b5a8dc405";
+	
 	private static SharedPreferences preferences_ = null;
 	
 	private Preferences() {}

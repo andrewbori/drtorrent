@@ -16,6 +16,7 @@ import hu.bute.daai.amorg.drtorrent.network.MagnetUri;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -31,7 +32,7 @@ import android.util.Log;
 import android.webkit.URLUtil;
 
 /** Class representing a torrent. */
-public class Torrent {
+public class Torrent implements Comparable<Torrent> {
 	private final static String LOG_TAG = "Torrent";
 
 	public final static int ERROR_NONE = 0;
@@ -62,7 +63,6 @@ public class Torrent {
 	private int metadataSize_ = 0;
 	private boolean shouldStart_ = false;
 
-	private String torrentFilePath_;
 	private boolean isSingleFile_ = true;
 	private String downloadFolder_;
 	private String name_;
@@ -86,7 +86,6 @@ public class Torrent {
 	private Speed uploadSpeed_;
 	final private Vector<File> files_;
 	final private Vector<Piece> pieces_;
-	final private Vector<Piece> activePieces_;
 	final private Vector<Piece> downloadablePieces_;
 	final private Vector<Piece> rarestPieces_;
 	final private Vector<Piece> downloadingPieces_;
@@ -95,6 +94,7 @@ public class Torrent {
 	private Bitfield downloadingBitfield_;
 	private Bitfield activeBitfield_;
 
+	private boolean wasStreamingMode_ = true;
 	private long elapsedTime_ = 0;
 	private long lastTime_ = 0;
 
@@ -117,11 +117,8 @@ public class Torrent {
 			downloadFolder_ = "";
 		}
 
-		torrentFilePath_ = filePath;
-
 		files_ = new Vector<File>();
 		pieces_ = new Vector<Piece>();
-		activePieces_ = new Vector<Piece>();
 		downloadablePieces_ = new Vector<Piece>();
 		rarestPieces_ = new Vector<Piece>();
 		downloadingPieces_ = new Vector<Piece>();
@@ -246,7 +243,7 @@ public class Torrent {
 		infoHashByteArray_ = SHA1.resultToByte(hashResult);
 		//hashResult = null;
 		
-		infoHashString_ = infoHashString_.toUpperCase();
+		infoHashString_ = infoHashString_.toUpperCase(Locale.ENGLISH);
 		Log.v(LOG_TAG, "xt = " + infoHashString_);
 		Log.v(LOG_TAG, "xt = " + SHA1.resultToString(hashResult));
 		
@@ -410,7 +407,6 @@ public class Torrent {
 			}
 
 			pieces_.addElement(piece);
-			downloadablePieces_.addElement(piece);
 		}
 		
 		Quantity pieceLength = new Quantity(pieceLength_, Quantity.SIZE);
@@ -428,38 +424,42 @@ public class Torrent {
 
 	/** Sets the active pieces according to the selected file list of the torrent. */
 	protected void setTorrentActivePieces() {
-		synchronized (activePieces_) {
-			synchronized (downloadablePieces_) {
-				synchronized (downloadingPieces_) {
-					activeSize_ = 0;
-					activeDownloadedSize_ = 0;
-					activePieces_.removeAllElements();
-					activeBitfield_ = new Bitfield(pieces_.size(), false);
-					Piece piece;
-					for (int i = 0; i < pieces_.size(); i++) {
-						piece = pieces_.get(i);
-						piece.calculatePriority();
-						if (piece.priority() > File.PRIORITY_SKIP) {
-							activePieces_.addElement(piece);
+		synchronized (downloadablePieces_) {
+			synchronized (downloadingPieces_) {
+				activeSize_ = 0;
+				activeDownloadedSize_ = 0;
+				activeBitfield_ = new Bitfield(pieces_.size(), false);
+				Piece piece;
+				for (int i = 0; i < pieces_.size(); i++) {
+					piece = pieces_.get(i);
+					piece.calculatePriority();
+					if (piece.priority() > File.PRIORITY_SKIP) {
+						activeSize_ += piece.size();
+						activeDownloadedSize_ += piece.downloaded();
+						if (!bitfield_.isBitSet(i)) {
 							activeBitfield_.setBit(piece.index());
-							activeSize_ += piece.size();
-							activeDownloadedSize_ += piece.downloaded();
-							if (!bitfield_.isBitSet(i)) {
-								if (!downloadablePieces_.contains(piece) && !downloadingPieces_.contains(piece)) {
-									downloadablePieces_.addElement(piece);
+							if (!downloadablePieces_.contains(piece) && !downloadingPieces_.contains(piece)) {
+								downloadablePieces_.addElement(piece);
 
-									if (status_ == R.string.status_seeding) {
-										status_ = R.string.status_downloading;
-									}
+								if (status_ == R.string.status_seeding) {
+									status_ = R.string.status_downloading;
 								}
 							}
-						} else {
-							downloadablePieces_.removeElement(piece);
-							downloadingPieces_.removeElement(piece);
 						}
+					} else {
+						downloadablePieces_.removeElement(piece);
+						downloadingPieces_.removeElement(piece);
 					}
 				}
 			}
+		}
+		wasStreamingMode_ = Preferences.isStreamingMode();
+		if (wasStreamingMode_) {
+			Collections.sort(downloadablePieces_, new Piece.PieceSequenceAndPriorityComparator());
+			rarestPieces_.removeAllElements();
+		} else {
+			Collections.shuffle(downloadablePieces_);
+			Collections.sort(downloadablePieces_, new Piece.PiecePriorityComparator());
 		}
 
 		if (isComplete()) {
@@ -907,7 +907,7 @@ public class Torrent {
 	}
 	
 	/** Returns a downloadable block for the given peer. */
-	public synchronized ArrayList<Block> getBlockToDownload(final Peer peer, final int number) {
+	public synchronized ArrayList<Block> getBlocksToDownload(final Peer peer, final int number) {
 		final ArrayList<Block> blocks = new ArrayList<Block>();
 		Block block = null;
 		Piece piece = null;
@@ -915,119 +915,101 @@ public class Torrent {
 		if (downloadablePieces_.size() > 0) {
 			// NORMAL MODE
 
-			for (int priority = File.PRIORITY_HIGH; priority >= File.PRIORITY_LOW; priority--) {
-				if (Preferences.isStreamingMode()) {
-					// STREAMING MODE
+			if (Preferences.isStreamingMode()) {
+				// STREAMING MODE
+				if (!wasStreamingMode_) {
+					Collections.sort(downloadablePieces_, new Piece.PieceSequenceAndPriorityComparator());
+					wasStreamingMode_ = true;
+					rarestPieces_.removeAllElements();
+				}
+			} else {
+				// RAREST/RANDOM PIECE FIRST MODE
+				if (wasStreamingMode_) {
+					Collections.shuffle(downloadablePieces_);
+					Collections.sort(downloadablePieces_, new Piece.PiecePriorityComparator());
+					wasStreamingMode_ = true;
+				}
+			}
+				
+			synchronized (downloadingPieces_) {
+				// Get a block from the downloading pieces
+				for (int i = 0; i < downloadingPieces_.size(); i++) {
+					piece = downloadingPieces_.elementAt(i);
+					if (!piece.canDownload()) {
+						continue;
+					}
+					if (peer.hasPiece(piece.index())) {
+						if (piece.hasUnrequestedBlock()) {
+							block = piece.getUnrequestedBlock();
+							if (block != null) {
+								requestedBlocks_.addElement(block);
 
-					for (int i = 0; i < activePieces_.size(); i++) {
-						piece = activePieces_.elementAt(i);
-						if (!piece.canDownload() || piece.priority() < priority) {
+								blocks.add(block);
+								if (blocks.size() >= number)
+									return blocks;
+							}
+						}
+					}
+				}
+			}
+
+			if (!wasStreamingMode_) {
+				if ((rarestPieces_.size() == 0 && downloadablePieces_.size() != 0) ||
+					(isChangedPeersHavingPiece_ && canCalculateRarestPieces_)) {
+					calculateRarestPieces();
+				}
+				synchronized (rarestPieces_) {
+					// Get a block from the rarest pieces
+					for (int i = 0; i < rarestPieces_.size(); i++) {
+						piece = rarestPieces_.elementAt(i);
+						if (!piece.canDownload()) {
+							//Log.v(LOG_TAG, "0Cant download " + priority);
 							continue;
 						}
-						if (downloadablePieces_.contains(piece) || downloadingPieces_.contains(piece)) {
-							if (peer.hasPiece(piece.index())) {
-								if (piece.hasUnrequestedBlock()) {
-									block = piece.getUnrequestedBlock();
-									if (block != null) {
-										if (downloadablePieces_.contains(piece)) {
-											downloadablePieces_.removeElement(piece);
-											downloadingPieces_.addElement(piece);
-											downloadingBitfield_.setBit(piece.index());
-										}
-										requestedBlocks_.addElement(block);
-
-										blocks.add(block);
-										if (blocks.size() >= number)
-											return blocks;
-									}
+						//Log.v(LOG_TAG, "0Can download " + priority);
+						if (peer.hasPiece(piece.index())) {
+							//Log.v(LOG_TAG, "0Can download has peer " + priority);
+							if (piece.hasUnrequestedBlock()) {
+								block = piece.getUnrequestedBlock();
+								if (block != null) {
+									downloadablePieces_.removeElement(piece);
+									rarestPieces_.removeElement(piece);
+									downloadingPieces_.addElement(piece);
+									downloadingBitfield_.setBit(piece.index());
+									requestedBlocks_.addElement(block);
+	
+									blocks.add(block);
+									if (blocks.size() >= number)
+										return blocks;
 								}
 							}
 						}
 					}
+				}
+			}
 
-				} else {
-					// RAREST/RANDOM PIECE FIRST MODE
-
-					synchronized (downloadingPieces_) {
-						// Get a block from the downloading pieces
-						for (int i = 0; i < downloadingPieces_.size(); i++) {
-							piece = downloadingPieces_.elementAt(i);
-							if (!piece.canDownload() || piece.priority() < priority) {
-								continue;
-							}
-							if (peer.hasPiece(piece.index())) {
-								if (piece.hasUnrequestedBlock()) {
-									block = piece.getUnrequestedBlock();
-									if (block != null) {
-										requestedBlocks_.addElement(block);
-
-										blocks.add(block);
-										if (blocks.size() >= number)
-											return blocks;
-									}
-								}
-							}
-						}
+			synchronized (downloadablePieces_) {
+				// Get a block from the downloadable pieces
+				for (int i = 0; i < downloadablePieces_.size(); i++) {
+					piece = downloadablePieces_.elementAt(i);
+					if (!piece.canDownload()) {
+						//Log.v(LOG_TAG, "Cant download " + priority);
+						continue;
 					}
+					//Log.v(LOG_TAG, "Can download " + priority);
+					if (peer.hasPiece(piece.index())) {
+						//Log.v(LOG_TAG, "Can download has peer " + priority);
+						if (piece.hasUnrequestedBlock()) {
+							block = piece.getUnrequestedBlock();
+							if (block != null) {
+								downloadablePieces_.removeElement(piece);
+								downloadingPieces_.addElement(piece);
+								downloadingBitfield_.setBit(piece.index());
+								requestedBlocks_.addElement(block);
 
-					if ((rarestPieces_.size() == 0 && downloadablePieces_.size() != 0) ||
-						(isChangedPeersHavingPiece_ && canCalculateRarestPieces_)) {
-						calculateRarestPieces();
-					}
-					synchronized (rarestPieces_) {
-						// Get a block from the rarest pieces
-						for (int i = 0; i < rarestPieces_.size(); i++) {
-							piece = rarestPieces_.elementAt(i);
-							if (!piece.canDownload() || piece.priority() < priority) {
-								//Log.v(LOG_TAG, "0Cant download " + priority);
-								continue;
-							}
-							//Log.v(LOG_TAG, "0Can download " + priority);
-							if (peer.hasPiece(piece.index())) {
-								//Log.v(LOG_TAG, "0Can download has peer " + priority);
-								if (piece.hasUnrequestedBlock()) {
-									block = piece.getUnrequestedBlock();
-									if (block != null) {
-										downloadablePieces_.removeElement(piece);
-										rarestPieces_.removeElement(piece);
-										downloadingPieces_.addElement(piece);
-										downloadingBitfield_.setBit(piece.index());
-										requestedBlocks_.addElement(block);
-
-										blocks.add(block);
-										if (blocks.size() >= number)
-											return blocks;
-									}
-								}
-							}
-						}
-					}
-
-					synchronized (downloadablePieces_) {
-						Collections.shuffle(downloadablePieces_);
-						// Get a block from the downloadable pieces
-						for (int i = 0; i < downloadablePieces_.size(); i++) {
-							piece = downloadablePieces_.elementAt(i);
-							if (!piece.canDownload() || piece.priority() < priority) {
-								//Log.v(LOG_TAG, "Cant download " + priority);
-								continue;
-							}
-							//Log.v(LOG_TAG, "Can download " + priority);
-							if (peer.hasPiece(piece.index())) {
-								//Log.v(LOG_TAG, "Can download has peer " + priority);
-								if (piece.hasUnrequestedBlock()) {
-									block = piece.getUnrequestedBlock();
-									if (block != null) {
-										downloadablePieces_.removeElement(piece);
-										downloadingPieces_.addElement(piece);
-										downloadingBitfield_.setBit(piece.index());
-										requestedBlocks_.addElement(block);
-
-										blocks.add(block);
-										if (blocks.size() >= number)
-											return blocks;
-									}
-								}
+								blocks.add(block);
+								if (blocks.size() >= number)
+									return blocks;
 							}
 						}
 					}
@@ -1281,8 +1263,6 @@ public class Torrent {
 						rarestPieces_.add(piece);
 					}
 				}
-
-				Collections.shuffle(rarestPieces_);
 			}
 		}
 	}
@@ -1334,6 +1314,7 @@ public class Torrent {
 		}
 
 		bitfield_.setBit(piece.index());
+		activeBitfield_.unsetBit(piece.index());
 		//downloadedPieceCount_++;
 
 		if (calledBySavedTorrent) {
@@ -1683,6 +1664,19 @@ public class Torrent {
 		}
 	}
 	
+	/** Removes the downloaded files of the torrent. (Call only when closing torrent and content should be removed!!!) */
+	public void removeFiles() {
+		if (valid_) {
+			for (File file : files_) {
+				fileManager_.removeFile(file.getFullPath());
+			}
+			if (downloadFolder_ != null && name_ != null && !name_.equals("")) {
+				String uniquePath = downloadFolder_.concat("/").concat(name_);
+				fileManager_.removeDirectories(new java.io.File(uniquePath));
+			}
+		}
+	}
+	
 	/** Returns information of the torrent in JSON. */
 	public JSONObject getStateInJSON() {
 		final JSONObject json = new JSONObject();
@@ -1810,5 +1804,15 @@ public class Torrent {
 		}
 		
 		return true;
+	}
+
+	@Override
+	public int compareTo(Torrent another) {
+		if (name_ == null) {
+			return -1;
+		} else if (another.name_ == null) {
+			return 1;
+		}
+		return name_.compareTo(another.name_);
 	}
 }

@@ -1,10 +1,12 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
 import hu.bute.daai.amorg.drtorrent.R;
+import hu.bute.daai.amorg.drtorrent.adapter.TorrentPagerAdapter.TorrentInteractionHandler;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
+import hu.bute.daai.amorg.drtorrent.service.TorrentClient;
 import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Bitfield;
 
@@ -26,11 +28,16 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.text.InputType;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
-import com.actionbarsherlock.app.SherlockActivity;
+import com.actionbarsherlock.app.SherlockFragmentActivity;
 
-public abstract class TorrentHostActivity extends SherlockActivity {
+public abstract class TorrentHostActivity extends SherlockFragmentActivity implements TorrentInteractionHandler {
 	public static final String KEY_TORRENT_ID = "id";
 	
 	protected static final int MENU_ADD_TORRENT     = 101;
@@ -56,6 +63,9 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 	
 	protected Activity context_ = this;
 	protected int torrentId_ = -1;
+	protected int clientType_ = TorrentClient.CLIENT_TYPE_ALL_AND_SINGLE;
+	protected int updateField_ = 0;
+	protected int clientId_ = 0;
 	
 	protected Messenger serviceMessenger_ = null;
 	protected final Messenger clientMessenger_ = new Messenger(new IncomingMessageHandler(this));
@@ -115,15 +125,22 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 
 			Message msg = Message.obtain();
 			msg.what = TorrentService.MSG_SUBSCRIBE_CLIENT;
+			Bundle bundle = new Bundle();
+			clientId_ = TorrentClient.generateId();
+			bundle.putInt(TorrentService.MSG_KEY_CLIENT_ID, clientId_);
+			bundle.putInt(TorrentService.MSG_KEY_CLIENT_TYPE, clientType_);
 			if (torrentId_ != -1) {
-				Bundle bundle = new Bundle();
 				bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
-				msg.setData(bundle);
 			}
+			msg.setData(bundle);
 			msg.replyTo = clientMessenger_;
 			try {
 				serviceMessenger_.send(msg);
 			} catch (RemoteException e) {}
+			
+			if (torrentId_ != -1 && updateField_ != 0) {
+				updateTorrent(updateField_);
+			}
 			
 			if (fileToOpen_ != null) {
 				openTorrent(fileToOpen_);
@@ -150,6 +167,7 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 				msg.what = TorrentService.MSG_UNSUBSCRIBE_CLIENT;
 				if (torrentId_ != -1) {
 					Bundle bundle = new Bundle();
+					bundle.putInt(TorrentService.MSG_KEY_CLIENT_ID, clientId_);
 					bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
 					msg.setData(bundle);
 				}
@@ -333,6 +351,147 @@ public abstract class TorrentHostActivity extends SherlockActivity {
 		});
 		dialog_ = builder.create();
 		dialog_.show();
+	}
+	
+	/** Adds a peer to the selected torrent. */ 
+	protected void addPeer(final int torrentId) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+		builder.setTitle(R.string.menu_add_peer);
+		
+		LayoutInflater inflater = (LayoutInflater) context_.getSystemService(LAYOUT_INFLATER_SERVICE);
+		View layout = inflater.inflate(R.layout.dialog_add_peer, (ViewGroup) findViewById(R.id.dialog_add_peer_root));
+		builder.setView(layout);
+		final EditText etAddress = (EditText) layout.findViewById(R.id.dialog_add_peer_ip);
+		final EditText etPort = (EditText) layout.findViewById(R.id.dialog_add_peer_port);
+		
+		builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				try {
+					String address = etAddress.getText().toString();
+					int port = Integer.valueOf(etPort.getText().toString());
+					if ((address != null && address.length() > 0) && (port > 0 && port <= 65535)) {
+						final Message msg = Message.obtain();
+						final Bundle bundle = new Bundle();
+						bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId);
+						msg.setData(bundle);
+						msg.what = TorrentService.MSG_ADD_PEER;
+						bundle.putString(TorrentService.MSG_KEY_PEER_IP, address);
+						bundle.putInt(TorrentService.MSG_KEY_PEER_PORT, port);
+						try {
+							serviceMessenger_.send(msg);
+						} catch (RemoteException e) {}
+					}
+				} catch (Exception e) {}
+				dialog.dismiss();
+			}
+		}).
+		setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.dismiss();
+			}
+		});
+		dialog_ = builder.create();
+		dialog_.show();
+	}
+	
+	/** Adds a tracker to the selected torrent. */ 
+	protected void addTracker(final int torrentId) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+		builder.setTitle(R.string.menu_add_tracker);
+		
+		final EditText etTrackerUrl = new EditText(context_);
+		etTrackerUrl.setSingleLine(true);
+		etTrackerUrl.setHint("udp://...");
+		etTrackerUrl.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+		builder.setView(etTrackerUrl);
+		
+		builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				String url = etTrackerUrl.getText().toString();
+				if (url != null && url.length() > 0) {
+					final Message msg = Message.obtain();
+					final Bundle bundle = new Bundle();
+					bundle.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId);
+					msg.setData(bundle);
+					msg.what = TorrentService.MSG_ADD_TRACKER;
+					bundle.putString(TorrentService.MSG_KEY_TRACKER_URL, url);
+					try {
+						serviceMessenger_.send(msg);
+					} catch (RemoteException e) {}
+				}
+				dialog.dismiss();
+			}
+		}).
+		setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {	
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.dismiss();
+			}
+		});
+		dialog_ = builder.create();
+		dialog_.show();
+	}
+	
+	/** Updates a tracker of the tracker list. */
+	@Override
+	public void updateTracker(int trackerId) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
+		b.putInt(TorrentService.MSG_KEY_TRACKER_ID, trackerId);
+		msg.what = TorrentService.MSG_UPDATE_TACKER;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+
+	/** Removes a tracker from the tracker list. */
+	@Override
+	public void removeTracker(int trackerId) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
+		b.putInt(TorrentService.MSG_KEY_TRACKER_ID, trackerId);
+		msg.what = TorrentService.MSG_REMOVE_TACKER;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+
+	/** Updates the update field of the torrent. */
+	@Override
+	public void updateTorrent(int updateField) {
+		updateField_ = updateField;
+		
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_CLIENT_ID, clientId_);
+		b.putInt(TorrentService.MSG_KEY_TORRENT_UPDATE, updateField);
+		msg.what = TorrentService.MSG_UPDATE_TORRENT;
+		msg.replyTo = clientMessenger_;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+	
+	/** Changes the priority of a file. */
+	@Override
+	public void changeFilePriority(FileListItem item) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId_);
+		b.putSerializable(TorrentService.MSG_KEY_FILE_ITEM, item);
+		msg.what = TorrentService.MSG_CHANGE_FILE_PRIORITY;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
 	}
 	
 	@Override

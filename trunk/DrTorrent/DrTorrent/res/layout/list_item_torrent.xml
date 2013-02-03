@@ -54,7 +54,7 @@
 	        android:layout_height="wrap_content"
 	        android:paddingLeft="2dp"
 			android:textColor="#FFFFFF"
-	        android:text="0%" />
+	        android:text="0 %" />
     </LinearLayout>
     
     <LinearLayout

@@ -9,7 +9,7 @@
 				    android:paddingLeft="2dp"
 				    android:paddingRight="2dp"
 				    android:paddingTop="4dp"
-				    android:paddingBottom="4dp">
+				    android:paddingBottom="4dp" >
 				    
 	    <TextView
 	        android:id="@+id/torrent_details_tvName"
@@ -68,7 +68,8 @@
 		      	android:layout_below="@id/torrent_details_progress"
 		      	android:layout_alignParentLeft="true"
 		      	android:paddingLeft="2dp"
-		      	android:paddingRight="2dp" >
+		      	android:paddingRight="2dp"
+   				android:stretchColumns="1">
 		    <TableRow>
 	            <TextView
 				      android:paddingLeft="3dp"

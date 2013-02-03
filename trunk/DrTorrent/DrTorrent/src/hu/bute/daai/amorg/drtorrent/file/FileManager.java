@@ -51,8 +51,9 @@ public class FileManager {
 			
 			if (fileInfo.getSize() == fileInfo.getCreatedSize()) {
 				filesCreated_.addElement(fileInfo);
-				filesToCreate_.removeElementAt(i);
-				i--;
+				if (filesToCreate_.removeElement(fileInfo)) {
+					i--;
+				}
 			}
 		}
 		
@@ -109,6 +110,22 @@ public class FileManager {
 			}
 		}
 	}
+	
+	/** Removes the file at the given path. */
+	public void removeFile(final String path) {
+		File file = new File(path);
+	    file.delete();
+	}
+	
+	/** Removes the folder and its folders (but the files not!!!) at the given path. */
+	public void removeDirectories(final File dir) {
+		if (dir.isDirectory()) {
+	        for (File child : dir.listFiles()) {
+	        	removeDirectories(child);
+	        }
+	        dir.delete();
+		}
+	}
 
 	/** Returns the size of free space in bytes. */
 	public static long freeSize(String path) {
@@ -129,37 +146,6 @@ public class FileManager {
 	public static long getFileSize(String filePath) {
 		return (new File(filePath)).length();
 	}
-
-	/** Creates a new file and reserves free space for it. */
-	/*public static boolean createFile(String filePath, long fileSize) {
-		RandomAccessFile file = null;
-
-		try {
-			String dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-			File dir = new File(dirPath);
-			dir.mkdirs();
-
-			File f = new File(filePath);
-			f.createNewFile();
-
-			file = new RandomAccessFile(f, "rw");
-			file.setLength(fileSize);
-		} catch (Exception e) {
-			e.printStackTrace();
-			Log.v("FileManager", e.getMessage());
-			return false;
-		} finally {
-			if (file != null) {
-				try {
-					file.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		return true;
-	}*/
 	
 	/** Returns the content of the file in a byte array. */
 	public static byte[] readFile(final String filePath) {
