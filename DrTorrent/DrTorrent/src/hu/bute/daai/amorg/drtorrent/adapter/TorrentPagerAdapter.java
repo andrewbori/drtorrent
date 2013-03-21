@@ -323,7 +323,11 @@ public class TorrentPagerAdapter extends PagerAdapter {
 		if (tvPeers_ != null) {
 			tvDownloadFolder_.setText(item.getDownloadFolder());
 			tvName_.setText(item.getName());
-			tvStatus_.setText(context_.getString(item.getStatus()));
+			try {
+				tvStatus_.setText(context_.getString(item.getStatus()));
+			} catch (Exception e) {
+				tvStatus_.setText("");
+			}
 			
 			Rect bounds = progress_.getProgressDrawable().getBounds();
 			

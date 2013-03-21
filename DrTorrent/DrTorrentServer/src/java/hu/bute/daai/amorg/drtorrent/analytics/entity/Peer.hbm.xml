@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 2013.03.16. 14:59:34 by Hibernate Tools 3.2.1.GA -->
+<hibernate-mapping>
+    <class name="hu.bute.daai.amorg.drtorrent.analytics.entity.Peer" table="peer" catalog="drtorrent">
+        <id name="id" type="java.lang.Long">
+            <column name="Id" />
+            <generator class="identity" />
+        </id>
+        <property name="peerIdentifier" type="string">
+            <column name="PeerIdentifier" length="20" not-null="true" unique="true" />
+        </property>
+        <set name="processes" inverse="true">
+            <key>
+                <column name="PeerId" not-null="true" />
+            </key>
+            <one-to-many class="hu.bute.daai.amorg.drtorrent.analytics.entity.Process" />
+        </set>
+    </class>
+</hibernate-mapping>

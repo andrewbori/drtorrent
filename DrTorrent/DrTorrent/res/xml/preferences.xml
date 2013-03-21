@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    			  xmlns:sbp="http://schemas.android.com/apk/src/hu.bute.daai.amorg.drtorrent.seekbarpreference" >
 
     <PreferenceCategory android:title="@string/download">
 	    <Preference
@@ -13,14 +14,32 @@
 	        android:defaultValue="false"
 	        android:summary="@string/preferences_streaming_sum"
 	        android:title="@string/preferences_streaming" />
+	    
+	    <hu.bute.daai.amorg.drtorrent.SeekBarPreference
+            android:key="download_speed"
+            android:title="@string/download_speed_limit"
+            android:dialogTitle="@string/download_speed_limit"
+            android:defaultValue="18"
+            sbp:entries="@array/download_speed" />
+	    
     </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/upload">
         <CheckBoxPreference
 	        android:key="upload"
 	        android:defaultValue="true"
 	        android:summary="@string/enable_upload"
 	        android:title="@string/upload" />
+        
+        <hu.bute.daai.amorg.drtorrent.SeekBarPreference
+            android:key="upload_speed"
+            android:title="@string/upload_speed_limit"
+            android:dialogTitle="@string/upload_speed_limit"
+            android:defaultValue="18"
+            sbp:entries="@array/upload_speed" />
+        
     </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/search">
         <ListPreference
             android:key="search_engine"
@@ -29,6 +48,7 @@
             android:entryValues="@array/search_engine_values"
             android:defaultValue="KickassTorents" />
     </PreferenceCategory>
+    
     <PreferenceCategory android:title="@string/connection">
         <CheckBoxPreference
 	        android:key="wifi_only"
@@ -41,6 +61,12 @@
 	        android:defaultValue="true"
 	        android:summary="@string/enable_incoming_connections"
 	        android:title="@string/incoming_connections" />
+	    
+	    <CheckBoxPreference
+	        android:key="upnp"
+	        android:defaultValue="true"
+	        android:summary="@string/enable_upnp_port_mapping"
+	        android:title="@string/upnp" />
 	    
 	    <EditTextPreference
 	        android:key="port"
@@ -56,6 +82,15 @@
 	        android:dialogTitle="@string/preferences_connections"
 	        android:title="@string/preferences_connections" />
     </PreferenceCategory>
+    
+    <PreferenceCategory android:title="@string/statistics">
+    	<CheckBoxPreference
+	        android:key="analytics"
+	        android:defaultValue="false"
+	        android:summary="@string/analytics_checkbox"
+	        android:title="@string/statistics" />
+    </PreferenceCategory>
+        
     <!--EditTextPreference
         android:key="download_speed"
         android:defaultValue="0"

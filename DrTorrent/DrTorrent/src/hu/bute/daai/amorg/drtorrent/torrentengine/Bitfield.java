@@ -122,9 +122,13 @@ public class Bitfield implements Serializable {
     
     public Bitfield getBitfieldAnd(final Bitfield other) {
         Bitfield newBitfield = new Bitfield(lengthInBits_, false);
-    	for (int i = 0; i < bitfield_.length && i < other.bitfield_.length; i++) {
-        	newBitfield.bitfield_[i] = (byte)(bitfield_[i] & other.bitfield_[i]);
+        try {
+	    	for (int i = 0; i < bitfield_.length && i < other.bitfield_.length; i++) {
+	        	newBitfield.bitfield_[i] = (byte)(bitfield_[i] & other.bitfield_[i]);
+	        }
+        } catch (Exception e) {
         }
+        
         return newBitfield;
     }
     

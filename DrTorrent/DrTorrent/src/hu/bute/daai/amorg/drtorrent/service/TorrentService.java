@@ -8,6 +8,7 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
+import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import hu.bute.daai.amorg.drtorrent.torrentengine.File;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
@@ -47,8 +48,8 @@ public class TorrentService extends Service {
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
 	
-	public final static String APP_VERSION_NAME = "1.2.4";	// TODO: Refresh!
-	public final static int APP_VERSION_CODE = 6;			// TODO: Refresh!
+	public final static String APP_VERSION_NAME = "1.2.5";	// TODO: Refresh!
+	public final static int APP_VERSION_CODE = 8;			// TODO: Refresh!
 	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
@@ -80,6 +81,7 @@ public class TorrentService extends Service {
 	public final static int MSG_SEND_FILE_LIST_SELECTED  = 314;
 	public final static int MSG_SEND_TORRENT_SETTINGS	 = 315;
 	public final static int MSG_TORRENT_ALREADY_OPENED   = 316;
+	public final static int MSG_SEND_MAGNET_LINK		 = 317;
 	public final static int MSG_SHUT_DOWN				 = 321;
 	public static final int MSG_CONN_SETTINGS_CHANGED    = 400;
 	
@@ -113,6 +115,12 @@ public class TorrentService extends Service {
 	public final static String MSG_KEY_CLIENT_TYPE			= "u";
 	public final static String MSG_KEY_CLIENT_ID			= "v";
 	public final static String MSG_KEY_DELETE_FILES			= "w";
+	public final static String MSG_KEY_NAME					= "x";
+	public final static String MSG_KEY_MAGNET_LINK			= "y";
+	public final static String MSG_KEY_PORT_CHANGED			= "n1";
+	public final static String MSG_KEY_INCOMING_CHANGED		= "n2";
+	public final static String MSG_KEY_WIFIONLY_CHANGED		= "n3";
+	public final static String MSG_KEY_UPNP_CHANGED			= "n4";
 	
 	private Context context_; 
 	
@@ -132,6 +140,7 @@ public class TorrentService extends Service {
 
 		context_ = getApplicationContext();
 		Preferences.set(context_);
+		Analytics.init(context_);
 		showNotification(null);
 		
 		Preferences.setLatestVersion(APP_VERSION_CODE);
@@ -157,6 +166,7 @@ public class TorrentService extends Service {
 
 	@Override
 	public void onDestroy() {
+		Analytics.shutDown();
 		unregisterReceiver(networkStateReceiver_);
 		hideNotification();
 		
@@ -232,6 +242,26 @@ public class TorrentService extends Service {
 				(new SetTorrentThread(torrent, isRemoved, fileList)).start();
 				break;
 				
+			case MSG_SEND_MAGNET_LINK:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				Torrent t = torrentManager_.getTorrent(torrentId);
+				if (t != null) {
+					Message rMsg = Message.obtain();
+					Bundle bundle = new Bundle();
+					bundle.putString(MSG_KEY_NAME, t.getName());
+					bundle.putString(MSG_KEY_MAGNET_LINK, t.getMagnetLink());
+					
+					rMsg.setData(bundle);
+					rMsg.what = MSG_SEND_MAGNET_LINK;
+					
+					try {
+						msg.replyTo.send(rMsg);
+					} catch (Exception e) {
+					}
+				}
+				
+				break;
+				
 			case MSG_START_TORRENT:
 				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
 				(new StartTorrentThread(torrentId)).start();
@@ -283,7 +313,11 @@ public class TorrentService extends Service {
 				break;
 				
 			case MSG_CONN_SETTINGS_CHANGED:
-				networkManager_.connectionSettingsChanged();
+				boolean isPortChanged = bundleMsg.getBoolean(TorrentService.MSG_KEY_PORT_CHANGED);
+				boolean isIncomingChanged = bundleMsg.getBoolean(TorrentService.MSG_KEY_INCOMING_CHANGED);
+				boolean isWifiOnlyChanged = bundleMsg.getBoolean(TorrentService.MSG_KEY_WIFIONLY_CHANGED);
+				boolean isUpnpChanged = bundleMsg.getBoolean(TorrentService.MSG_KEY_UPNP_CHANGED);
+				networkManager_.connectionSettingsChanged(true, isPortChanged, isIncomingChanged, isWifiOnlyChanged, isUpnpChanged);
 				break;
 				
 			case MSG_TORRENT_ALREADY_OPENED:
@@ -776,7 +810,11 @@ public class TorrentService extends Service {
 	 * 
 	 */
 	public boolean shouldUpdate(int updateField) {
-		return (client_ != null && client_.shouldUpdate(updateField));
+		try {
+			return (client_ != null && client_.shouldUpdate(updateField));
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	/** Sends a torrent to the subscribed client. */

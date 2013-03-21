@@ -124,4 +124,13 @@
 	<string name="show_results_in_browser">Показати результати в браузері</string>
 	<string name="downloading_the_torrent">Завантажуються торрент-файл…</string>
 	<string name="delete_downloaded_files">Видалити завантажені файли</string>
+	<string name="upnp">UPnP</string>
+	<string name="enable_upnp_port_mapping">Увімкнути відобр. порту UPnP</string>
+	<string name="download_speed_limit">Обмеження завант.</string>
+    <string name="upload_speed_limit">Обмеження відвант.</string>
+    <string name="analytics_message">Будь ласка, допоможіть поліпшення DrTorrent і дозволяють відправляти анонімну статистику використання! (Звіти не містять ніякої інформації, яка може бути використана для ідентифікації користувача.)</string>
+    <string name="analytics_title">DrTorrent статистика</string>
+    <string name="analytics_checkbox">Дозволити відправку анонімної статистики використання</string>
+    <string name="statistics">Статистика</string>
+    <string name="share">Надіслати</string>
 </resources>

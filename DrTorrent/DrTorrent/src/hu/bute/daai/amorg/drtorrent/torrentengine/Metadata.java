@@ -4,7 +4,6 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 public class Metadata {
 	public final static int BLOCK_SIZE = 16384;
 	
-	final private byte[] data_;
 	final private boolean[] hasBlock_;
 	final private boolean[] isRequested_;
 	final private int size_;
@@ -13,7 +12,6 @@ public class Metadata {
 	/** Constructs the Metadata with the given size. */
 	public Metadata(final int size) {
 		size_ = size;
-		data_ = new byte[size];
 		
 		if (size_ % BLOCK_SIZE > 0) {
 			count_ = (size_ / BLOCK_SIZE) + 1;
@@ -26,14 +24,8 @@ public class Metadata {
 	}
 	
 	/** Adds the data at the index of block. */
-	public void add(final int index, final byte[] data) {
-		System.arraycopy(data, 0, data_, index * BLOCK_SIZE, data.length);
+	public void add(final int index) {
 		hasBlock_[index] = true;
-	}
-	
-	/** Returns the data. */
-	public byte[] getData() {
-		return data_;
 	}
 	
 	/** Returns whether the block at the given index has been already downloaded or not. */

@@ -1,12 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    	<string-array name="download_speed">
+		<item>8 KБ/с</item>
+		<item>16 KБ/с</item>
+		<item>24 KБ/с</item>
+		<item>32 KБ/с</item>
+		<item>48 KБ/с</item>
+		<item>64 KБ/с</item>
+		<item>96 KБ/с</item>
+		<item>128 KБ/с</item>
+		<item>192 KБ/с</item>
+		<item>256 KБ/с</item>
+		<item>384 KБ/с</item>
+		<item>512 KБ/с</item>
+		<item>768 KБ/с</item>
+		<item>1 МБ/с</item>
+		<item>1.5 МБ/с</item>
+		<item>2 МБ/с</item>
+		<item>3 МБ/с</item>
+		<item>4 МБ/с</item>
+		<item>Неограниченно</item>
+	</string-array>
+	<string-array name="upload_speed">
+		<item>2 KБ/с</item>
+		<item>4 KБ/с</item>
+		<item>8 KБ/с</item>
+		<item>16 KБ/с</item>
+		<item>24 KБ/с</item>
+		<item>32 KБ/с</item>
+		<item>48 KБ/с</item>
+		<item>64 KБ/с</item>
+		<item>96 KБ/с</item>
+		<item>128 KБ/с</item>
+		<item>192 KБ/с</item>
+		<item>256 KБ/с</item>
+		<item>384 KБ/с</item>
+		<item>512 KБ/с</item>
+		<item>768 KБ/с</item>
+		<item>1 МБ/с</item>
+		<item>1.5 МБ/с</item>
+		<item>2 МБ/с</item>
+		<item>Неограниченно</item>
+	</string-array>
    	<string name="unit_b">Б</string>
-	<string name="unit_kb">кБ</string>
+	<string name="unit_kb">KБ</string>
 	<string name="unit_mb">МБ</string>
 	<string name="unit_gb">ГБ</string>
 	<string name="unit_tb">ТБ</string>
 	<string name="unit_bps">Б/с</string>
-	<string name="unit_kbps">кБ/с</string>
+	<string name="unit_kbps">KБ/с</string>
 	<string name="unit_mbps">МБ/с</string>
 	<string name="unit_gbps">ГБ/с</string>
 	<string name="unit_tbps">ТБ/с</string>
@@ -124,4 +166,13 @@
 	<string name="show_results_in_browser">Показать результаты в браузере</string>
 	<string name="downloading_the_torrent">Загрузка торрент-файл…</string>
 	<string name="delete_downloaded_files">Удалить загруженные файлы</string>
+	<string name="upnp">UPnP</string>
+	<string name="enable_upnp_port_mapping">Переадресация UPnP</string>
+	<string name="download_speed_limit">Ограничение скорости приёма</string>
+    <string name="upload_speed_limit">Ограничение скорости отдачи</string>
+    <string name="analytics_message">Пожалуйста, помогите улучшить DrTorrent и разрешить отправку анонимной статистики использования! (Отчеты не содержат никакой информации, которая может быть использована для идентификации пользователя.)</string>
+    <string name="analytics_title">DrTorrent статистика</string>
+    <string name="analytics_checkbox">Разрешать отправлять анонимную статистику использования</string>
+    <string name="statistics">Статистика</string>
+    <string name="share">Поделиться</string>
 </resources>

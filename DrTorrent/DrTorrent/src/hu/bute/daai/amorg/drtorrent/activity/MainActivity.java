@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.activity;
 
+import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
@@ -85,6 +86,30 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 		init();
 		
 		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+		Preferences.set(getApplicationContext());
+		
+		if (!Preferences.wasAnalyticsAsked()) {
+			LayoutInflater inflater = MainActivity.this.getLayoutInflater();
+			ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.dialog_checkbox, null);
+			((TextView) layout.findViewById(R.id.dialog_checkbox_message)).setText(R.string.analytics_message);
+			final CheckBox cbSendStatistics = (CheckBox) layout.findViewById(R.id.dialog_checkbox_checkbox);
+			cbSendStatistics.setText(R.string.analytics_checkbox);
+			cbSendStatistics.setChecked(true);
+			
+			AlertDialog.Builder builder = new AlertDialog.Builder(context_);
+			builder.setTitle(R.string.analytics_title).
+			setView(layout).
+			setPositiveButton(getString(android.R.string.yes), new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					Preferences.setAnalitics(cbSendStatistics.isChecked());
+					Preferences.setAnalyticsAsked(true);
+					dialog.dismiss();
+				}
+			});
+			dialog_ = builder.create();
+			dialog_.show();
+		}
 	}
 	
 	private void init() {
@@ -348,6 +373,10 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 			.setIcon(R.drawable.ic_menu_settings)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 		
+		menu.add(Menu.NONE, MENU_SHARE_DRTORRENT, Menu.NONE, R.string.share)
+			//.setIcon(R.drawable.ic_menu_email)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		
 		menu.add(Menu.NONE, MENU_RATE_APP, Menu.NONE, R.string.rate_app)
 			//.setIcon(R.drawable.ic_menu_email)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
@@ -387,6 +416,15 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 				
 			case MENU_ADD_MAGNET_LINK:
 				addMagnetLink();
+				break;
+				
+			case MENU_SHARE_DRTORRENT:
+				Intent sendIntent = new Intent();
+				sendIntent.setAction(Intent.ACTION_SEND);
+				sendIntent.putExtra(Intent.EXTRA_SUBJECT, "DrTorrent");
+				sendIntent.putExtra(Intent.EXTRA_TEXT,  "https://play.google.com/store/apps/details?id=hu.bute.daai.amorg.drtorrent");
+				sendIntent.setType("text/plain");
+				startActivity(sendIntent);
 				break;
 				
 			case MENU_ABOUT:
@@ -669,9 +707,9 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 		
 		CharSequence[] items = null;
 		if (item.getStatus() == R.string.status_stopped || item.getStatus() == R.string.status_finished) {
-			items = new CharSequence[] { getString(R.string.start), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker) };
+			items = new CharSequence[] { getString(R.string.start), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker), getString(R.string.share) };
 		} else {
-			items = new CharSequence[] { getString(R.string.stop), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker) };
+			items = new CharSequence[] { getString(R.string.stop), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker), getString(R.string.share) };
 		}
 		
 		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
@@ -701,8 +739,10 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 					// Remove
 					case 1:
 						LayoutInflater inflater = MainActivity.this.getLayoutInflater();
-						ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.dialog_remove_torrent, null);
-						final CheckBox cbDeleteFiles = (CheckBox) layout.findViewById(R.id.dialog_remove_torrent_cbDeleteFiles);
+						ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.dialog_checkbox, null);
+						((TextView) layout.findViewById(R.id.dialog_checkbox_message)).setText(R.string.remove_dialog_title);
+						final CheckBox cbDeleteFiles = (CheckBox) layout.findViewById(R.id.dialog_checkbox_checkbox);
+						cbDeleteFiles.setText(R.string.delete_downloaded_files);
 						
 						AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 						builder.setTitle(item.getName()).
@@ -736,6 +776,10 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 					// Add tracker
 					case 3:
 						addTracker(item.getId());
+						break;
+						
+					case 4:
+						sendShareMessage(item.getId());
 						break;
 						
 					default:

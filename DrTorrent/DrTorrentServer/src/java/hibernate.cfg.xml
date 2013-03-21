@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC "-//Hibernate/Hibernate Configuration DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+  <session-factory>
+    <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+    <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+    <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/drtorrent?zeroDateTimeBehavior=convertToNull</property>
+    <property name="hibernate.connection.username">drtorrent</property>
+    <property name="hibernate.connection.password">drtorrent1492</property>
+    <!--<property name="hibernate.connection.url">jdbc:mysql://127.8.29.1:3306/drtorrent?zeroDateTimeBehavior=convertToNull</property>
+    <property name="hibernate.connection.username">adminX3pA9VT</property>
+    <property name="hibernate.connection.password">GkezmDV7t_Kc</property>-->
+    <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Process.hbm.xml"/>
+    <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Peer.hbm.xml"/>
+    <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Torrent.hbm.xml"/>
+  </session-factory>
+</hibernate-configuration>

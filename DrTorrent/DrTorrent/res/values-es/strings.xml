@@ -108,4 +108,13 @@
 	<string name="show_results_in_browser">Mostrar resultados en navegador</string>
 	<string name="downloading_the_torrent">Descargando el archivo torrent…</string>
 	<string name="delete_downloaded_files">Eliminar los archivos descargados</string>
+	<string name="upnp">UPnP</string>
+	<string name="enable_upnp_port_mapping">Activar mapeo de puerto UPnP</string>
+	<string name="download_speed_limit">Límite descarga</string>
+    <string name="upload_speed_limit">Límite subida</string>
+    <string name="analytics_message">Por favor ayude a la mejora de DrTorrent y permitir enviar estadísticas de uso anónimas! (Los informes no contienen ninguna información que podría utilizarse para identificar al usuario.)</string>
+    <string name="analytics_title">DrTorrent estadísticas</string>
+    <string name="analytics_checkbox">Permitir enviar estadísticas de uso anónimas</string>
+    <string name="statistics">Estadística</string>
+    <string name="share">Compartir</string>
 </resources>

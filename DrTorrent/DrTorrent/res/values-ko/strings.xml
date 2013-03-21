@@ -125,4 +125,13 @@
 	<string name="show_results_in_browser">브라우저에서 결과 표시</string>
 	<string name="downloading_the_torrent">토렌트 파일을 다운로드…</string>
 	<string name="delete_downloaded_files">다운로드 한 파일을 삭제</string>
+	<string name="upnp">UPnP</string>
+	<string name="enable_upnp_port_mapping">UPnP 포트 할당 사용</string>
+	<string name="download_speed_limit">다운 제한</string>
+    <string name="upload_speed_limit">업 제한</string>
+    <string name="analytics_message">DrTorrent의 개선을 도와 익명의 사용 통계를 보낼하세요! (보고서는 사용자를 식별하는 데 사용될 수있는 정보를 포함하지 않습니다.)</string>
+    <string name="analytics_title">DrTorrent 통계</string>
+    <string name="analytics_checkbox">익명의 사용 통계를 보내 허용</string>
+    <string name="statistics">통계</string>
+    <string name="share">공유</string>
 </resources>

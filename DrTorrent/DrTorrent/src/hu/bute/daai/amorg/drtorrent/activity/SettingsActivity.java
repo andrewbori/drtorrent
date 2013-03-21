@@ -27,6 +27,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 	
 	private int port_;
 	private boolean isIncomingConnectionsEnabled_;
+	private boolean isUpnpEnabled_;
 	private boolean isWifiOnly_;
 	
 	
@@ -56,12 +57,16 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		
 		port_ = Preferences.getPort();
 		isIncomingConnectionsEnabled_ = Preferences.isIncomingConnectionsEnabled();
+		isUpnpEnabled_ = Preferences.isUpnpEnabled();
 		isWifiOnly_ = Preferences.isWiFiOnly();
 		
 		findPreference("download_folder").setSummary(Preferences.getDownloadFolder());
 		findPreference("port").setSummary(Integer.toString(Preferences.getPort()));
 		findPreference("connections").setSummary(Integer.toString(Preferences.getMaxConnectedPeers()));
 		findPreference("search_engine").setSummary(getSearchEngine());
+		
+		findPreference("upnp").setEnabled(Preferences.isIncomingConnectionsEnabled());
+		findPreference("upload_speed").setEnabled(Preferences.isUploadEnabled());
 	}
 	
 	@Override
@@ -88,12 +93,27 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
 		
 		if (port_ != Preferences.getPort() || isIncomingConnectionsEnabled_ != Preferences.isIncomingConnectionsEnabled() ||
-											  isWifiOnly_ != Preferences.isWiFiOnly()) {
-			port_ = Preferences.getPort();
-			isIncomingConnectionsEnabled_ = Preferences.isIncomingConnectionsEnabled();
-			isWifiOnly_ = Preferences.isWiFiOnly();
+				  isWifiOnly_ != Preferences.isWiFiOnly() || isUpnpEnabled_ != Preferences.isUpnpEnabled()) {
 			
-			sendMessage(TorrentService.MSG_CONN_SETTINGS_CHANGED);
+			if (serviceMessenger_ != null) {
+				Message msg = Message.obtain();
+				Bundle b = new Bundle();
+				b.putBoolean(TorrentService.MSG_KEY_PORT_CHANGED, 	  port_ != Preferences.getPort());
+				b.putBoolean(TorrentService.MSG_KEY_INCOMING_CHANGED, isIncomingConnectionsEnabled_ != Preferences.isIncomingConnectionsEnabled());
+				b.putBoolean(TorrentService.MSG_KEY_WIFIONLY_CHANGED, isWifiOnly_ != Preferences.isWiFiOnly());
+				b.putBoolean(TorrentService.MSG_KEY_UPNP_CHANGED, 	  isUpnpEnabled_ != Preferences.isUpnpEnabled());
+				msg.what = TorrentService.MSG_CONN_SETTINGS_CHANGED;
+				msg.setData(b);
+
+				try {
+					serviceMessenger_.send(msg);
+				} catch (RemoteException e) {}
+			
+				port_ = Preferences.getPort();
+				isIncomingConnectionsEnabled_ = Preferences.isIncomingConnectionsEnabled();
+				isWifiOnly_ = Preferences.isWiFiOnly();
+				isUpnpEnabled_ = Preferences.isUpnpEnabled();
+			}
 		}
 		
 		unbindService(serviceConnection);
@@ -111,6 +131,12 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 			
 		} else if (key.equals("search_engine")) {
 			findPreference(key).setSummary(getSearchEngine());
+			
+		} else if (key.equals("incoming_connections")) {
+			findPreference("upnp").setEnabled(Preferences.isIncomingConnectionsEnabled());
+			
+		} else if (key.equals("upload")) {
+			findPreference("upload_speed").setEnabled(Preferences.isUploadEnabled());
 		}
 	}
 	
@@ -126,18 +152,6 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 					findPreference("download_folder").setSummary(path);
 				}
 				break;
-		}
-	}
-	
-	/** Sends a message to the torrent service. */
-	public void sendMessage(int msgWhat) {
-		if (serviceMessenger_ != null) {
-			Message msg = Message.obtain();
-			msg.what = msgWhat;
-
-			try {
-				serviceMessenger_.send(msg);
-			} catch (RemoteException e) {}
 		}
 	}
 	
