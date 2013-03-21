@@ -86,7 +86,7 @@ public class Peer {
 	/** Disconnects the peer. */
 	public void disconnect() {
 		if (connection_ != null) {
-			connection_.close("Peer has been disconnected...");
+			connection_.close(PeerConnection.ERROR_PEER_STOPPED, "Peer has been disconnected...");
 		}
 	}
 	
@@ -132,8 +132,10 @@ public class Peer {
 			return null;
 		}
 		
+		Log.v(LOG_TAG, "Number of blocks to request: " + number);
 		ArrayList<Block> blocksToDownload = torrent_.getBlocksToDownload(this, number);
-
+		Log.v(LOG_TAG, "Number of blocks got: " + blocksToDownload.size());
+		
 		if (!blocksToDownload.isEmpty()) {
 			blocksDownloading_.addAll(blocksToDownload);
 			return blocksToDownload;
@@ -183,6 +185,13 @@ public class Peer {
 			Log.v(LOG_TAG, "Warning: Unexpected block.");
 		}
 		connection_.issueDownload();
+	}
+	
+	public boolean issueUpload(Block block) {
+		if (connection_ != null) {
+			return connection_.issueUpload(block);
+		}
+		return false;
 	}
 	
 	public void blockUploaded(int size) {
@@ -317,13 +326,10 @@ public class Peer {
 	
 	/** Returns the number of requests have been sent to the peer. */
 	public boolean hasRequest() {
-		try {
-			blocksDownloading_.get(0);
-		} catch(Exception e) {
-			return false;
+		if (blocksDownloading_.size() > 0) {
+			return true;
 		}
-		
-		return true;
+		return false;
 	}
 	
 	/** Returns the download speed. */

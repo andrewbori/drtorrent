@@ -1,5 +1,8 @@
 package hu.bute.daai.amorg.drtorrent;
 
+import java.util.Date;
+import java.util.Random;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Environment;
@@ -8,6 +11,16 @@ import android.preference.PreferenceManager;
 public class Preferences {
 	
 	public static final String MY_AD_UNIT_ID = "a150b0b5a8dc405";
+	
+	private static final int[] downloadSpeedArray = {
+		8 * 1024, 16 * 1024, 24 * 1024, 32 * 1024, 48 * 1024, 64 * 1024, 96 * 1024, 128 * 1024, 192 * 1024, 256 * 1024,
+		384 * 1024, 512 * 1024, 768 * 1024, 1024 * 1024, 1536 * 1024, 2048 * 1024, 3072 * 1024, 4096 * 1024, Integer.MAX_VALUE
+	};
+	
+	private static final int[] uploadSpeedArray = {
+		2 * 1024, 4 * 1024, 8 * 1024, 16 * 1024, 24 * 1024, 32 * 1024, 48 * 1024, 64 * 1024, 96 * 1024, 128 * 1024,
+		192 * 1024, 256 * 1024, 384 * 1024, 512 * 1024, 768 * 1024, 1024 * 1024, 1536 * 1024, 2048 * 1024, Integer.MAX_VALUE
+	};
 	
 	private static SharedPreferences preferences_ = null;
 	
@@ -26,7 +39,11 @@ public class Preferences {
 
 	/** Returns the download folder. */
 	public static String getDownloadFolder() {
-		return preferences_.getString("download_folder", Environment.getExternalStorageDirectory().getPath() + "/download");
+		return preferences_.getString("download_folder", Environment.getExternalStorageDirectory().getPath() + "/Download");
+	}
+	
+	public static String getExternalFilesDir() {
+		return Environment.getExternalStorageDirectory().getPath() + "/Android/data/hu.bute.daai.amorg.drtorrent/files";
 	}
 	
 	/** Returns whether the streaming is enabled or not. */
@@ -42,6 +59,11 @@ public class Preferences {
 	/** Returns whether incoming connections are enabled or not. */
 	public static boolean isIncomingConnectionsEnabled() {
 		return preferences_.getBoolean("incoming_connections", true);
+	}
+	
+	/** Returns whether UPnP port mapping is enabled or not. */
+	public static boolean isUpnpEnabled() {
+		return preferences_.getBoolean("upnp", true);
 	}
 	
 	/** Returns whether upload is enabled. */
@@ -68,22 +90,24 @@ public class Preferences {
 	}
 	
 	/** Returns the download speed limit. */
-	/*public static int getDownloadSpeedLimit() {
+	public static int getDownloadSpeedLimit() {
 		try {
-			return Integer.valueOf(preferences_.getString("download_speed",  "0"));
+			int selected = preferences_.getInt("download_speed",  18);
+			return downloadSpeedArray[selected];
 		} catch (Exception e) {
-			return 0;
+			return Integer.MAX_VALUE;
 		}
-	}*/
+	}
 	
 	/** Returns the upload speed limit. */
-	/*public static int getUploadSpeedLimit() {
+	public static int getUploadSpeedLimit() {
 		try {
-			return Integer.valueOf(preferences_.getString("upload_speed",  "0"));
+			int selected = preferences_.getInt("upload_speed",  18);
+			return uploadSpeedArray[selected];
 		} catch (Exception e) {
-			return 0;
+			return Integer.MAX_VALUE;
 		}
-	}*/
+	}
 
 	/** Returns the siteCode of the search engine. */
 	public static String getSearchEngine(Context context) {
@@ -149,5 +173,58 @@ public class Preferences {
 	/** Returns the number of the latest version. */
 	public static int getLatestVersion() {
 		return preferences_.getInt("latest_version", 0);
+	}
+	
+	/** Returns the peer's identifier. */
+	public static String getClientIdentifier() {
+		if (preferences_.contains("client_identifier")) {
+			return preferences_.getString("client_identifier", "undefined0undefined0");
+		} else {
+			Date d = new Date();
+	        long seed = d.getTime();   
+	        Random r = new Random();
+	        r.setSeed(seed);
+	        
+	        String clientIdentifier = "";
+	        for (int i = 0; i < 20; i++) {
+	        	clientIdentifier += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
+	        }
+	        
+	        SharedPreferences.Editor editor = preferences_.edit();
+			editor.putString("client_identifier", clientIdentifier);
+			editor.commit();
+			
+			return clientIdentifier;
+		}
+		/*
+		String clientIdentifier = "aaaaaaaaaaaaaaaaaaaa";
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putString("client_identifier", clientIdentifier);
+		editor.commit();
+		return clientIdentifier;*/
+	}
+
+	/** Returns whether the question about sending statistics was asked or not. */
+	public static boolean wasAnalyticsAsked() {
+		return preferences_.getBoolean("analytics_asked", false);
+	}
+	
+	/** Sets whether the question about sending statistics was asked or not. */
+	public static void setAnalyticsAsked(boolean wasAnalyticsAsked) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putBoolean("analytics_asked", wasAnalyticsAsked);
+		editor.commit();
+	}
+	
+	/** Returns whether sending statistics is enabled or not. */
+	public static boolean isAnalyticsEnabled() {
+		return preferences_.getBoolean("analytics", false);
+	}
+	
+	/** Sets whether sending statistics is enabled or not. */
+	public static void setAnalitics(boolean enabled) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putBoolean("analytics", enabled);
+		editor.commit();
 	}
 }

@@ -108,4 +108,13 @@
 	<string name="show_results_in_browser">Toon resultaten in browser</string>
 	<string name="downloading_the_torrent">Torrent-bestand downloaden…</string>
 	<string name="delete_downloaded_files">Gedownloade bestanden verwijderen</string>
+	<string name="upnp">UPnP</string>
+	<string name="enable_upnp_port_mapping">Poorttoewijzing met UPnP</string>
+	<string name="download_speed_limit">Downloadlimiet</string>
+    <string name="upload_speed_limit">Uploadlimiet</string>
+    <string name="analytics_message">Gelieve te helpen de verbetering van de DrTorrent en laat het verzenden van anonieme gebruiksstatistieken! (Rapporten bevatten geen informatie die kan worden gebruikt om de gebruiker te identificeren.)</string>
+    <string name="analytics_title">DrTorrent Statistieken</string>
+    <string name="analytics_checkbox">Laat het verzenden van anonieme gebruiksstatistieken</string>
+    <string name="statistics">Statistieken</string>
+    <string name="share">Delen</string>
 </resources>

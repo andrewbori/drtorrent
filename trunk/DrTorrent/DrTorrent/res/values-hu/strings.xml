@@ -1,5 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    	<string-array name="download_speed">
+		<item>8 kB/s</item>
+		<item>16 kB/s</item>
+		<item>24 kB/s</item>
+		<item>32 kB/s</item>
+		<item>48 kB/s</item>
+		<item>64 kB/s</item>
+		<item>96 kB/s</item>
+		<item>128 kB/s</item>
+		<item>192 kB/s</item>
+		<item>256 kB/s</item>
+		<item>384 kB/s</item>
+		<item>512 kB/s</item>
+		<item>768 kB/s</item>
+		<item>1 MB/s</item>
+		<item>1.5 MB/s</item>
+		<item>2 MB/s</item>
+		<item>3 MB/s</item>
+		<item>4 MB/s</item>
+		<item>Korlátlan</item>
+	</string-array>
+	<string-array name="upload_speed">
+		<item>2 kB/s</item>
+		<item>4 kB/s</item>
+		<item>8 kB/s</item>
+		<item>16 kB/s</item>
+		<item>24 kB/s</item>
+		<item>32 kB/s</item>
+		<item>48 kB/s</item>
+		<item>64 kB/s</item>
+		<item>96 kB/s</item>
+		<item>128 kB/s</item>
+		<item>192 kB/s</item>
+		<item>256 kB/s</item>
+		<item>384 kB/s</item>
+		<item>512 kB/s</item>
+		<item>768 kB/s</item>
+		<item>1 MB/s</item>
+		<item>1.5 MB/s</item>
+		<item>2 MB/s</item>
+		<item>Korlátlan</item>
+	</string-array>
     <string name="time_sec">\u0020mp\u0020</string>
 	<string name="time_min">\u0020perc\u0020</string>
 	<string name="time_hour">\u0020óra\u0020</string>
@@ -114,4 +156,13 @@
 	<string name="show_results_in_browser">Találatok megjelenítése böngészőben</string>
 	<string name="downloading_the_torrent">Torrent fájl letöltése…</string>
 	<string name="delete_downloaded_files">A letöltött fájlok törlése</string>
+	<string name="upnp">UPnP</string>
+	<string name="enable_upnp_port_mapping">UPnP port leképzés engedélyezése</string>
+	<string name="download_speed_limit">Letöltési korlát</string>
+    <string name="upload_speed_limit">Feltöltési korlát</string>
+    <string name="analytics_message">Kérjük segítse a DrTorrent fejlesztését és engedélyezze névtelen használati statisztikák küldését! (A jelentések nem tartalmaznak a felhasználó azonosítására alkalmas információkat.)</string>
+    <string name="analytics_title">DrTorrent statisztikák</string>
+    <string name="analytics_checkbox">Névtelen használati statisztikák küldése</string>
+    <string name="statistics">Statisztikák</string>
+    <string name="share">Megosztás</string>
 </resources>

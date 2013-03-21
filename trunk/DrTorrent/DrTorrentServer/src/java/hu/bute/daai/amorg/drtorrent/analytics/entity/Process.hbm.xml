@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 2013.03.16. 14:59:34 by Hibernate Tools 3.2.1.GA -->
+<hibernate-mapping>
+    <class name="hu.bute.daai.amorg.drtorrent.analytics.entity.Process" table="process" catalog="drtorrent">
+        <id name="id" type="java.lang.Long">
+            <column name="Id" />
+            <generator class="identity" />
+        </id>
+        <many-to-one name="torrent" class="hu.bute.daai.amorg.drtorrent.analytics.entity.Torrent" fetch="select">
+            <column name="TorrentId" not-null="true" />
+        </many-to-one>
+        <many-to-one name="peer" class="hu.bute.daai.amorg.drtorrent.analytics.entity.Peer" fetch="select">
+            <column name="PeerId" not-null="true" />
+        </many-to-one>
+        <property name="addedOn" type="long">
+            <column name="AddedOn" not-null="true" />
+        </property>
+        <property name="badPieces" type="int">
+            <column name="BadPieces" not-null="true" />
+        </property>
+        <property name="goodPieces" type="int">
+            <column name="GoodPieces" not-null="true" />
+        </property>
+        <property name="failedConnections" type="int">
+            <column name="FailedConnections" not-null="true" />
+        </property>
+        <property name="tcpConnections" type="int">
+            <column name="TcpConnections" not-null="true" />
+        </property>
+        <property name="handshakes" type="int">
+            <column name="Handshakes" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

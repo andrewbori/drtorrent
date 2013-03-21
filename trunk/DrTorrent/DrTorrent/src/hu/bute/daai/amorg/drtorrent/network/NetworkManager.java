@@ -4,8 +4,13 @@ import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.service.NetworkStateListener;
 import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
 
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import org.bitlet.weupnp.GatewayDevice;
+import org.bitlet.weupnp.GatewayDiscover;
+import org.bitlet.weupnp.PortMappingEntry;
 
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -38,8 +43,15 @@ public class NetworkManager implements NetworkStateListener {
 		
 		@Override
 		public void run() {
+			Thread portMappingThread = null;
 			try {
 				port_ = Preferences.getPort();
+				
+				if (Preferences.isIncomingConnectionsEnabled() && Preferences.isUpnpEnabled()) {
+					portMappingThread = new AddPortMappingThread();
+					portMappingThread.start();
+				}
+				
 				serverSocket_ = new ServerSocket(port_);
 
 				Log.v(LOG_TAG, "Start listening on port " + port_);
@@ -51,6 +63,7 @@ public class NetworkManager implements NetworkStateListener {
 						torrentManager_.addIncomingConnection(socket);
 					}
 				}
+				
 			} catch (Exception e) {
 			} finally {
 				Log.v(LOG_TAG, "Stop listening on port " + port_);
@@ -63,7 +76,16 @@ public class NetworkManager implements NetworkStateListener {
 					}
 				} catch (Exception e) {
 				}
+				
+				try {
+					if (portMappingThread != null && portMappingThread.isAlive()) {
+						portMappingThread.stop();
+					}
+				} catch (Exception e) {
+				}
 			}
+			
+			deletePortMapping();
 		}
 		
 		/** Enables the incoming connection accepting thread. */
@@ -82,6 +104,13 @@ public class NetworkManager implements NetworkStateListener {
 				serverSocket_ = null;
 			} catch (Exception e) {
 			}
+		}
+	}
+	
+	private class AddPortMappingThread extends Thread {
+		@Override
+		public void run() {
+			addPortMapping();
 		}
 	}
 	
@@ -105,8 +134,65 @@ public class NetworkManager implements NetworkStateListener {
 		}
 	}
 	
+	/** Adds port mapping. */
+	public boolean addPortMapping() {
+		try {
+			if (System.getProperty("org.xml.sax.driver") == null) {
+				System.setProperty("org.xml.sax.driver", "org.xmlpull.v1.sax2.Driver");
+			}
+			GatewayDiscover gatewayDiscover = new GatewayDiscover();
+			gatewayDiscover.discover();
+			GatewayDevice gatewayDevice = gatewayDiscover.getValidGateway();
+			
+			if (null != gatewayDevice) {
+			    Log.v(LOG_TAG, "Gateway device found. " + gatewayDevice.getModelName() + " " + gatewayDevice.getModelDescription());
+			} else {
+			    Log.v(LOG_TAG, "No valid gateway device found.");
+			    return false;
+			}
+			
+			InetAddress localAddress = gatewayDevice.getLocalAddress();
+			Log.v(LOG_TAG, "Local address: " + localAddress);
+			String externalAddress = gatewayDevice.getExternalIPAddress();
+			Log.v(LOG_TAG, "External address: " + externalAddress);
+			
+			PortMappingEntry portMapping = new PortMappingEntry();
+			boolean success = false;
+			if (!gatewayDevice.getSpecificPortMappingEntry(port_, "TCP", portMapping)) {
+				success = gatewayDevice.addPortMapping(port_, port_, localAddress.getHostAddress(), "TCP", "DrTorrent");
+				Log.v(LOG_TAG, "Port " + port_ + " mapped: " + success);
+			} else {
+				Log.v(LOG_TAG, "Port " + port_ + " already mapped by " + portMapping.getInternalClient());
+				if (portMapping.getInternalClient().equals(localAddress.getHostAddress())) {
+					success = true;
+				}
+			}
+			return success;
+		} catch (Exception e) {
+			Log.v(LOG_TAG, "Exception: " + e.toString());
+		}
+		return false;
+	}
+	
+	/** Removes port mapping. */
+	public void deletePortMapping() {
+		try {
+			if (System.getProperty("org.xml.sax.driver") == null) {
+				System.setProperty("org.xml.sax.driver", "org.xmlpull.v1.sax2.Driver");
+			}
+			GatewayDiscover discover = new GatewayDiscover();
+			discover.discover();
+			GatewayDevice device = discover.getValidGateway();
+			
+			Log.v(LOG_TAG, "Removing port mapping: " + port_);
+			
+			device.deletePortMapping(port_, "TCP");
+		} catch (Exception e) {
+		}
+	}
+	
 	/** Called when the connection settings are changed. */
-	public void connectionSettingsChanged() {
+	public void connectionSettingsChanged(boolean isChangeSpecified, boolean isPortChanged, boolean isIncomingChanged, boolean isWifiOnlyChanged, boolean isUpnpChanged) {
 		boolean hasNewConnection = hasConnection();
 		
 		if (hasConnection_ != hasNewConnection) {
@@ -121,7 +207,7 @@ public class NetworkManager implements NetworkStateListener {
 			}
 		} else {
 			if (hasConnection_) {
-				// Incoming connections enabled/disabled or P2P Port changed.
+				// Incoming connections enabled/disabled or P2P Port changed or UPnP changed.
 				if (!isListening_) {
 					if (Preferences.isIncomingConnectionsEnabled()) {
 						startListening();
@@ -130,8 +216,24 @@ public class NetworkManager implements NetworkStateListener {
 					if (!Preferences.isIncomingConnectionsEnabled()) {
 						stopListening();
 					} else {
+						if (isChangeSpecified && isUpnpChanged && !Preferences.isUpnpEnabled()) {
+							(new Thread() {
+								public void run() {
+									deletePortMapping();
+								};
+							}).start();
+						}
+						
 						if (port_ != Preferences.getPort()) {
 							startListening();
+						} else {
+							if (isChangeSpecified && isUpnpChanged && Preferences.isUpnpEnabled()) {
+								(new Thread() {
+									public void run() {
+										addPortMapping();
+									};
+								}).start();
+							}
 						}
 					}
 				}
@@ -159,7 +261,7 @@ public class NetworkManager implements NetworkStateListener {
 			Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION: " + !noConnectivity);
 		} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION: " + !noConnectivity);
 		
-		connectionSettingsChanged();
+		connectionSettingsChanged(false, false, false, false, false);
 	}
 	
 	/** Returns whether has connection or not. */

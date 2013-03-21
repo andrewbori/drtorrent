@@ -46,7 +46,9 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 	protected static final int MENU_DELETE_TORRENT  = 104;
 	protected static final int MENU_ADD_TRACKER     = 105;
 	protected static final int MENU_ADD_PEER 	    = 106;
-	protected static final int MENU_ADD_MAGNET_LINK = 107;
+	protected static final int MENU_SHARE	 	    = 107;
+	protected static final int MENU_ADD_MAGNET_LINK = 108;
+	protected static final int MENU_SHARE_DRTORRENT	= 109;
 	protected static final int MENU_SEARCH_TORRENT  = 110;
 	protected static final int MENU_SEARCH_TORRENT2 = 111;
 	protected static final int MENU_SETTINGS        = 112;
@@ -296,11 +298,18 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 				Bitfield bitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_BITFIELD);
 				Bitfield downloadingBitfield = (Bitfield) bundle.getSerializable(TorrentService.MSG_KEY_DOWNLOADING_BITFIELD);
 				refreshBitfield(bitfield, downloadingBitfield);
+				break;
+				
+			case TorrentService.MSG_SEND_MAGNET_LINK:
+				final String name = bundle.getString(TorrentService.MSG_KEY_NAME);
+				final String magnetLink = bundle.getString(TorrentService.MSG_KEY_MAGNET_LINK);
+				shareMagnetLink(name, magnetLink);
+				break;
 				
 			default:
 		}
 	}
-	
+
 	protected void openTorrent(Uri filePath) {}
 	
 	protected void showTorrentSettings(TorrentListItem torrent, ArrayList<FileListItem> fileList) {}
@@ -318,6 +327,15 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 	protected void refreshFileList(ArrayList<FileListItem> list) {}
 	
 	protected void refreshTrackerList(ArrayList<TrackerListItem> list) {}
+	
+	protected void shareMagnetLink(String name, String magnetLink) {
+		Intent sendIntent = new Intent();
+		sendIntent.setAction(Intent.ACTION_SEND);
+		sendIntent.putExtra(Intent.EXTRA_SUBJECT, name);
+		sendIntent.putExtra(Intent.EXTRA_TEXT,  magnetLink);
+		sendIntent.setType("text/plain");
+		startActivity(sendIntent);
+	}
 	
 	protected void showTorrentAlreadyOpened(final String infoHash, final ArrayList<String> trackerUrls) {		
 		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
@@ -433,6 +451,18 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 		});
 		dialog_ = builder.create();
 		dialog_.show();
+	}
+	
+	protected void sendShareMessage(int torrentId) {
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId);
+		msg.what = TorrentService.MSG_SEND_MAGNET_LINK;
+		msg.replyTo = clientMessenger_;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
 	}
 	
 	/** Updates a tracker of the tracker list. */

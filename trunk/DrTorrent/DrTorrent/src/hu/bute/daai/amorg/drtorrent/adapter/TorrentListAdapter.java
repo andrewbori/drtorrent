@@ -75,7 +75,11 @@ public class TorrentListAdapter<T> extends ArrayAdapter<T> {
 		LinearLayout layoutUpload = (LinearLayout) reusableView.findViewById(layoutUploadRecource);
 		
 		tvName.setText(item.getName());
-		tvStatus.setText(context_.getString(status));
+		try {
+			tvStatus.setText(context_.getString(status));
+		} catch (Exception e) {
+			tvStatus.setText("");
+		}
 		
 		DecimalFormat dec = new DecimalFormat("###.#");
 		tvPercent.setText(dec.format(item.getPercent()).concat(" %"));

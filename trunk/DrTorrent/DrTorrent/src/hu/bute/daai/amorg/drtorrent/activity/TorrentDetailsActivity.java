@@ -23,6 +23,7 @@ import android.support.v4.view.ViewPager;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.TextView;
 
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
@@ -102,6 +103,11 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			//.setIcon(R.drawable.ic_add)
 			//.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		
+		menu.add(Menu.NONE, MENU_SHARE, 4, R.string.share)
+			//.setIcon(R.drawable.ic_add)
+			//.setIcon(R.drawable.ic_menu_add)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 	}
 
 	@Override
@@ -145,8 +151,10 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				
 			case MENU_DELETE_TORRENT:
 				LayoutInflater inflater = TorrentDetailsActivity.this.getLayoutInflater();
-				ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.dialog_remove_torrent, null);
-				final CheckBox cbDeleteFiles = (CheckBox) layout.findViewById(R.id.dialog_remove_torrent_cbDeleteFiles);
+				ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.dialog_checkbox, null);
+				((TextView) layout.findViewById(R.id.dialog_checkbox_message)).setText(R.string.remove_dialog_title);
+				final CheckBox cbDeleteFiles = (CheckBox) layout.findViewById(R.id.dialog_checkbox_checkbox);
+				cbDeleteFiles.setText(R.string.delete_downloaded_files);
 				
 				AlertDialog.Builder builder = new AlertDialog.Builder(context_);
 				builder.setTitle(getString(R.string.remove)).
@@ -181,6 +189,10 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				
 			case MENU_ADD_TRACKER:
 				addTracker(torrentId_);
+				break;
+				
+			case MENU_SHARE:
+				sendShareMessage(torrentId_);
 				break;
 		}
 		return true;

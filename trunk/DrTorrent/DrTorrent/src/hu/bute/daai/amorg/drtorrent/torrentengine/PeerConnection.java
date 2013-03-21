@@ -3,6 +3,7 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.Tools;
+import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedInteger;
@@ -61,6 +62,7 @@ public class PeerConnection {
     public final static int ERROR_DELETE_PEER = 0;
     public final static int ERROR_INCREASE_ERROR_COUNTER = 1;
     public final static int ERROR_NOT_SPECIFIED = 2;
+    public final static int ERROR_PEER_STOPPED = 3;
 	
 	private Peer peer_;							// the peer
 	private Torrent torrent_;					// the torrent
@@ -185,7 +187,7 @@ public class PeerConnection {
 						if (metadataBlockRequested_.isEmpty()) {
 							issueDownload();
 						}
-					} else if (peer_.getState() == R.string.status_downloading && !peer_.hasRequest()) {
+					} else if (torrent_.getStatus() == R.string.status_downloading && !peer_.hasRequest()) {
 						Log.v(LOG_TAG, "onTimer: Peer doesn't have request");
 						if (isInterested()) {
 							Log.v(LOG_TAG, "onTimer: Peer doesn't have request: issueDownload");
@@ -221,14 +223,14 @@ public class PeerConnection {
 	}
 	
 	/** Issues the upload requests. */
-	public void issueUpload() {
+	public boolean issueUpload(Block block) {
 		if (!isChoking()) {
-			while (blocksToUpload_.size() > 0) {
-				final Block block = (Block) blocksToUpload_.elementAt(0);
+			if (blocksToUpload_.removeElement(block)) {
 				sendPieceMessage(block);
-				blocksToUpload_.removeElementAt(0);
+				return true;
 			}
 		}
+		return false;
 	}
 	
 	/** Issues the download requests. */
@@ -260,16 +262,20 @@ public class PeerConnection {
 	/** Writes the byte array to the outputStream_. */
 	private void write(final byte buffer[]) throws Exception {
 		try {
-			outputStream_.write(buffer);
-			outputStream_.flush();
+			synchronized (outputStream_) {
+				outputStream_.write(buffer);
+				outputStream_.flush();
+			}
 		} catch(Exception e) {}
 	}
 	
 	/** Writes a big-endian integer to the outputStream_.*/
 	private void writeInt(final int i) throws Exception {
 		try {
-			outputStream_.writeInt(i);
-			outputStream_.flush();
+			synchronized (outputStream_) {
+				outputStream_.writeInt(i);
+				outputStream_.flush();
+			}
 		} catch(Exception e) {}
 	}
 	
@@ -486,6 +492,10 @@ public class PeerConnection {
 
 		Log.v(LOG_TAG, "Handshake completed! Peer wire connected!");
 		changeState(STATE_PW_CONNECTED);
+		
+		if (torrent_ != null && torrent_.isDownloadingData()) {
+			Analytics.newHandshake(torrent_);
+		}
 
 		if (torrent_.getBitfield() != null && !torrent_.getBitfield().isNull()) {
 			sendBitfieldMessage();
@@ -609,18 +619,7 @@ public class PeerConnection {
 			
 			final Block block = new Block(torrent_.getPiece(pieceIndex), begin, length);
 			blocksToUpload_.add(block);
-			
-			issueUpload();
-			
-			//log("in REQUEST Index: " + pieceIndex + " Begin: " + begin + " Length: " + length);
-
-			/*if (Preferences.UploadEnabled) {
-				ellapsedTime_ = 0;
-
-				incomingRequests_.addElement(new BlockRequest(pieceIndex, begin, length));
-
-				issueUpload();
-			}*/
+			torrent_.addBlockToUpload(block, peer_);
 		}
 	}
 
@@ -1298,11 +1297,28 @@ public class PeerConnection {
 	public void close(String reason) {
         close(ERROR_NOT_SPECIFIED, reason);
     }
-
+	
     /** Closes the socket connection. */
-	public void close(int order, String reason) {
+	public void close(int errorCode, String reason) {
 		if (state_ != STATE_CLOSING && state_ != STATE_NOT_CONNECTED) {
 			Log.v(LOG_TAG, "Closing connection. Reason: " + reason);
+			
+			switch (state_) {
+				case STATE_TCP_CONNECTING:
+					if (torrent_ != null && torrent_.isDownloadingData() && errorCode != ERROR_PEER_STOPPED) {
+						Analytics.newFailedConnection(torrent_);
+					}
+					break;
+					
+				case STATE_TCP_CONNECTED:
+				case STATE_PW_HANDSHAKING:
+					if (torrent_ != null && torrent_.isDownloadingData() && errorCode != ERROR_PEER_STOPPED) {
+						Analytics.newTcpConnection(torrent_);
+					}
+					break;
+				
+				default:
+			}
 			
 			changeState(STATE_CLOSING);
 			

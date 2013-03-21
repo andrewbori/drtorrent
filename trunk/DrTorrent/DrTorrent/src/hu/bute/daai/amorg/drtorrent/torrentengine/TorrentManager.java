@@ -4,6 +4,7 @@ import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
+import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.network.HttpConnection;
@@ -30,9 +31,12 @@ import android.util.Log;
 public class TorrentManager {
 	private final static String LOG_TAG = "TorrentManager";
 	private final static int STATE_SAVING_INTERVAL = 1000 * 1 * 60;
+	private final static int REPORT_INTERVAL = 30000 * 1 * 60;
 	
 	final private TorrentService torrentService_;
 	final private NetworkManager networkManager_;
+	final private UploadManager uploadManager_;
+	final private DownloadManager downloadManager_;
 	final private TorrentSchedulerThread torrentSchedulerThread_;
 	private boolean updateEnabled_ = false;
 	final private Vector<Torrent> torrents_;
@@ -46,6 +50,7 @@ public class TorrentManager {
 	private boolean isEnabled_ = false;
 	
 	private long latestSaveTime_;
+	private long latestReportTime_;
 
 	/** Thread that schedules the torrents. */
 	class TorrentSchedulerThread extends Thread {
@@ -53,23 +58,25 @@ public class TorrentManager {
 		public void run() {
 			startUp();
 			latestSaveTime_ = SystemClock.elapsedRealtime();
+			latestReportTime_ = SystemClock.elapsedRealtime();
 			while (isSchedulerEnabled_) {
 				long currentTime = SystemClock.elapsedRealtime();
 				if (updateEnabled_) {
 					Log.v(LOG_TAG, "Scheduling: " + currentTime);
-					long downloadSpeed = 0;
-					long uploadSpeed = 0;
+					
+					uploadManager_.onTimer(currentTime);
+					downloadManager_.onTimer(currentTime);
+					
+					Torrent torrent;
 					for (int i = 0; i < torrents_.size(); i++) {
-						final Torrent torrent = torrents_.elementAt(i);
+						torrent = torrents_.elementAt(i);
 						if (torrent.isWorking()) {
 							torrent.onTimer();
-							downloadSpeed += torrent.getDownloadSpeed();
-							uploadSpeed += torrent.getUploadSpeed();
 						}
 						updateTorrent(torrent);
 					}
 					for (int i = 0; i < openingTorrents_.size(); i++) {
-						final Torrent torrent = openingTorrents_.elementAt(i);
+						torrent = openingTorrents_.elementAt(i);
 						if (torrent.isWorking()) {
 							torrent.onTimer();
 						}
@@ -77,13 +84,32 @@ public class TorrentManager {
 					updateEnabled_ = false;
 					
 					if (isEnabled_) {
-						torrentService_.showNotification(downloadSpeed, uploadSpeed);
+						torrentService_.showNotification(downloadManager_.getDownloadSpeed(), uploadManager_.getUploadSpeed());
 					}
 				}
 				
 				if (latestSaveTime_ + STATE_SAVING_INTERVAL < currentTime) {
 					latestSaveTime_ = currentTime;
 					saveState();
+					
+					if (latestReportTime_ + REPORT_INTERVAL < currentTime  && networkManager_.hasConnection()) {
+						latestReportTime_ = currentTime;
+						
+						if (Preferences.isAnalyticsEnabled()) {
+							final ArrayList<Torrent> analyticsTorrents = new ArrayList<Torrent>();
+							analyticsTorrents.addAll(torrents_);
+							analyticsTorrents.addAll(openingTorrents_);
+							Analytics.onTimer(analyticsTorrents);
+						}
+						
+						if (Preferences.isIncomingConnectionsEnabled() && Preferences.isUpnpEnabled()) {
+							(new Thread() {
+								public void run() {
+									networkManager_.addPortMapping();
+								};
+							}).start();
+						}
+					}
 				}
 				
 				try {
@@ -120,6 +146,8 @@ public class TorrentManager {
 		
 		networkManager_ = networkManager;
 		networkManager_.setTorrentManager(this);
+		uploadManager_ = new UploadManager();
+		downloadManager_ = new DownloadManager();
 		torrentSchedulerThread_ = new TorrentSchedulerThread();
 		torrentSchedulerThread_.start();
 		updateEnabled_ = false;
@@ -171,6 +199,7 @@ public class TorrentManager {
 	public void shutDown() {
 		isSchedulerEnabled_ = false;
 		networkManager_.stopListening();
+		uploadManager_.shutDown();
 		
 		saveState();
 		
@@ -223,7 +252,7 @@ public class TorrentManager {
 		} catch (Exception ex) {
 			downloadFolder = Preferences.getDownloadFolder();
 		}
-		final Torrent newTorrent = new Torrent(this, infoHash, downloadFolder);
+		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, infoHash, downloadFolder);
 		
 		int result = Torrent.ERROR_NONE;
 		if (torrentContent != null) {
@@ -340,7 +369,7 @@ public class TorrentManager {
 			return;
 		}
 		
-		final Torrent newTorrent = new Torrent(this, path, downloadPath);
+		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, path, downloadPath);
 		int result = newTorrent.processBencodedTorrent(bencoded);
 		hideProgress();
 		if (result == Torrent.ERROR_NONE) {									// No error.
@@ -379,7 +408,7 @@ public class TorrentManager {
 	 * Also defines its download folder.   
 	 */
 	public void openTorrent(final MagnetUri magnetUri, final String downloadPath) {
-		final Torrent newTorrent = new Torrent(this, magnetUri.toString(), downloadPath);
+		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, magnetUri.toString(), downloadPath);
 		int result = newTorrent.processMagnetTorrent(magnetUri);
 		
 		hideProgress();
@@ -435,6 +464,8 @@ public class TorrentManager {
 					
 					torrent.shouldStart();
 					torrent.start();
+					
+					Analytics.newTorrent(torrent);
 					
 					latestSaveTime_ = SystemClock.elapsedRealtime() - STATE_SAVING_INTERVAL;
 				} else {
@@ -651,7 +682,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR1240-";	// TODO: Refresh!
+        peerId_ = "-DR1250-";	// TODO: Refresh!
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }
@@ -659,19 +690,6 @@ public class TorrentManager {
         Log.v(LOG_TAG, "PeerID: " + peerId_);
         Log.v(LOG_TAG, "PeerKey: " + peerKey_);
 	}
-	
-	/* Returns the version number for peer id */
-	/*private String getVersionForId() {
-		// What if a number is bigger than 9
-		String versionName = torrentService_.getVersionName();
-		versionName = versionName.replaceAll(".", "");
-		
-		while (versionName.length() < 4) {
-			versionName = versionName.concat("-");
-		}
-		
-		return versionName.substring(0, 4);
-	}*/
 
 	/** Activates the scheduler thread to update the UI. */
 	public void update() {

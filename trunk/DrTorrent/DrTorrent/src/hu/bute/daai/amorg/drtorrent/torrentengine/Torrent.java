@@ -4,6 +4,7 @@ import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.Quantity;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.Tools;
+import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedInteger;
@@ -27,6 +28,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.webkit.URLUtil;
@@ -50,6 +52,8 @@ public class Torrent implements Comparable<Torrent> {
 
 	final private TorrentManager torrentManager_;
 	final private FileManager fileManager_;
+	final UploadManager uploadManager_;
+	final DownloadManager downloadManager_;
 
 	private int status_ = R.string.status_stopped;
 	private boolean isFirstStart_ = true;
@@ -72,6 +76,9 @@ public class Torrent implements Comparable<Torrent> {
 	private String comment_ = "";
 	private String createdBy_ = "";
 	private long creationDate_ = 0;
+	
+	private long addedOn_ = 0;
+	private long completedOn_ = 0;
 
 	private int seeds_ = 0;
 	private int leechers_ = 0;
@@ -109,8 +116,10 @@ public class Torrent implements Comparable<Torrent> {
 	private ThreadPoolExecutor peerTPE_ = null;
 
 	/** Constructor with the manager and the torrent file as a parameter. */
-	public Torrent(final TorrentManager torrentManager, final String filePath, final String downloadPath) {
+	public Torrent(final TorrentManager torrentManager, final UploadManager uploadManager, final DownloadManager downloadManager, final String filePath, final String downloadPath) {
 		torrentManager_ = torrentManager;
+		uploadManager_ = uploadManager;
+		downloadManager_ = downloadManager;
 		fileManager_ = new FileManager(this);
 		downloadFolder_ = downloadPath;
 		if (downloadFolder_.equals("/")) {
@@ -130,6 +139,8 @@ public class Torrent implements Comparable<Torrent> {
 		trackers_ = new Vector<Tracker>();
 		downloadSpeed_ = new Speed();
 		uploadSpeed_ = new Speed();
+		
+		addedOn_ = System.currentTimeMillis();
 
 		id_ = ++ID;
 	}
@@ -907,8 +918,15 @@ public class Torrent implements Comparable<Torrent> {
 	}
 	
 	/** Returns a downloadable block for the given peer. */
-	public synchronized ArrayList<Block> getBlocksToDownload(final Peer peer, final int number) {
+	public synchronized ArrayList<Block> getBlocksToDownload(final Peer peer, int number) {
 		final ArrayList<Block> blocks = new ArrayList<Block>();
+		if (downloadManager_.getDownloadSpeed() >= Preferences.getDownloadSpeedLimit() ||
+			downloadManager_.getLatestDownloadedBytes() >= Preferences.getDownloadSpeedLimit()) {
+			
+			///Log.v(LOG_TAG, "Can't request: " + downloadManager_.getDownloadSpeed() + " " + downloadManager_.getLatestDownloadedBytes() + " " + Preferences.getDownloadSpeedLimit());
+			return blocks;
+		}
+		
 		Block block = null;
 		Piece piece = null;
 
@@ -963,12 +981,12 @@ public class Torrent implements Comparable<Torrent> {
 					for (int i = 0; i < rarestPieces_.size(); i++) {
 						piece = rarestPieces_.elementAt(i);
 						if (!piece.canDownload()) {
-							//Log.v(LOG_TAG, "0Cant download " + priority);
+							//Log.v(LOG_TAG, "0Cant download");
 							continue;
 						}
-						//Log.v(LOG_TAG, "0Can download " + priority);
+						//Log.v(LOG_TAG, "0Can download");
 						if (peer.hasPiece(piece.index())) {
-							//Log.v(LOG_TAG, "0Can download has peer " + priority);
+							//Log.v(LOG_TAG, "0Can download has peer");
 							if (piece.hasUnrequestedBlock()) {
 								block = piece.getUnrequestedBlock();
 								if (block != null) {
@@ -983,7 +1001,9 @@ public class Torrent implements Comparable<Torrent> {
 										return blocks;
 								}
 							}
-						}
+						} /*else {
+							Log.v(LOG_TAG, "0Can't download hasnt peer");
+						}*/
 					}
 				}
 			}
@@ -993,12 +1013,12 @@ public class Torrent implements Comparable<Torrent> {
 				for (int i = 0; i < downloadablePieces_.size(); i++) {
 					piece = downloadablePieces_.elementAt(i);
 					if (!piece.canDownload()) {
-						//Log.v(LOG_TAG, "Cant download " + priority);
+						//Log.v(LOG_TAG, "Cant download");
 						continue;
 					}
-					//Log.v(LOG_TAG, "Can download " + priority);
+					//Log.v(LOG_TAG, "Can download");
 					if (peer.hasPiece(piece.index())) {
-						//Log.v(LOG_TAG, "Can download has peer " + priority);
+						//Log.v(LOG_TAG, "Can download has peer");
 						if (piece.hasUnrequestedBlock()) {
 							block = piece.getUnrequestedBlock();
 							if (block != null) {
@@ -1012,7 +1032,9 @@ public class Torrent implements Comparable<Torrent> {
 									return blocks;
 							}
 						}
-					}
+					} /*else {
+						Log.v(LOG_TAG, "Can't download hasnt peer");
+					}*/
 				}
 			}
 
@@ -1194,7 +1216,11 @@ public class Torrent implements Comparable<Torrent> {
 	/** Adds an incoming peer to the array of (connected) peers. */
 	public void addIncomingPeer(final Peer peer) {
 		peers_.addElement(peer);
-		connectedPeers_.addElement(peer);
+		if (peerTPE_ != null && connectedPeers_.size() < ((double) peerTPE_.getCorePoolSize()) * 1.2) {
+			connectedPeers_.addElement(peer);
+		} else {
+			peer.disconnect();
+		}
 	}
 
 	/** Returns whether there is a peer with the given IP and port in the list of peers or not. */
@@ -1271,6 +1297,7 @@ public class Torrent implements Comparable<Torrent> {
 	public void updateBytesDownloaded(final int bytes) {
 		if (bytes >= 0) {
 			downloadedSize_ += bytes;
+			downloadManager_.addBytes(bytes);
 		}
 		
 		activeDownloadedSize_ += bytes;
@@ -1279,6 +1306,11 @@ public class Torrent implements Comparable<Torrent> {
 	/** Updates the uploaded bytes. */
 	public void updateBytesUploaded(final int bytes) {
 		uploadedSize_ += bytes;
+	}
+	
+	/** Adds a block to the Upload Manager to upload. */
+	public void addBlockToUpload(final Block block, final Peer peer) {
+		uploadManager_.addBlock(block, peer);
 	}
 
 	/** Called after a block has been refused to download (disconnected, choked etc.). */
@@ -1311,6 +1343,7 @@ public class Torrent implements Comparable<Torrent> {
 			downloadablePieces_.removeElement(piece);
 		} else {
 			downloadingPieces_.removeElement(piece);
+			Analytics.newGoodPiece(this);
 		}
 
 		bitfield_.setBit(piece.index());
@@ -1330,6 +1363,9 @@ public class Torrent implements Comparable<Torrent> {
 
 			if (!calledBySavedTorrent) {
 				Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
+				
+				completedOn_ = System.currentTimeMillis();
+				
 				torrentManager_.showCompletedNotification(this);
 				if (bitfield_.isFull()) {
 					for (int i = 0; i < trackers_.size(); i++) {
@@ -1365,6 +1401,8 @@ public class Torrent implements Comparable<Torrent> {
 		updateBytesDownloaded(-piece.size());
 
 		piece.addFilesDownloadedBytes(false);
+		
+		Analytics.newBadPiece(this);
 	}
 
 	/** Returns whether the downloading is complete or not. */
@@ -1395,6 +1433,11 @@ public class Torrent implements Comparable<Torrent> {
 	/** Returns the active size of the torrent. */
 	public long getActiveSize() {
 		return activeSize_;
+	}
+	
+	/** Returns the full size of the torrent. */
+	public long getFullSize() {
+		return fullSize_;
 	}
 	
 	/** Returns the active downloaded size of the torrent. */
@@ -1507,7 +1550,7 @@ public class Torrent implements Comparable<Torrent> {
 		return status_;
 	}
 
-	/** Returns whether the torrent is working or not (hash checking/downloading/seeding). */
+	/** Returns whether the torrent is working or not (hash checking/downloading/seeding/metadata downloading). */
 	public boolean isWorking() {
 		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || 
 			   status_ == R.string.status_hash_check  || status_ == R.string.status_metadata;
@@ -1516,6 +1559,11 @@ public class Torrent implements Comparable<Torrent> {
 	/** Returns whether the torrent is connected or not. (downloading/seeding/metadata downloading) */
 	public boolean isConnected() {
 		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || status_ == R.string.status_metadata;
+	}
+	
+	/** Returns whether the torrent is downloading data or not. (downloading/metadata downloading) */
+	public boolean isDownloadingData() {
+		return status_ == R.string.status_downloading || status_ == R.string.status_metadata;
 	}
 
 	/** Returns the number of seeds. */
@@ -1579,6 +1627,11 @@ public class Torrent implements Comparable<Torrent> {
 		return (int) millis;
 	}
 
+	/** Returns the date (in ms since 1970) when the torrent was added to the list. */
+	public long getAddedOn() {
+		return addedOn_;
+	}
+	
 	/** Returns the elapsed time (ms) since the torrent has been started. */
 	public long getElapsedTime() {
 		return elapsedTime_;
@@ -1610,11 +1663,25 @@ public class Torrent implements Comparable<Torrent> {
 	/** Adds the downloaded block to the metadata. */
 	public void addBlockToMetadata(final int index, final byte[] data) {
 		synchronized (metadata_) {
-			metadata_.add(index, data);
+			String filePath = Preferences.getExternalFilesDir() + "/" + infoHashString_ + ".dat";
+			fileManager_.writeFile(filePath, index * Metadata.BLOCK_SIZE, data);
+			metadata_.add(index/*, data*/);
 			if (metadata_.isComplete()) {
 				final SHA1 sha1 = new SHA1();
-				sha1.update(metadata_.getData());
-				//final int[] hashResult = sha1.digest();
+				byte[] content = null;
+				for (int processedLength = 0; processedLength < metadata_.getSize();) {
+					int length = Metadata.BLOCK_SIZE;
+					if (processedLength + Metadata.BLOCK_SIZE > metadata_.getSize()) {
+						length = metadata_.getSize() - processedLength;
+					}
+					if (content == null || content.length != length) {
+						content = new byte[length];
+					}
+					fileManager_.read(filePath, processedLength, content);
+					sha1.update(content);
+					processedLength += length;
+				}
+				content = null;
 				final String infoHash = SHA1.resultToByteString(sha1.digest());
 				metadataSize_ = metadata_.getSize();
 	
@@ -1623,18 +1690,22 @@ public class Torrent implements Comparable<Torrent> {
 					return;
 				}
 				
-				final Bencoded bencoded = Bencoded.parse(metadata_.getData());
+				content = new byte[metadata_.getSize()];
+				fileManager_.read(filePath, 0, content);
+				final Bencoded bencoded = Bencoded.parse(content);
 				if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
 					final BencodedDictionary info = (BencodedDictionary) bencoded;
 					processBencodedMetadata(info);
 					if (shouldStart_) {
+						Analytics.changeTorrent(this);
 						start();
 					} else {
 						torrentManager_.updateMetadata(this);
 					}
 				}
 				
-				torrentManager_.saveTorrentMetadata(this, metadata_.getData());
+				torrentManager_.saveTorrentMetadata(this, content);
+				fileManager_.removeFile(filePath);
 				metadata_ = null;
 			}
 		}
@@ -1677,6 +1748,15 @@ public class Torrent implements Comparable<Torrent> {
 		}
 	}
 	
+	/** Returns the magnet link of the torrent. */
+	public String getMagnetLink() {
+		String magnet = "magnet:?xt=urn:btih:" + infoHashString_ + "&dn=" + name_;
+		for (int i = 0; i < trackers_.size(); i++) {
+			magnet += "&tr=" + trackers_.elementAt(i).getUrl();
+		}
+		return magnet;
+	}
+	
 	/** Returns information of the torrent in JSON. */
 	public JSONObject getStateInJSON() {
 		final JSONObject json = new JSONObject();
@@ -1687,6 +1767,9 @@ public class Torrent implements Comparable<Torrent> {
 			json.put("Name", getName());
 
 			json.put("DownloadFolder", downloadFolder_);
+			
+			json.put("AddedOn", addedOn_);
+			json.put("CompletedOn", completedOn_);
 			
 			if (bitfield_ != null && !bitfield_.isNull()) {
 				JSONArray bitfield = new JSONArray();
@@ -1734,6 +1817,16 @@ public class Torrent implements Comparable<Torrent> {
 				infoHash_ = SHA1.resultToByteString(hashResult);
 				infoHashByteArray_ = SHA1.resultToByte(hashResult);
 				shouldStart_ = true;
+			}
+			
+			if (json.has("AddedOn")) {
+				addedOn_ = json.getLong("AddedOn");
+			} else {
+				addedOn_ = 0;
+			}
+			
+			if (json.has("CompletedOn")) {
+				completedOn_ = json.getLong("CompletedOn");
 			}
 			
 			if (valid_) {
