@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
 "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
-<!-- Generated 2013.03.16. 14:59:34 by Hibernate Tools 3.2.1.GA -->
+<!-- Generated 2013.04.13. 16:49:54 by Hibernate Tools 3.2.1.GA -->
 <hibernate-mapping>
     <class name="hu.bute.daai.amorg.drtorrent.analytics.entity.Process" table="process" catalog="drtorrent">
         <id name="id" type="java.lang.Long">
@@ -31,6 +31,27 @@
         </property>
         <property name="handshakes" type="int">
             <column name="Handshakes" not-null="true" />
+        </property>
+        <property name="downloaded" type="long">
+            <column name="Downloaded" not-null="true" />
+        </property>
+        <property name="completed" type="long">
+            <column name="Completed" not-null="true" />
+        </property>
+        <property name="uploaded" type="long">
+            <column name="Uploaded" not-null="true" />
+        </property>
+        <property name="downloadingTime" type="long">
+            <column name="DownloadingTime" not-null="true" />
+        </property>
+        <property name="seedingTime" type="long">
+            <column name="SeedingTime" not-null="true" />
+        </property>
+        <property name="completedOn" type="long">
+            <column name="CompletedOn" not-null="true" />
+        </property>
+        <property name="removedOn" type="long">
+            <column name="RemovedOn" not-null="true" />
         </property>
     </class>
 </hibernate-mapping>

@@ -1,5 +1,5 @@
 package hu.bute.daai.amorg.drtorrent.analytics.entity;
-// Generated 2013.03.16. 14:59:34 by Hibernate Tools 3.2.1.GA
+// Generated 2013.04.13. 16:49:54 by Hibernate Tools 3.2.1.GA
 
 
 
@@ -18,11 +18,18 @@ public class Process  implements java.io.Serializable {
      private int failedConnections;
      private int tcpConnections;
      private int handshakes;
+     private long downloaded;
+     private long completed;
+     private long uploaded;
+     private long downloadingTime;
+     private long seedingTime;
+     private long completedOn;
+     private long removedOn;
 
     public Process() {
     }
 
-    public Process(Torrent torrent, Peer peer, long addedOn, int badPieces, int goodPieces, int failedConnections, int tcpConnections, int handshakes) {
+    public Process(Torrent torrent, Peer peer, long addedOn, int badPieces, int goodPieces, int failedConnections, int tcpConnections, int handshakes, long downloaded, long completed, long uploaded, long downloadingTime, long seedingTime, long completedOn, long removedOn) {
        this.torrent = torrent;
        this.peer = peer;
        this.addedOn = addedOn;
@@ -31,6 +38,13 @@ public class Process  implements java.io.Serializable {
        this.failedConnections = failedConnections;
        this.tcpConnections = tcpConnections;
        this.handshakes = handshakes;
+       this.downloaded = downloaded;
+       this.completed = completed;
+       this.uploaded = uploaded;
+       this.downloadingTime = downloadingTime;
+       this.seedingTime = seedingTime;
+       this.completedOn = completedOn;
+       this.removedOn = removedOn;
     }
    
     public Long getId() {
@@ -95,6 +109,55 @@ public class Process  implements java.io.Serializable {
     
     public void setHandshakes(int handshakes) {
         this.handshakes = handshakes;
+    }
+    public long getDownloaded() {
+        return this.downloaded;
+    }
+    
+    public void setDownloaded(long downloaded) {
+        this.downloaded = downloaded;
+    }
+    public long getCompleted() {
+        return this.completed;
+    }
+    
+    public void setCompleted(long completed) {
+        this.completed = completed;
+    }
+    public long getUploaded() {
+        return this.uploaded;
+    }
+    
+    public void setUploaded(long uploaded) {
+        this.uploaded = uploaded;
+    }
+    public long getDownloadingTime() {
+        return this.downloadingTime;
+    }
+    
+    public void setDownloadingTime(long downloadingTime) {
+        this.downloadingTime = downloadingTime;
+    }
+    public long getSeedingTime() {
+        return this.seedingTime;
+    }
+    
+    public void setSeedingTime(long seedingTime) {
+        this.seedingTime = seedingTime;
+    }
+    public long getCompletedOn() {
+        return this.completedOn;
+    }
+    
+    public void setCompletedOn(long completedOn) {
+        this.completedOn = completedOn;
+    }
+    public long getRemovedOn() {
+        return this.removedOn;
+    }
+    
+    public void setRemovedOn(long removedOn) {
+        this.removedOn = removedOn;
     }
 
 

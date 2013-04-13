@@ -8,6 +8,18 @@
         <servlet-name>AnalyticsServlet</servlet-name>
         <servlet-class>hu.bute.daai.amorg.drtorrent.analytics.servlet.AnalyticsServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>AnalyticsV2Servlet</servlet-name>
+        <servlet-class>hu.bute.daai.amorg.drtorrent.analytics.servlet.AnalyticsV2Servlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>Statistics2Servlet</servlet-name>
+        <servlet-class>hu.bute.daai.amorg.drtorrent.analytics.servlet.Statistics2Servlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>DatabaseTest</servlet-name>
+        <servlet-class>hu.bute.daai.amorg.drtorrent.analytics.servlet.DatabaseTest</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>TestServlet</servlet-name>
         <url-pattern>/Test</url-pattern>
@@ -15,6 +27,18 @@
     <servlet-mapping>
         <servlet-name>AnalyticsServlet</servlet-name>
         <url-pattern>/Analytics</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>AnalyticsV2Servlet</servlet-name>
+        <url-pattern>/AnalyticsV2</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>Statistics2Servlet</servlet-name>
+        <url-pattern>/Statistics2</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>DatabaseTest</servlet-name>
+        <url-pattern>/DatabaseTest</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

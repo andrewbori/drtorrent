@@ -21,7 +21,7 @@ import org.json.JSONObject;
  *
  * @author Andreas
  */
-public class AnalyticsServlet extends HttpServlet {
+public class AnalyticsV2Servlet extends HttpServlet {
 
     /**
      * Handles the HTTP
@@ -66,9 +66,17 @@ public class AnalyticsServlet extends HttpServlet {
                 int tcpConnections = json.getInt("tcpConnections");
                 int handshakes = json.getInt("handshakes");
                 
+                long downloaded = json.getLong("downloaded");
+                long completed = json.getLong("completed");
+                long uploaded = json.getLong("uploaded");
+                long downloadingTime = json.getLong("downloadingTime");
+                long seedingTime = json.getLong("seedingTime");
+                long completedOn = json.getLong("completedOn");
+                long removedOn = json.getLong("removedOn");
+                
                 Torrent torrent = db.addTorrent(infoHash, size, pieces);
                 
-                db.saveOrUpdateProcess(peer, torrent, addedOn, badPieces, goodPieces, failedConnections, tcpConnections, handshakes, -1, -1, -1, -1, -1, -1, -1);
+                db.saveOrUpdateProcess(peer, torrent, addedOn, badPieces, goodPieces, failedConnections, tcpConnections, handshakes, downloaded, completed, uploaded, downloadingTime, seedingTime, completedOn, removedOn);
             }
             
             out.print("200");
@@ -89,6 +97,6 @@ public class AnalyticsServlet extends HttpServlet {
      */
     @Override
     public String getServletInfo() {
-        return "Analytics Servlet";
+        return "AnalyticsV2 Servlet";
     }// </editor-fold>
 }

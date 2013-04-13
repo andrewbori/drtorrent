@@ -12,6 +12,5 @@
     <property name="hibernate.connection.password">GkezmDV7t_Kc</property>-->
     <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Process.hbm.xml"/>
     <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Peer.hbm.xml"/>
-    <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Torrent.hbm.xml"/>
   </session-factory>
 </hibernate-configuration>

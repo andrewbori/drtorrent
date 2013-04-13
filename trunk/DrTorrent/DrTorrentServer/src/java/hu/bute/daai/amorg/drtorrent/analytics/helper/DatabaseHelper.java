@@ -92,7 +92,7 @@ public class DatabaseHelper {
         return null;
     }
     
-    public Process saveOrUpdateProcess(Peer peer, Torrent torrent, long addedOn, int badPieces, int goodPieces, int failedConnections, int tcpConnections, int handshakes ) {
+    public Process saveOrUpdateProcess(Peer peer, Torrent torrent, long addedOn, int badPieces, int goodPieces, int failedConnections, int tcpConnections, int handshakes,  long downloaded, long completed, long uploaded, long downloadingTime, long seedingTime, long completedOn, long removedOn) {
         try {
             session_.beginTransaction();
             
@@ -103,7 +103,7 @@ public class DatabaseHelper {
                     .uniqueResult();
             
             if (process == null) {
-                process = new Process(torrent, peer, addedOn, badPieces, goodPieces, failedConnections, tcpConnections, handshakes);
+                process = new Process(torrent, peer, addedOn, badPieces, goodPieces, failedConnections, tcpConnections, handshakes, downloaded, completed, uploaded, downloadingTime, seedingTime, completedOn, removedOn);
             } else {
                 process.setBadPieces(badPieces);
                 process.setGoodPieces(goodPieces);
