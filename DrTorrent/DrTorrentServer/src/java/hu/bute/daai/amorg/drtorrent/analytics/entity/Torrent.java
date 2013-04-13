@@ -1,5 +1,5 @@
 package hu.bute.daai.amorg.drtorrent.analytics.entity;
-// Generated 2013.03.16. 14:59:34 by Hibernate Tools 3.2.1.GA
+// Generated 2013.04.13. 16:49:54 by Hibernate Tools 3.2.1.GA
 
 
 import java.util.HashSet;
