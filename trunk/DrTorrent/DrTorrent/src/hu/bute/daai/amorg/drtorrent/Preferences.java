@@ -42,8 +42,14 @@ public class Preferences {
 		return preferences_.getString("download_folder", Environment.getExternalStorageDirectory().getPath() + "/Download");
 	}
 	
+	/** [SDCARD]/Android/data/hu.bute.daai.amorg.drtorrent/files */
 	public static String getExternalFilesDir() {
 		return Environment.getExternalStorageDirectory().getPath() + "/Android/data/hu.bute.daai.amorg.drtorrent/files";
+	}
+	
+	/** [SDCARD]/Android/data/hu.bute.daai.amorg.drtorrent/cache */
+	public static String getExternalCacheDir() {
+		return Environment.getExternalStorageDirectory().getPath() + "/Android/data/hu.bute.daai.amorg.drtorrent/cache";
 	}
 	
 	/** Returns whether the streaming is enabled or not. */

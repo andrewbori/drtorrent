@@ -128,4 +128,6 @@
     <string name="analytics_checkbox">匿名の使用統計情報を送信できるよう</string>
     <string name="statistics">統計</string>
     <string name="share">共有</string>
+    <string name="share_torrent">共有（トレント）</string>
+    <string name="share_magnet">共有（マグネットリンク）</string>
 </resources>

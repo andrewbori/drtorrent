@@ -221,6 +221,8 @@ public class TorrentManager {
 		for (int i = 0; i < torrents_.size(); i++) {
 			final Torrent torrent = torrents_.get(i);
 			jsonArray.put(torrent.getStateInJSON());
+			
+			Analytics.saveSizeAndTimeInfo(torrent);
 		}
 		torrentService_.saveState(jsonArray.toString());
 	}
@@ -519,6 +521,14 @@ public class TorrentManager {
 	public void closeTorrent(final int torrentId, final boolean deleteFiles) {
 		final Torrent torrent = getTorrent(torrentId);
 		if (torrent != null) {
+			if (Preferences.isAnalyticsEnabled()) {
+				torrent.setRemovedOn();
+				Analytics.saveSizeAndTimeInfo(torrent);
+				Analytics.saveRemovedOn(torrent);
+			} else {
+				Analytics.removeTorrent(torrent);
+			}
+				
 			torrents_.removeElement(torrent);
 			torrentService_.removeTorrentItem(torrent);
 			torrentService_.removeTorrentContent(torrent.getInfoHashString());
@@ -682,7 +692,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR1250-";	// TODO: Refresh!
+        peerId_ = "-DR1251-";	// TODO: Refresh!
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }

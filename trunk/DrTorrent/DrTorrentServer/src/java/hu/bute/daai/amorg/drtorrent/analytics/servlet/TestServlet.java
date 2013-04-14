@@ -37,12 +37,6 @@ public class TestServlet extends HttpServlet {
             throws ServletException, IOException {
         response.setContentType("application/vnd.ms-excel;charset=UTF-8");
         
-        String s = request.getParameter("s");
-        if (s == null || !s.equals("a8f3f3a8211db50be02b62eae6af696932c7607c")) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, "/DrTorrent/Test");
-            return;
-        }
-        
         PrintWriter out = response.getWriter();
         
         DatabaseHelper db = null;

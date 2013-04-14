@@ -28,7 +28,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.webkit.URLUtil;
@@ -79,6 +78,7 @@ public class Torrent implements Comparable<Torrent> {
 	
 	private long addedOn_ = 0;
 	private long completedOn_ = 0;
+	private long removedOn_ = 0;
 
 	private int seeds_ = 0;
 	private int leechers_ = 0;
@@ -103,6 +103,8 @@ public class Torrent implements Comparable<Torrent> {
 
 	private boolean wasStreamingMode_ = true;
 	private long elapsedTime_ = 0;
+	private long downloadingTime_ = 0;
+	private long seedingTime_ = 0;
 	private long lastTime_ = 0;
 
 	final private Vector<Peer> peers_;
@@ -762,7 +764,21 @@ public class Torrent implements Comparable<Torrent> {
 	public void onTimer() {
 		if (lastTime_ != 0) {
 			long currentTime = SystemClock.elapsedRealtime();
-			elapsedTime_ += (int) (currentTime - lastTime_);
+			
+			if (torrentManager_.isEnabled()) {
+				int diff = (int) (currentTime - lastTime_);
+			
+				if (downloadingTime_ > -1) {
+					if (status_ == R.string.status_downloading) {
+						downloadingTime_ += diff;
+					} else if (status_ == R.string.status_seeding) {
+						seedingTime_ += diff;
+					}
+				}
+			
+				elapsedTime_ += diff;
+			}
+			
 			lastTime_ = currentTime;
 		}
 		downloadSpeed_.addBytes(downloadedSize_ - latestBytesDownloaded_, lastTime_);
@@ -1365,6 +1381,8 @@ public class Torrent implements Comparable<Torrent> {
 				Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
 				
 				completedOn_ = System.currentTimeMillis();
+				Analytics.saveCompletedOn(this);
+				Analytics.saveSizeAndTimeInfo(this);
 				
 				torrentManager_.showCompletedNotification(this);
 				if (bitfield_.isFull()) {
@@ -1430,6 +1448,18 @@ public class Torrent implements Comparable<Torrent> {
 		return pieces_.elementAt(index);
 	}
 
+	/** Returns the size of completed files. */
+	public long getCompletedFilesSize() {
+		long size = 0;
+		for (int i = 0; i < files_.size(); i++) {
+			File file = files_.get(i);
+			if (file.isComplete()) {
+				size += file.getSize();
+			}
+		}
+		return size;
+	}
+	
 	/** Returns the active size of the torrent. */
 	public long getActiveSize() {
 		return activeSize_;
@@ -1632,9 +1662,33 @@ public class Torrent implements Comparable<Torrent> {
 		return addedOn_;
 	}
 	
+	/** Returns the date (in ms since 1970) when the torrent was completed. */
+	public long getCompletedOn() {
+		return completedOn_;
+	}
+	
+	public void setRemovedOn() {
+		removedOn_ = System.currentTimeMillis();
+	}
+	
+	/** Returns the date (in ms since 1970) when the torrent was removed from the list. */
+	public long getRemovedOn() {
+		return removedOn_;
+	}
+	
 	/** Returns the elapsed time (ms) since the torrent has been started. */
 	public long getElapsedTime() {
 		return elapsedTime_;
+	}
+	
+	/** Returns the downloading time (ms). */
+	public long getDownloadingTime() {
+		return downloadingTime_;
+	}
+	
+	/** Returns the seeding time (ms). */
+	public long getSeedingTime() {
+		return seedingTime_;
 	}
 
 	/** Return whether the bitfield has changed since the latest check or not. */
@@ -1788,6 +1842,8 @@ public class Torrent implements Comparable<Torrent> {
 			json.put("Status", status_);
 			
 			json.put("ElapsedTime", elapsedTime_);
+			json.put("DownloadingTime", downloadingTime_);
+			json.put("SeedingTime", seedingTime_);
 			json.put("Uploaded", uploadedSize_);
 			json.put("Downloaded", downloadedSize_);
 			json.put("IsFirstStart", isFirstStart_);
@@ -1827,6 +1883,18 @@ public class Torrent implements Comparable<Torrent> {
 			
 			if (json.has("CompletedOn")) {
 				completedOn_ = json.getLong("CompletedOn");
+			}
+			
+			if (json.has("DownloadingTime")) {
+				downloadingTime_ = json.getLong("DownloadingTime");
+			} else {
+				downloadingTime_ = -1;
+			}
+			
+			if (json.has("SeedingTime")) {
+				seedingTime_ = json.getLong("SeedingTime");
+			} else {
+				seedingTime_ = -1;
 			}
 			
 			if (valid_) {

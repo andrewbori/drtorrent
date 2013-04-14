@@ -47,15 +47,17 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 	protected static final int MENU_ADD_TRACKER     = 105;
 	protected static final int MENU_ADD_PEER 	    = 106;
 	protected static final int MENU_SHARE	 	    = 107;
-	protected static final int MENU_ADD_MAGNET_LINK = 108;
-	protected static final int MENU_SHARE_DRTORRENT	= 109;
-	protected static final int MENU_SEARCH_TORRENT  = 110;
-	protected static final int MENU_SEARCH_TORRENT2 = 111;
-	protected static final int MENU_SETTINGS        = 112;
-	protected static final int MENU_ABOUT 		    = 113;
-	protected static final int MENU_FEEDBACK	    = 114;
-	protected static final int MENU_RATE_APP		= 115;
-	protected static final int MENU_SHUT_DOWN       = 116;
+	protected static final int MENU_SHARE_TORRENT	= 108;
+	protected static final int MENU_SHARE_MAGNET	= 109;
+	protected static final int MENU_ADD_MAGNET_LINK = 110;
+	protected static final int MENU_SHARE_DRTORRENT	= 111;
+	protected static final int MENU_SEARCH_TORRENT  = 112;
+	protected static final int MENU_SEARCH_TORRENT2 = 113;
+	protected static final int MENU_SETTINGS        = 114;
+	protected static final int MENU_ABOUT 		    = 115;
+	protected static final int MENU_FEEDBACK	    = 116;
+	protected static final int MENU_RATE_APP		= 117;
+	protected static final int MENU_SHUT_DOWN       = 118;
 	
 	protected final static String SHUT_DOWN = "shut_down";
 	protected boolean isShuttingDown_ = false; 
@@ -306,6 +308,11 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 				shareMagnetLink(name, magnetLink);
 				break;
 				
+			case TorrentService.MSG_SEND_TORRENT_FILE:
+				final String title = bundle.getString(TorrentService.MSG_KEY_NAME);
+				final String filePath = bundle.getString(TorrentService.MSG_KEY_FILEPATH);
+				shareTorrentFile(title, filePath);
+			
 			default:
 		}
 	}
@@ -334,6 +341,15 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 		sendIntent.putExtra(Intent.EXTRA_SUBJECT, name);
 		sendIntent.putExtra(Intent.EXTRA_TEXT,  magnetLink);
 		sendIntent.setType("text/plain");
+		startActivity(sendIntent);
+	}
+	
+	protected void shareTorrentFile(String name, String filePath) {
+		Intent sendIntent = new Intent();
+		sendIntent.setAction(Intent.ACTION_SEND);
+		sendIntent.putExtra(Intent.EXTRA_SUBJECT, name);
+		sendIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("file://" + filePath));
+		sendIntent.setType("application/x-bittorrent");
 		startActivity(sendIntent);
 	}
 	
@@ -453,11 +469,18 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 		dialog_.show();
 	}
 	
-	protected void sendShareMessage(int torrentId) {
+	/**
+	 * Sends a share request to the service.
+	 * 
+	 * @param torrentId Identifier of the torrent
+	 * @param isFile true if file should be shared, false if just magnet link
+	 * 
+	 * */
+	protected void sendShareMessage(int torrentId, boolean isFile) {
 		Message msg = Message.obtain();
 		Bundle b = new Bundle();
 		b.putInt(TorrentService.MSG_KEY_TORRENT_ID, torrentId);
-		msg.what = TorrentService.MSG_SEND_MAGNET_LINK;
+		msg.what = isFile ? TorrentService.MSG_SEND_TORRENT_FILE : TorrentService.MSG_SEND_MAGNET_LINK;
 		msg.replyTo = clientMessenger_;
 		msg.setData(b);
 		try {
