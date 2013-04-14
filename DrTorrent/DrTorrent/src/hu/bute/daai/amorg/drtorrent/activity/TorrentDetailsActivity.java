@@ -104,7 +104,12 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 			//.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
-		menu.add(Menu.NONE, MENU_SHARE, 4, R.string.share)
+		menu.add(Menu.NONE, MENU_SHARE_TORRENT, 4, R.string.share_torrent)
+			//.setIcon(R.drawable.ic_add)
+			//.setIcon(R.drawable.ic_menu_add)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		
+		menu.add(Menu.NONE, MENU_SHARE_MAGNET, 5, R.string.share_magnet)
 			//.setIcon(R.drawable.ic_add)
 			//.setIcon(R.drawable.ic_menu_add)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
@@ -191,9 +196,15 @@ public class TorrentDetailsActivity extends TorrentHostActivity {
 				addTracker(torrentId_);
 				break;
 				
-			case MENU_SHARE:
-				sendShareMessage(torrentId_);
+			case MENU_SHARE_TORRENT:
+				sendShareMessage(torrentId_, true);
 				break;
+				
+			case MENU_SHARE_MAGNET:
+				sendShareMessage(torrentId_, false);
+				break;
+				
+			default:
 		}
 		return true;
 	}

@@ -117,4 +117,6 @@
     <string name="analytics_checkbox">Permette l\'invio di statistiche di utilizzo anonime</string>
     <string name="statistics">Statistica</string>
     <string name="share">Condividi</string>
+    <string name="share_torrent">Condividi (torrent)</string>
+    <string name="share_magnet">Condividi (link magnet)</string>
 </resources>

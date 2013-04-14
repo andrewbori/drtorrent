@@ -13,7 +13,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 
-	private static final int DATABASE_VERSION = 1;
+	private static final int DATABASE_VERSION = 2;
 	private static final String DATABASE_NAME = "DrTorrentAnalyticsDB";
 
 	AnalyticsOpenHelper(Context context) {
@@ -27,18 +27,35 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 								  "AddedOn INTEGER, " +
 								  "Size INTEGER, Pieces INTEGER, " +
 								  "GoodPieces INTEGER, BadPieces INTEGER, " +
-								  "FailedConnections INTEGER, TcpConnections INTEGER, Handshakes INTEGER);"	
+								  "FailedConnections INTEGER, TcpConnections INTEGER, Handshakes INTEGER, " +
+								  "Downloaded INTEGER DEFAULT -1, " +
+								  "Completed INTEGER DEFAULT -1, " +
+					        	  "Uploaded INTEGER DEFAULT -1, " +
+					        	  "DownloadingTime INTEGER DEFAULT -1, " +
+					        	  "SeedingTime INTEGER DEFAULT -1, " +
+					        	  "CompletedOn INTEGER DEFAULT -1, " +
+					        	  "RemovedOn INTEGER DEFAULT -1);"	
 		);
 	}
 
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-		// TODO Auto-generated method stub
-		
+        switch(oldVersion) {
+            case 1:
+            	db.execSQL("ALTER TABLE Torrent ADD Downloaded INTEGER DEFAULT -1");
+            	db.execSQL("ALTER TABLE Torrent ADD Completed INTEGER DEFAULT -1");
+            	db.execSQL("ALTER TABLE Torrent ADD Uploaded INTEGER DEFAULT -1");
+            	db.execSQL("ALTER TABLE Torrent ADD DownloadingTime INTEGER DEFAULT -1");
+            	db.execSQL("ALTER TABLE Torrent ADD SeedingTime INTEGER DEFAULT -1");
+            	db.execSQL("ALTER TABLE Torrent ADD CompletedOn INTEGER DEFAULT -1");
+            	db.execSQL("ALTER TABLE Torrent ADD RemovedOn INTEGER DEFAULT -1");
+            	
+            default:
+        }
 	}
 
 	/** Inserts a new torrent to the Database. */
-	public void insertTorrent(final Torrent torrent) {
+	public synchronized void insertTorrent(final Torrent torrent) {
 		if (!isTorrentExists(torrent)) {
 			final String infoHash = torrent.getInfoHashString();
 			final long addedOn = torrent.getAddedOn();
@@ -56,48 +73,61 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 			values.put("TcpConnections", 0);
 			values.put("Handshakes", 0);
 			
+			SQLiteDatabase db = null;
 			try {
-				SQLiteDatabase db = this.getWritableDatabase();
+				db = this.getWritableDatabase();
 				db.insert("Torrent", null, values);
-				db.close();
 			} catch (Exception e) {
 			}
+			try {
+				db.close();
+			} catch (Exception e) {}
 		}
 	}
 	
 	/** Removes torrent with the given infoHash. */
-	public void removeTorrent(final String infoHash) {
+	public synchronized void removeTorrent(final String infoHash) {
+		
+		SQLiteDatabase db = null;
 		try {
-			SQLiteDatabase db = this.getWritableDatabase();
+			db = this.getWritableDatabase();
 			db.delete("Torrent", "InfoHash = ?", new String[] { infoHash });
-			db.close();
 		} catch (Exception e) {
 		}
+		try {
+			db.close();
+		} catch (Exception e) {}
 	}
 	
 	/** Selects torrent with the given infoHash. */
-	public boolean isTorrentExists(final Torrent torrent) {
+	private synchronized boolean isTorrentExists(final Torrent torrent) {
 		final String infoHash = torrent.getInfoHashString();
 		final long addedOn = torrent.getAddedOn();
 		
 		boolean result = false;
+		SQLiteDatabase db = null;
+		Cursor cursor = null;
 		try {
-			SQLiteDatabase db = this.getReadableDatabase();
+			db = this.getReadableDatabase();
 			
-			Cursor cursor = db.query("Torrent", null, "InfoHash = ? AND AddedOn = ?", new String[] { infoHash, Long.toString(addedOn) }, null, null, null);
+			cursor = db.query("Torrent", null, "InfoHash = ? AND AddedOn = ?", new String[] { infoHash, Long.toString(addedOn) }, null, null, null);
 			if (cursor.moveToFirst()) {
 				result = true;
 			}
-			cursor.close();
-			db.close();
 		} catch (Exception e) {
 		}
+		try {
+			cursor.close();
+		} catch (Exception e) {}
+		try {
+			db.close();
+		} catch (Exception e) {}
 		
 		return result;
 	}
 	
 	/** Updates the size and the pieces count of the torrent. */
-	public void updateTorrent(final Torrent torrent) {
+	private synchronized void updateTorrent(final Torrent torrent) {
 		final String infoHash = torrent.getInfoHashString();
 		final long addedOn = torrent.getAddedOn();
 		final long size = torrent.getFullSize();
@@ -107,12 +137,64 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 		values.put("Size", size);
 		values.put("Pieces", pieceCount);
 		
+		SQLiteDatabase db = null;
 		try {
-			SQLiteDatabase db = this.getWritableDatabase();
+			db = this.getWritableDatabase();
 			db.update("Torrent", values, "InfoHash = ? AND AddedOn = ?", new String[] { infoHash, Long.toString(addedOn) });
-			db.close();
 		} catch (Exception e) {
 		}
+		
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
+	/** Updates the completed/downloaded/uploaded size and the downloading/seeding time of the torrent. */
+	private synchronized void updateTorrentSizeAndTime(final Torrent torrent) {
+		final String infoHash = torrent.getInfoHashString();
+		final long addedOn = torrent.getAddedOn();
+		
+		final long downloaded = torrent.getBytesDownloaded();
+		final long completed = torrent.getCompletedFilesSize();
+		final long uploaded = torrent.getBytesUploaded();
+		final long downloadingTime = torrent.getDownloadingTime();
+		final long seedingTime = torrent.getSeedingTime();
+		
+		ContentValues values = new ContentValues();
+		values.put("Downloaded", downloaded);
+		values.put("Completed", completed);
+		values.put("Uploaded", uploaded);
+		values.put("DownloadingTime", downloadingTime);
+		values.put("SeedingTime", seedingTime);
+		
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.update("Torrent", values, "InfoHash = ? AND AddedOn = ?", new String[] { infoHash, Long.toString(addedOn) });
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
+	/** Updates an optional column of a torrent. */
+	private synchronized void updateTorrentColumn(final Torrent torrent, final String column, final long value) {
+		final String infoHash = torrent.getInfoHashString();
+		final long addedOn = torrent.getAddedOn();
+		
+		ContentValues values = new ContentValues();
+		values.put(column, value);
+
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.update("Torrent", values, "InfoHash = ? AND AddedOn = ?", new String[] { infoHash, Long.toString(addedOn) });
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
 	}
 	
 	public final static int TORRENT 		  = 1;
@@ -122,9 +204,13 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 	public final static int FAILED_CONNECTION = 5;
 	public final static int TCP_CONNECTION 	  = 6;
 	public final static int HANDSHAKE 		  = 7;
+	public final static int TORRENT_SIZE_AND_TIME_UPDATE = 8;
+	public final static int COMPLETED_ON	  = 9;
+	public final static int REMOVED_ON	  	  = 10;
+	public final static int REMOVE_TORRENT	  = 666;
 	
 	/** Increments the value of an optional column. */
-	public void doOperation(final Torrent torrent, final int operationId) {
+	public synchronized void doOperation(final Torrent torrent, final int operationId) {
 		String column = null;
 		switch (operationId) {
 			case TORRENT:
@@ -133,6 +219,10 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 			
 			case TORRENT_UPDATE:
 				updateTorrent(torrent);
+				return;
+				
+			case TORRENT_SIZE_AND_TIME_UPDATE:
+				updateTorrentSizeAndTime(torrent);
 				return;
 		
 			case BAD_PIECE:
@@ -154,33 +244,52 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 			case HANDSHAKE:
 				column = "Handshakes";
 				break;
+				
+			case COMPLETED_ON:
+				column = "CompletedOn";
+				updateTorrentColumn(torrent, column, torrent.getCompletedOn());
+				return;
 	
+			case REMOVED_ON:
+				column = "RemovedOn";
+				updateTorrentColumn(torrent, column, torrent.getRemovedOn());
+				return;
+				
+			case REMOVE_TORRENT:
+				removeTorrent(torrent.getInfoHashString());
+				return;
+				
 			default:
 				break;
 		}
 		
 		if (column != null) {
+			SQLiteDatabase db = null;
 			try {
 				// Log.v("DB", "Inc " + column);
 				
 				final String infoHash = torrent.getInfoHashString();
 				final long addedOn = torrent.getAddedOn();
 				
-				SQLiteDatabase db = this.getWritableDatabase();
+				db = this.getWritableDatabase();
 				db.execSQL("UPDATE Torrent SET " + column + " = " + column + " + 1 WHERE InfoHash = ? AND AddedOn = ?", new String [] { infoHash, Long.toString(addedOn) });
-				db.close();
 			} catch (Exception e) {
 				// Log.v("DB", "Inc error");
 			}
+			try {
+				db.close();
+			} catch (Exception e) {}
 		}
 	}
 	
 	/** Returns the torrents in a JSONArray. */
-	public JSONArray getTorentsInJSON() {
+	public synchronized JSONArray getTorentsInJSON() {
 		JSONArray torrents = new JSONArray();
+		SQLiteDatabase db = null;
+		Cursor cursor = null;
 		try {
-			SQLiteDatabase db = this.getReadableDatabase();
-			Cursor cursor = db.query("Torrent", null, null, null, null, null, null);
+			db = this.getReadableDatabase();
+			cursor = db.query("Torrent", null, null, null, null, null, null);
 			
 			JSONObject torrent;
 			if (cursor.moveToFirst()) {
@@ -198,18 +307,32 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 							torrent.put("tcpConnections", cursor.getInt(8));
 							torrent.put("handshakes", cursor.getInt(9));
 							
+							torrent.put("downloaded", cursor.getLong(10));
+							torrent.put("completed", cursor.getLong(11));
+							torrent.put("uploaded", cursor.getLong(12));
+							torrent.put("downloadingTime", cursor.getLong(13));
+							torrent.put("seedingTime", cursor.getLong(14));
+							torrent.put("completedOn", cursor.getLong(15));
+							torrent.put("removedOn", cursor.getLong(16));
+							
 							torrents.put(torrent);
 						}
 					} catch (Exception e) {
+						//Log.v("DB", e.toString());
 					}
 				} while (cursor.moveToNext());
 			}
-			if (!cursor.isClosed()) {
-				cursor.close();
-			}
-			db.close();
+
 		} catch (Exception e) {
+			//Log.v("DB2", e.toString());
 		}
+		
+		try {
+			cursor.close();
+		} catch (Exception e) {}
+		try {
+			db.close();
+		} catch (Exception e) {}
 		
 		return torrents;
 	}

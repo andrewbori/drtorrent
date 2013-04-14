@@ -117,4 +117,6 @@
     <string name="analytics_checkbox">Laat het verzenden van anonieme gebruiksstatistieken</string>
     <string name="statistics">Statistieken</string>
     <string name="share">Delen</string>
+    <string name="share_torrent">Delen (torrent)</string>
+    <string name="share_magnet">Delen (magnet link)</string>
 </resources>

@@ -205,4 +205,6 @@
     <string name="analytics_checkbox">Allow sending anonymous usage statistics</string>
     <string name="statistics">Statistics</string>
     <string name="share">Share</string>
+    <string name="share_torrent">Share (torrent)</string>
+    <string name="share_magnet">Share (magnet link)</string>
 </resources>

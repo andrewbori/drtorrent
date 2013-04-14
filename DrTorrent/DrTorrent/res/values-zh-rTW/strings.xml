@@ -128,4 +128,6 @@
     <string name="analytics_checkbox">允許發送匿名使用統計</string>
     <string name="statistics">統計</string>
     <string name="share">分享</string>
+    <string name="share_torrent">分享（Torrent）</string>
+    <string name="share_magnet">分享（Magnet Link）</string>
 </resources>

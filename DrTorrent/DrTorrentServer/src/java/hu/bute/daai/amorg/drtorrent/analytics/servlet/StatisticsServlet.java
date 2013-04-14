@@ -20,7 +20,7 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author Andreas
  */
-public class Statistics2Servlet extends HttpServlet {
+public class StatisticsServlet extends HttpServlet {
 
     /**
      * Processes requests for both HTTP
@@ -35,12 +35,6 @@ public class Statistics2Servlet extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("application/vnd.ms-excel;charset=UTF-8");
-        /*
-        String s = request.getParameter("s");
-        if (s == null || !s.equals("a8f3f3a8211db50be02b62eae6af696932c7607c")) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, "/DrTorrent/Statistics2");
-            return;
-        }*/
         
         PrintWriter out = response.getWriter();
         
@@ -51,21 +45,23 @@ public class Statistics2Servlet extends HttpServlet {
             ArrayList<hu.bute.daai.amorg.drtorrent.analytics.entity.Process> list = db.getProcesses();
             
             out.println("PeerIdentifier\tInfoHash\tAddedOn\tCompletedOn\tRemovedOn\tSize\tDownloaded\tCompleted\tUploaded\tDownloadingTime\tSeedingTime");
-            DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.JAPAN);
+            DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.US);
             for (hu.bute.daai.amorg.drtorrent.analytics.entity.Process item : list) {
-                String addedOn = dateFormat.format(new Date(item.getAddedOn()));
-                String completedOn = (item.getCompletedOn() > -1 ? dateFormat.format(new Date(item.getCompletedOn())) : "");
-                String removedOn = (item.getRemovedOn() > -1 ? dateFormat.format(new Date(item.getRemovedOn())) : "");
-                
-                out.println(item.getPeer().getPeerIdentifier() + "\t" +
-                            item.getTorrent().getInfoHash() + "\t" +
-                            addedOn + "\t" + completedOn + "\t" + removedOn + "\t" +
-                            item.getTorrent().getSize() + "\t" +
-                            item.getDownloaded() + "\t" +
-                            item.getCompleted() + "\t" +
-                            item.getUploaded() + "\t" +
-                            (item.getDownloadingTime() > 0 ? item.getDownloadingTime() : "") + "\t" +
-                            (item.getSeedingTime() > 0 ? item.getSeedingTime() : "" ));
+                if (item.getDownloaded() > -1) {
+                    String addedOn = dateFormat.format(new Date(item.getAddedOn()));
+                    String completedOn = (item.getCompletedOn() > -1 ? dateFormat.format(new Date(item.getCompletedOn())) : "");
+                    String removedOn = (item.getRemovedOn() > -1 ? dateFormat.format(new Date(item.getRemovedOn())) : "");
+
+                    out.println(item.getPeer().getPeerIdentifier() + "\t" +
+                                item.getTorrent().getInfoHash() + "\t" +
+                                addedOn + "\t" + completedOn + "\t" + removedOn + "\t" +
+                                item.getTorrent().getSize() + "\t" +
+                                item.getDownloaded() + "\t" +
+                                item.getCompleted() + "\t" +
+                                item.getUploaded() + "\t" +
+                                (item.getDownloadingTime() > 0 ? item.getDownloadingTime()/100 : "") + "\t" +
+                                (item.getSeedingTime() > 0 ? item.getSeedingTime()/100 : "" ));
+                }
             }
         } catch (Exception e) {
             out.println("Exception: " + e.getMessage());

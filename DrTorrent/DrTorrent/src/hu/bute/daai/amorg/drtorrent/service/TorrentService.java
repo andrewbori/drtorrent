@@ -9,6 +9,11 @@ import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TrackerListItem;
 import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedDictionary;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedList;
+import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
+import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.network.NetworkManager;
 import hu.bute.daai.amorg.drtorrent.torrentengine.File;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Peer;
@@ -48,8 +53,8 @@ public class TorrentService extends Service {
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
 	
-	public final static String APP_VERSION_NAME = "1.2.5";	// TODO: Refresh!
-	public final static int APP_VERSION_CODE = 8;			// TODO: Refresh!
+	public final static String APP_VERSION_NAME = "1.2.5.1";	// TODO: Refresh!
+	public final static int APP_VERSION_CODE = 9;			// TODO: Refresh!
 	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
@@ -82,6 +87,7 @@ public class TorrentService extends Service {
 	public final static int MSG_SEND_TORRENT_SETTINGS	 = 315;
 	public final static int MSG_TORRENT_ALREADY_OPENED   = 316;
 	public final static int MSG_SEND_MAGNET_LINK		 = 317;
+	public final static int MSG_SEND_TORRENT_FILE		 = 318;
 	public final static int MSG_SHUT_DOWN				 = 321;
 	public static final int MSG_CONN_SETTINGS_CHANGED    = 400;
 	
@@ -260,6 +266,68 @@ public class TorrentService extends Service {
 					}
 				}
 				
+				break;
+				
+			case MSG_SEND_TORRENT_FILE:
+				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
+				final Torrent fTorrent = torrentManager_.getTorrent(torrentId);
+				final Messenger replyTo = msg.replyTo;
+				new Thread() {
+					public void run() {
+						try {
+							
+							if (fTorrent != null) {
+								BencodedDictionary dict = new BencodedDictionary();
+								Vector<Tracker> trackers = fTorrent.getTrackers();
+								
+								if (trackers.size() > 0) {
+									dict.addEntry("announce", trackers.get(0).getUrl());
+									
+									BencodedList bTrackerList = new BencodedList();
+									for (int i = 0; i < trackers.size(); i++) {
+										BencodedList bTracker = new BencodedList();
+										bTracker.append(new BencodedString(trackers.get(i).getUrl()));
+										bTrackerList.append(bTracker);
+									}
+									dict.addEntry("announce-list", bTrackerList);
+								}
+								
+								byte[] torrentContent = torrentManager_.readTorrentContent(fTorrent.getInfoHashString());
+								Bencoded bencoded = Bencoded.parse(torrentContent);
+								torrentContent = null;
+								if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
+									bencoded = ((BencodedDictionary) bencoded).entryValue("info");
+									if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
+										dict.addEntry("info", bencoded);
+										bencoded = null;
+								
+										String filePath = Preferences.getExternalCacheDir() + "/share/" + fTorrent.getInfoHashString() + ".torrent";
+										FileManager fm = new FileManager(null);
+										fm.writeFile(filePath,0, dict.Bencode());
+										dict = null;
+										
+										
+										Message rMsg = Message.obtain();
+										Bundle bundle = new Bundle();
+										bundle.putString(MSG_KEY_NAME, fTorrent.getName());
+										bundle.putString(MSG_KEY_FILEPATH, filePath);
+										
+										rMsg.setData(bundle);
+										rMsg.what = MSG_SEND_TORRENT_FILE;
+										
+										try {
+											replyTo.send(rMsg);
+										} catch (Exception e) {
+										}
+									}
+								}
+								
+							}
+						} catch (Exception e) {
+							
+						}
+					}
+				}.start();
 				break;
 				
 			case MSG_START_TORRENT:

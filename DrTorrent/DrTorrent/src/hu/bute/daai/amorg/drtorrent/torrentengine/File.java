@@ -133,6 +133,6 @@ public class File {
 	}
 
 	public boolean isComplete() {
-		return downloadedSize_ == size_;
+		return downloadedSize_ >= size_;
 	}
 }

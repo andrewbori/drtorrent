@@ -117,4 +117,6 @@
     <string name="analytics_checkbox">Permiteți trimiterea statistici anonime de utilizare</string>
     <string name="statistics">Dtatistică</string>
     <string name="share">Distribuiţi</string>
+    <string name="share_torrent">Distribuiţi (torrent)</string>
+    <string name="share_magnet">Distribuiţi (link magnet)</string>
 </resources>

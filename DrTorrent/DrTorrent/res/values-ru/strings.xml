@@ -175,4 +175,6 @@
     <string name="analytics_checkbox">Разрешать отправлять анонимную статистику использования</string>
     <string name="statistics">Статистика</string>
     <string name="share">Поделиться</string>
+    <string name="share_torrent">Поделиться (торрент)</string>
+    <string name="share_magnet">Поделиться (магнет-ссылка)</string>
 </resources>

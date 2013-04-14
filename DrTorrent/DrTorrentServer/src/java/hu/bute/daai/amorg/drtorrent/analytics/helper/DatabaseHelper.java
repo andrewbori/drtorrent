@@ -110,6 +110,13 @@ public class DatabaseHelper {
                 process.setFailedConnections(failedConnections);
                 process.setTcpConnections(tcpConnections);
                 process.setHandshakes(handshakes);
+                process.setDownloaded(downloaded);
+                process.setCompleted(completed);
+                process.setUploaded(uploaded);
+                process.setDownloadingTime(downloadingTime);
+                process.setSeedingTime(seedingTime);
+                process.setCompletedOn(completedOn);
+                process.setRemovedOn(removedOn);
             }
             session_.saveOrUpdate(process);
             session_.getTransaction().commit();

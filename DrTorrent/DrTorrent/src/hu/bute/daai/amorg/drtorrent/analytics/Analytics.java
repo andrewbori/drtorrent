@@ -16,8 +16,8 @@ import android.util.Log;
 
 public class Analytics {
 	
-	private final static String SERVER_URL = "http://drtorrent-andrewbori.rhcloud.com/DrTorrent/Analytics";
-	//private final static String SERVER_URL = "http://192.168.0.4:8080/DrTorrent/Analytics";
+	private final static String SERVER_URL = "http://drtorrent-andrewbori.rhcloud.com/DrTorrent/AnalyticsV2";
+	//private final static String SERVER_URL = "http://192.168.0.4:8080/DrTorrent/AnalyticsV2";
 	
 	private static AnalyticsOpenHelper db_;
 	private final static Vector<DatabaseOperation> operations_ = new Vector<DatabaseOperation>();
@@ -41,8 +41,28 @@ public class Analytics {
 		startAnalyticsThread();
 	}
 	
+	public static void removeTorrent(Torrent torrent) {
+		operations_.addElement(new DatabaseOperation(torrent, AnalyticsOpenHelper.REMOVE_TORRENT));
+		startAnalyticsThread();
+	}
+	
 	public static void changeTorrent(Torrent torrent) {
 		operations_.addElement(new DatabaseOperation(torrent, AnalyticsOpenHelper.TORRENT_UPDATE));
+		startAnalyticsThread();
+	}
+	
+	public static void saveSizeAndTimeInfo(Torrent torrent) {
+		operations_.addElement(new DatabaseOperation(torrent, AnalyticsOpenHelper.TORRENT_SIZE_AND_TIME_UPDATE));
+		startAnalyticsThread();
+	}
+	
+	public static void saveCompletedOn(Torrent torrent) {
+		operations_.addElement(new DatabaseOperation(torrent, AnalyticsOpenHelper.COMPLETED_ON));
+		startAnalyticsThread();
+	}
+	
+	public static void saveRemovedOn(Torrent torrent) {
+		operations_.addElement(new DatabaseOperation(torrent, AnalyticsOpenHelper.REMOVED_ON));
 		startAnalyticsThread();
 	}
 	

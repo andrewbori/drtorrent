@@ -707,9 +707,9 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 		
 		CharSequence[] items = null;
 		if (item.getStatus() == R.string.status_stopped || item.getStatus() == R.string.status_finished) {
-			items = new CharSequence[] { getString(R.string.start), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker), getString(R.string.share) };
+			items = new CharSequence[] { getString(R.string.start), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker), getString(R.string.share_torrent), getString(R.string.share_magnet) };
 		} else {
-			items = new CharSequence[] { getString(R.string.stop), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker), getString(R.string.share) };
+			items = new CharSequence[] { getString(R.string.stop), getString(R.string.remove), getString(R.string.menu_add_peer), getString(R.string.menu_add_tracker), getString(R.string.share_torrent), getString(R.string.share_magnet) };
 		}
 		
 		AlertDialog.Builder builder = new AlertDialog.Builder(context_);
@@ -779,7 +779,11 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 						break;
 						
 					case 4:
-						sendShareMessage(item.getId());
+						sendShareMessage(item.getId(), true);
+						break;
+						
+					case 5:
+						sendShareMessage(item.getId(), false);
 						break;
 						
 					default:
