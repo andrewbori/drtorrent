@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.adapter.item;
 
+import java.util.Locale;
+
 
 /** Describes a file/folder. */
 public class FileBrowserItem implements Comparable<FileBrowserItem> {
@@ -31,7 +33,7 @@ public class FileBrowserItem implements Comparable<FileBrowserItem> {
 	
 	public int compareTo(FileBrowserItem o) {
 		if (this.name_ != null) {
-			return this.name_.toLowerCase().compareTo(o.getName().toLowerCase());
+			return this.name_.toLowerCase(Locale.getDefault()).compareTo(o.getName().toLowerCase());
 		} else { 
 			throw new IllegalArgumentException();
 		}

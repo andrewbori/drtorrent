@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    
+    <TextView
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:paddingLeft="4dp"
+		android:paddingRight="4dp"
+		android:paddingTop="8dp"
+		android:paddingBottom="8dp"
+		android:text="@string/create_torrent"
+		android:textAppearance="?android:attr/textAppearanceMedium"
+		
+		android:singleLine="true" />
+    
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="2dp"
+        android:background="#33b5e5" />
+    
+    <ScrollView
+	    android:layout_width="match_parent"
+	    android:layout_height="0dp"
+	    android:orientation="vertical"
+	    android:layout_weight="1" >
+	<RelativeLayout
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content"
+	    android:paddingLeft="5dp"
+	    android:paddingRight="5dp"
+	    android:orientation="vertical">
+    
+	    <TextView
+	        android:id="@+id/torrent_creator_tvSource"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:paddingTop="8dp"
+            android:paddingBottom="5dp"
+            android:text="@string/source"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+	    
+	    <ImageButton
+            android:id="@+id/torrent_creator_btnFolder"
+            android:contentDescription="@string/filebrowser_folder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentRight="true"
+            android:padding="5dp"
+            android:src="@drawable/ic_menu_folder"
+            android:background="@color/button_background" />
+	        
+        <ImageButton 
+            android:id="@+id/torrent_creator_btnFile"
+            android:contentDescription="@string/filebrowser_folder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_toLeftOf="@+id/torrent_creator_btnFolder"
+            android:padding="5dp"
+            android:src="@drawable/ic_menu_file"
+            android:background="@color/button_background" />
+	        
+        <TextView
+            android:id="@+id/torrent_creator_tvFilePath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_tvSource"
+            android:text="" />
+	    
+	
+        <TextView
+            android:id="@+id/torrent_creator_tvTrackers"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_tvFilePath"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"
+            android:text="@string/tab_trackers"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <EditText
+            android:id="@+id/torrent_creator_etTrackers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_tvTrackers"
+            android:gravity="top|left"
+            android:inputType="textMultiLine"
+            android:minLines="8" />
+	
+        <CheckBox
+            android:id="@+id/torrent_creator_cbPrivateTorrent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_etTrackers"
+            android:text="@string/private_torrent" />
+	    
+        <TextView
+	        android:id="@+id/torrent_creator_tvSaveAs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_cbPrivateTorrent"
+            android:paddingTop="8dp"
+            android:paddingBottom="5dp"
+            android:text="@string/save_as"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+	    
+	    <ImageButton
+            android:id="@+id/torrent_creator_btnFolderSaveAs"
+            android:contentDescription="@string/filebrowser_folder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/torrent_creator_cbPrivateTorrent"
+            android:layout_alignParentRight="true"
+            android:padding="5dp"
+            android:src="@drawable/ic_menu_folder"
+            android:background="@color/button_background" />
+	        
+        <TextView
+            android:id="@+id/torrent_creator_tvFilePathSaveAs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_tvSaveAs"
+            android:text="" />
+	
+        <TextView
+            android:id="@+id/torrent_creator_tvFileNameSaveAs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_tvFilePathSaveAs"
+            android:paddingTop="8dp"
+            android:paddingBottom="4dp"
+            android:text="@string/filename"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <EditText
+            android:id="@+id/torrent_creator_etFileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_tvFileNameSaveAs"
+            android:singleLine="true"
+            android:inputType="text" />
+	
+        <CheckBox
+            android:id="@+id/torrent_creator_cbStartSeeding"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/torrent_creator_etFileName"
+            android:text="@string/start_seeding"
+            android:checked="true" />
+        
+	</RelativeLayout>
+	</ScrollView>
+    
+    <include layout="@layout/panel_buttons" />
+
+</LinearLayout>

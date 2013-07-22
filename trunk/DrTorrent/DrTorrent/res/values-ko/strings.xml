@@ -136,4 +136,13 @@
     <string name="share">공유</string>
     <string name="share_torrent">공유 (토렌트)</string>
     <string name="share_magnet">공유 (자석주소)</string>
+    <string name="create_torrent">새 토런트 만들기</string>
+    <string name="private_torrent">전용 토런트</string>
+    <string name="source">소스</string>
+    <string name="filename">파일 이름</string>
+    <string name="save_as">다른 이름으로 저장…</string>
+    <string name="start_seeding">배포 시작</string>
+    <string name="creating_torrent">토렌트 만들기…</string>
+    <string name="creating_torrent_completed">토렌트 만들기가 완료됩니다.</string>
+    <string name="missing_parameters">매개 변수를 누락!</string>
 </resources>

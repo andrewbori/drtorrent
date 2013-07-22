@@ -67,8 +67,8 @@ public class FolderChooserActivity extends Activity {
 		
 		tvPath_ = (TextView) findViewById(R.id.file_browser_tvPath);
 		lwFolder_ = (ListView) findViewById(R.id.file_browser_listView);
-		btnOk_ = (Button) findViewById(R.id.file_browser_btnOk);
-		btnCancel_ = (Button) findViewById(R.id.file_browser_btnCancel);
+		btnOk_ = (Button) findViewById(R.id.btnOk);
+		btnCancel_ = (Button) findViewById(R.id.btnCancel);
 		btnBack_ = (ImageButton) findViewById(R.id.file_browser_btnBack);
 		btnNewFolder_ = (ImageButton) findViewById(R.id.file_browser_btnNewFolder);
 		

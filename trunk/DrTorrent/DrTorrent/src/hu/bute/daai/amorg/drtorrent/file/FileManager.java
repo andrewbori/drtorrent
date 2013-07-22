@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.file;
 
+import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Piece;
 import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
 
@@ -112,13 +113,13 @@ public class FileManager {
 	}
 	
 	/** Removes the file at the given path. */
-	public void removeFile(final String path) {
+	public static void removeFile(final String path) {
 		File file = new File(path);
 	    file.delete();
 	}
 	
 	/** Removes the folder and its folders (but the files not!!!) at the given path. */
-	public void removeDirectories(final File dir) {
+	public static void removeDirectories(final File dir) {
 		if (dir.isDirectory()) {
 	        for (File child : dir.listFiles()) {
 	        	removeDirectories(child);
@@ -148,7 +149,7 @@ public class FileManager {
 	}
 	
 	/** Returns the content of the file in a byte array. */
-	public static byte[] readFile(final String filePath) {
+	public static byte[] read(final String filePath) {
 		BufferedInputStream bis = null;
 		try {
 			final File file = new File(filePath);
@@ -170,15 +171,15 @@ public class FileManager {
 	}
 	
 	/** Writes a block to the file in the given position. */
-	public int writeFile(final String filePath, final long filePosition, final byte[] block) {
-		return writeFile(filePath, filePosition, block, 0, block.length);
+	public static int write(final String filePath, final long filePosition, final byte[] block) {
+		return write(filePath, filePosition, block, 0, block.length);
 	}
 
 	/** 
 	 * Writes a block to the file in the given position.
 	 * The offset and length within the block is also given. 
 	 */
-	public int writeFile(final String filePath, final long filePosition, final byte[] block, final int offset, final int length) {
+	public static int write(final String filePath, final long filePosition, final byte[] block, final int offset, final int length) {
 		RandomAccessFile file = null;
 		try {
 			if (!fileExists(filePath)) {
@@ -205,7 +206,7 @@ public class FileManager {
 	 * Reads a block from the file.
 	 * The position and the length within the file is also given. 
 	 */
-	public byte[] read(final String filepath, final long position, final int length) {
+	public static byte[] read(final String filepath, final long position, final int length) {
 		RandomAccessFile file = null;
 		final byte[] result = new byte[length];
 		try {
@@ -214,12 +215,10 @@ public class FileManager {
 			final int cnt = file.read(result);
 
 			if (cnt != length) {
-				//result = null;
 				return null;
 			}
 		} catch (IOException e) {
 			Log.v(LOG_TAG, e.getMessage());
-			//result = null;
 			return null;
 		} finally {
 			try {
@@ -230,7 +229,8 @@ public class FileManager {
 		return result;
 	}
 	
-	public int read(String filepath, long position, byte[] result) {
+	/** Reading from 'filepath' in 'position' to 'result'. */
+	public static int read(final String filepath, final long position, final byte[] result) {
 		RandomAccessFile file = null;
 		try {
 			file = new RandomAccessFile(filepath, "r");
@@ -238,8 +238,39 @@ public class FileManager {
 			return file.read(result);
 		} catch (IOException e) {
 			Log.v(LOG_TAG, e.getMessage());
-			//result = null;
 			return 0;
+		} finally {
+			try {
+				file.close();
+			} catch (Exception e) {
+			}
+		}
+	}
+	
+	/** Reading from 'filepath' in 'position' 'length' data to 'sha1'. */
+	public static void read(final String filepath, final long position, final int length, final SHA1 sha1) {
+		RandomAccessFile file = null;
+		try {
+			file = new RandomAccessFile(filepath, "r");
+			
+			byte[] data = new byte[Piece.MAX_PIECE_SIZE_TO_READ_AT_ONCE];
+			int offset = 0;
+			while (offset < length) {
+				int nextLength = Piece.MAX_PIECE_SIZE_TO_READ_AT_ONCE;
+				if (offset + nextLength > length) {
+					nextLength = length - offset;
+					data = new byte[nextLength];
+				}
+				file.seek(position + offset);
+				file.read(data);
+				sha1.update(data);
+				
+				offset += nextLength;
+			}
+			data = null;
+
+		} catch (IOException e) {
+			Log.v(LOG_TAG, e.getMessage());
 		} finally {
 			try {
 				file.close();

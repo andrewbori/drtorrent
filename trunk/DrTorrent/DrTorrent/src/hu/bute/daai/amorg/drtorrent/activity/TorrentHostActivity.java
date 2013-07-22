@@ -40,6 +40,7 @@ import com.actionbarsherlock.app.SherlockFragmentActivity;
 public abstract class TorrentHostActivity extends SherlockFragmentActivity implements TorrentInteractionHandler {
 	public static final String KEY_TORRENT_ID = "id";
 	
+	protected static final int MENU_CREATE_TORRENT  = 100;
 	protected static final int MENU_ADD_TORRENT     = 101;
 	protected static final int MENU_START_TORRENT   = 102;
 	protected static final int MENU_STOP_TORRENT    = 103;
@@ -64,6 +65,7 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 	
 	protected static final int RESULT_FILEBROWSER_ACTIVITY = 201;
 	protected static final int RESULT_TORRENT_SETTINGS     = 202;
+	protected static final int RESULT_TORRENT_CREATOR      = 203;
 	
 	protected Activity context_ = this;
 	protected int torrentId_ = -1;

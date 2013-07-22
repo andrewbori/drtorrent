@@ -245,13 +245,40 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 				} catch (Exception e) {}
 				break;
 			
+			case RESULT_TORRENT_CREATOR:
+				if (data != null && resultCode == Activity.RESULT_OK) {
+					String torrentPath = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_TORRENT_PATH);
+					String dataPath = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_DATA_PATH);
+					
+					openTorrent(torrentPath, dataPath);
+				}
+				
+				break;
+				
 			default:
 		}
 	}
 	
 	/** Sends torrent file open request to the Torrent Service. */
+	protected void openTorrent(String torrentPath, String dataPath) {
+		fileToOpen_ = null;
+		
+		Message msg = Message.obtain();
+		Bundle b = new Bundle();
+		b.putString(TorrentService.MSG_KEY_FILEPATH, torrentPath);
+		b.putString(TorrentService.MSG_KEY_DATAPATH, dataPath);
+		msg.what = TorrentService.MSG_OPEN_TORRENT_AND_SEED;
+		msg.setData(b);
+		try {
+			serviceMessenger_.send(msg);
+		} catch (Exception e) {}
+	}
+		
+	
+	/** Sends torrent file open request to the Torrent Service. */
 	@Override
 	protected void openTorrent(Uri torrentUri) {
+		
 		fileToOpen_ = null;
 		
 		Message msg = Message.obtain();
@@ -365,6 +392,10 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 			.setIcon(R.drawable.ic_menu_add2)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
 		
+		menu.add(Menu.NONE, MENU_CREATE_TORRENT, Menu.NONE, R.string.create_torrent)
+			//.setIcon(R.drawable.ic_menu_add2)
+			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+		
 		menu.add(Menu.NONE, MENU_ADD_MAGNET_LINK, Menu.NONE, R.string.add_magnet_link)
 			//.setIcon(R.drawable.ic_menu_magnet)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
@@ -402,6 +433,7 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 		switch (item.getItemId()) {
 			case MENU_ADD_TORRENT:
 				intent = new Intent(this, FileBrowserActivity.class);
+				intent.putExtra(FileBrowserActivity.KEY_EXTENSIONS, new String[] { ".torrent" });
 				startActivityForResult(intent, RESULT_FILEBROWSER_ACTIVITY);
 				break;
 				
@@ -416,6 +448,11 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 				
 			case MENU_ADD_MAGNET_LINK:
 				addMagnetLink();
+				break;
+				
+			case MENU_CREATE_TORRENT:
+				intent = new Intent(this, TorrentCreatorActivity.class);
+				startActivityForResult(intent, RESULT_TORRENT_CREATOR);
 				break;
 				
 			case MENU_SHARE_DRTORRENT:

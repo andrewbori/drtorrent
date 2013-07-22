@@ -325,7 +325,7 @@ public class TorrentManager {
 			
 			path = torrentUri.getPath();
 			Log.v(LOG_TAG, "Reading the torrent: " + path);
-			torrentContent = FileManager.readFile(path);
+			torrentContent = FileManager.read(path);
 			
 		} else if (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https")) {
 			showProgress(torrentService_.getString(R.string.downloading_the_torrent));
@@ -477,6 +477,69 @@ public class TorrentManager {
 				}
 				break;
 			}
+		}
+	}
+	
+	/** Opens torrent and starts seeding it. */
+	public void openTorrentAndSeed(String torrentPath, String dataPath) {
+		byte[] torrentContent = FileManager.read(torrentPath);
+		
+		Log.v(LOG_TAG, "Bencoding the file: " + torrentPath);
+		Bencoded bencoded = null;
+		try {
+			bencoded = Bencoded.parse(torrentContent);
+		} catch (Exception e) {
+			hideProgress();
+			showDialog(torrentService_.getString(R.string.not_a_torrent_file));
+			return;
+		}
+		
+		if (bencoded == null) {
+			hideProgress();
+			showDialog(torrentService_.getString(R.string.not_a_torrent_file));
+			return;
+		}
+		
+		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, torrentPath, dataPath);
+		int result = newTorrent.processBencodedTorrent(bencoded);
+		hideProgress();
+		if (result == Torrent.ERROR_NONE) {									// No error.
+			torrentService_.saveTorrentContent(newTorrent.getInfoHashString(), torrentContent);
+			
+			
+			
+			addTorrent(newTorrent);
+			torrentService_.updateTorrentItem(newTorrent);
+			
+			newTorrent.shouldStart();
+			newTorrent.startSeeding();
+			
+			Analytics.newTorrent(newTorrent);
+			
+			latestSaveTime_ = SystemClock.elapsedRealtime() - STATE_SAVING_INTERVAL;
+			
+			//showTorrentSettings(newTorrent);
+			//newTorrent.start();
+			
+		} else if (result == Torrent.ERROR_WRONG_CONTENT) {					// Error.
+			showDialog(torrentService_.getString(R.string.status_wrong_file));
+			
+		} else if (result == Torrent.ERROR_ALREADY_EXISTS) {
+			final Vector<Tracker> newTrackers = newTorrent.getTrackers();
+			if (newTrackers != null && !newTrackers.isEmpty()) {
+				final ArrayList<String> newTrackerUrls = new ArrayList<String>();
+				for (Tracker newTracker : newTrackers) {
+					newTrackerUrls.add(newTracker.getUrl());
+				}
+				
+				torrentService_.showAlreadyOpenedDialog(newTorrent.getInfoHash(), newTrackerUrls);
+				
+			} else {
+				showDialog(torrentService_.getString(R.string.the_torrent_is_already_opened));
+			}
+			
+		} else {
+			showDialog(torrentService_.getString(R.string.error));
 		}
 	}
 	
@@ -692,7 +755,7 @@ public class TorrentManager {
         r.setSeed(seed);
         
         peerKey_ = Math.abs(r.nextInt());
-        peerId_ = "-DR1251-";	// TODO: Refresh!
+        peerId_ = "-DR1260-";	// TODO: Refresh!
         for (int i=0; i<12; i++) {
             peerId_ += (char)(Math.abs(r.nextInt()) % 25 + 97); // random lower case alphabetic characters ('a' - 'z')
         }

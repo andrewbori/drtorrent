@@ -169,6 +169,23 @@ public class Preferences {
 		return "http://www.vertor.com/index.php?mod=search&search=&cid=0&words=%1$s";
 	}
 	
+	/** Sets the default trackers. */
+	public static void setDefaultTrackers(String defaultTrackers) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putString("default_trackers", defaultTrackers);
+		editor.commit();
+	}
+	
+	/** Returns the default trackers. */
+	public static String getDefaultTrackers() {
+		String system_default =
+				"udp://tracker.openbittorrent.com:80\n\n" + 
+				"udp://tracker.publicbt.com:80\n\n" +
+				"udp://tracker.istole.it:6969\n\n" +
+				"udp://tracker.ccc.de:80";
+		return preferences_.getString("default_trackers", system_default);
+	}
+	
 	/** Sets the number of the latest version. */
 	public static void setLatestVersion(int latestVersion) {
 		SharedPreferences.Editor editor = preferences_.edit();

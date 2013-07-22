@@ -177,4 +177,13 @@
     <string name="share">Поделиться</string>
     <string name="share_torrent">Поделиться (торрент)</string>
     <string name="share_magnet">Поделиться (магнет-ссылка)</string>
+    <string name="create_torrent">Создать новый торрент</string>
+    <string name="private_torrent">Частный торрент</string>
+    <string name="source">Источник</string>
+    <string name="filename">Имя файла</string>
+    <string name="save_as">Сохранить как…</string>
+    <string name="start_seeding">Начать раздачу</string>
+    <string name="creating_torrent">Создание торрент…</string>
+    <string name="creating_torrent_completed">Создание торрент завершен.</string>
+    <string name="missing_parameters">Отсутствующие параметры!</string>
 </resources>

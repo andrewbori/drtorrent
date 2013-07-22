@@ -45,7 +45,7 @@ public class Torrent implements Comparable<Torrent> {
 	public final static int ERROR_TORRENT_NOT_PARSED = -6;
 	public final static int ERROR_NOT_ATTACHED = -7;
 	public final static int ERROR_GENERAL = -8;
-
+	
 	private static int ID = 0;
 	final private int id_;
 
@@ -628,6 +628,24 @@ public class Torrent implements Comparable<Torrent> {
 		}
 	}
 
+	public void startSeeding() {
+		setTorrentActivePieces();
+	
+		if (valid_) {
+			bitfield_ = new Bitfield(bitfield_.getLengthInBits(), true);
+			for (int i = 0; i < pieceCount(); i++) {
+				Piece piece = pieces_.get(i);
+				pieceDownloaded(piece, true);
+				piece.setComplete();
+			}
+			
+			isFirstStart_ = false;
+			status_ = R.string.status_seeding;
+		}
+		
+		start();
+	}
+	
 	/** Starts the torrent. */
 	public void start() {
 		lastTime_ = SystemClock.elapsedRealtime();
@@ -1129,26 +1147,6 @@ public class Torrent implements Comparable<Torrent> {
 		}
 
 		return ERROR_WRONG_CONTENT;
-	}
-
-	/**
-	 * Writes a block into the file in the given position. The offset and the
-	 * length within the block is also given.
-	 */
-	public /*synchronized*/ int writeFile(final File file, final long filePosition, final byte[] block, final int offset, final int length) {
-		return fileManager_.writeFile(file.getFullPath(), filePosition, block, offset, length);
-	}
-
-	/**
-	 * Reads a block from the file. The position and the length within the file
-	 * is also given.
-	 */
-	public /*synchronized*/ byte[] read(final String filepath, final long position, final int length) {
-		return fileManager_.read(filepath, position, length);
-	}
-	
-	public /*synchronized*/ int read(final String filepath, final long position, byte[] result) {
-		return fileManager_.read(filepath, position, result);
 	}
 	
 	/** Returns the metadata block at the given position. */
@@ -1718,7 +1716,7 @@ public class Torrent implements Comparable<Torrent> {
 	public void addBlockToMetadata(final int index, final byte[] data) {
 		synchronized (metadata_) {
 			String filePath = Preferences.getExternalFilesDir() + "/" + infoHashString_ + ".dat";
-			fileManager_.writeFile(filePath, index * Metadata.BLOCK_SIZE, data);
+			FileManager.write(filePath, index * Metadata.BLOCK_SIZE, data);
 			metadata_.add(index/*, data*/);
 			if (metadata_.isComplete()) {
 				final SHA1 sha1 = new SHA1();
@@ -1731,7 +1729,7 @@ public class Torrent implements Comparable<Torrent> {
 					if (content == null || content.length != length) {
 						content = new byte[length];
 					}
-					fileManager_.read(filePath, processedLength, content);
+					FileManager.read(filePath, processedLength, content);
 					sha1.update(content);
 					processedLength += length;
 				}
@@ -1745,7 +1743,7 @@ public class Torrent implements Comparable<Torrent> {
 				}
 				
 				content = new byte[metadata_.getSize()];
-				fileManager_.read(filePath, 0, content);
+				FileManager.read(filePath, 0, content);
 				final Bencoded bencoded = Bencoded.parse(content);
 				if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
 					final BencodedDictionary info = (BencodedDictionary) bencoded;
@@ -1759,7 +1757,7 @@ public class Torrent implements Comparable<Torrent> {
 				}
 				
 				torrentManager_.saveTorrentMetadata(this, content);
-				fileManager_.removeFile(filePath);
+				FileManager.removeFile(filePath);
 				metadata_ = null;
 			}
 		}
@@ -1793,11 +1791,11 @@ public class Torrent implements Comparable<Torrent> {
 	public void removeFiles() {
 		if (valid_) {
 			for (File file : files_) {
-				fileManager_.removeFile(file.getFullPath());
+				FileManager.removeFile(file.getFullPath());
 			}
 			if (downloadFolder_ != null && name_ != null && !name_.equals("")) {
 				String uniquePath = downloadFolder_.concat("/").concat(name_);
-				fileManager_.removeDirectories(new java.io.File(uniquePath));
+				FileManager.removeDirectories(new java.io.File(uniquePath));
 			}
 		}
 	}

@@ -119,4 +119,13 @@
     <string name="share">Partager</string>
     <string name="share_torrent">Partager (torrent)</string>
     <string name="share_magnet">Partager (lien magnet)</string>
+    <string name="create_torrent">Créer un nouveau torrent</string>
+    <string name="private_torrent">Torrent privé</string>
+    <string name="source">Source</string>
+    <string name="filename">Nom du fichier</string>
+    <string name="save_as">Enregistrer sous…</string>
+    <string name="start_seeding">Démarrer la partage</string>
+    <string name="creating_torrent">Création de torrent…</string>
+    <string name="creating_torrent_completed">Création de torrent complet.</string>
+    <string name="missing_parameters">Paramètres manquants!</string>
 </resources>

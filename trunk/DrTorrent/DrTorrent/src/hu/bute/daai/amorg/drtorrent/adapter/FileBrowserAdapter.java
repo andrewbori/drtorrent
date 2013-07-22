@@ -3,12 +3,18 @@ package hu.bute.daai.amorg.drtorrent.adapter;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileBrowserItem;
 
+import java.io.File;
 import java.util.List;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.ResolveInfo;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.MimeTypeMap;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -53,8 +59,28 @@ public class FileBrowserAdapter extends ArrayAdapter<FileBrowserItem> {
 	        		image.setVisibility(ImageView.VISIBLE);
 	        	}
 	        	else {
-	        		image.setImageResource(R.drawable.icon_app);
-	        		image.setVisibility(ImageView.VISIBLE);
+	        		String filePath = item.getPath();
+					File file = new File(filePath);
+	                String extension = filePath.substring(filePath.lastIndexOf(".") + 1); // MimeTypeMap.getFileExtensionFromUrl(filePath);
+	                if (extension.equalsIgnoreCase("torrent")) {
+	                	image.setImageResource(R.drawable.icon_app);
+		        		
+	                } else {
+		                String type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+		                
+		                Intent intent = new Intent(Intent.ACTION_VIEW);
+		                intent.setDataAndType(Uri.fromFile(file), type);
+	
+		        		final List<ResolveInfo> matches = context_.getPackageManager().queryIntentActivities(intent, 0);
+		        		if (matches.size() > 0) {
+		        		    final Drawable icon = matches.get(0).loadIcon(context_.getPackageManager());
+		        		    image.setImageDrawable(icon);
+		        		    
+		        		} else {
+		        			image.setImageResource(R.drawable.icon_file);
+		        		}
+	                }
+	                image.setVisibility(ImageView.VISIBLE);
 	        	}
 	        }
 	    }
