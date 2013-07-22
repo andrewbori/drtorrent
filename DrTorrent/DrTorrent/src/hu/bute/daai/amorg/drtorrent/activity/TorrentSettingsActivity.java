@@ -70,8 +70,8 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 			}
 		}
 		
-		((Button) findViewById(R.id.torrent_settings_btnOk)).setOnClickListener(this);
-		((Button) findViewById(R.id.torrent_settings_btnCancel)).setOnClickListener(this);
+		((Button) findViewById(R.id.btnOk)).setOnClickListener(this);
+		((Button) findViewById(R.id.btnCancel)).setOnClickListener(this);
 		((ImageButton) findViewById(R.id.torrent_settings_btnDownloadFolder)).setOnClickListener(this);
 		
 		tvTorrentName_ = (TextView) findViewById(R.id.torrent_settings_tvTorrentName);
@@ -84,7 +84,7 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 		fileListView_ = (ListView) findViewById(R.id.torrent_settings_lvFiles);
 		refreshFileList(fileList_);
 		
-		((CheckBox) findViewById(R.id.torrent_settings_cbALl)).setOnCheckedChangeListener(new OnCheckedChangeListener() {
+		((CheckBox) findViewById(R.id.cbALl)).setOnCheckedChangeListener(new OnCheckedChangeListener() {
 			@Override
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 				if (fileList_ != null && !fileList_.isEmpty()) {
@@ -116,7 +116,7 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
-			case R.id.torrent_settings_btnOk:
+			case R.id.btnOk:
 				Intent intent = new Intent();
 				intent.putExtra(TorrentService.MSG_KEY_FILE_LIST, fileList_);
 				intent.putExtra(TorrentService.MSG_KEY_TORRENT_ITEM, torrent_);
@@ -124,7 +124,7 @@ public class TorrentSettingsActivity extends Activity implements OnClickListener
 				finish();
 				break;
 				
-			case R.id.torrent_settings_btnCancel:
+			case R.id.btnCancel:
 				intent = new Intent();
 				intent.putExtra(TorrentService.MSG_KEY_TORRENT_ITEM, torrent_);
 				setResult(RESULT_CANCELED, intent);

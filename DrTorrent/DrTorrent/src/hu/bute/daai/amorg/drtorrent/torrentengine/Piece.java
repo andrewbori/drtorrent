@@ -2,6 +2,7 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
+import hu.bute.daai.amorg.drtorrent.file.FileManager;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -132,7 +133,7 @@ public class Piece {
 					rightSize = (int) fileRemainingLength;
 				}
 
-				res = torrent_.writeFile(file, filePosition, data, blockPosition, rightSize);
+				res = FileManager.write(file.getFullPath(), filePosition, data, blockPosition, rightSize);
 				if (res != Torrent.ERROR_NONE) return res;
 				
 				file.addDownloadedBytes(rightSize);
@@ -212,7 +213,7 @@ public class Piece {
 
 		while (length > 0) {
 			if (length >= (file.getSize() - filePosition)) {
-				byte[] buffer = torrent_.read(file.getFullPath(), filePosition, (int) (file.getSize() - filePosition));
+				byte[] buffer = FileManager.read(file.getFullPath(), filePosition, (int) (file.getSize() - filePosition));
 				if (buffer != null) {
 					blockByteArray.write(buffer, 0, buffer.length);
 					buffer = null;
@@ -220,7 +221,7 @@ public class Piece {
 				} else
 					break;
 			} else {
-				byte[] buf = torrent_.read(file.getFullPath(), filePosition, length);
+				byte[] buf = FileManager.read(file.getFullPath(), filePosition, length);
 				if (buf != null) {
 					blockByteArray.write(buf, 0, buf.length);
 					length = 0;
@@ -253,25 +254,7 @@ public class Piece {
 				final FileFragment fragment = fragments_.get(i);
 				Log.v(LOG_TAG, "Checking hash: " + fragment.file().getRelativePath() + " " + fragment.offset() + " " +  fragment.length());
 				
-				if (fragment.length() <= MAX_PIECE_SIZE_TO_READ_AT_ONCE) {
-					final byte[] content = torrent_.read(fragment.file().getFullPath(), fragment.offset(), fragment.length());
-					sha1.update(content);
-				} else {
-					byte[] content = null;
-					for (int processedLength = 0; processedLength < fragment.length();) {
-						int length = MAX_PIECE_SIZE_TO_READ_AT_ONCE;
-						if (processedLength + MAX_PIECE_SIZE_TO_READ_AT_ONCE > fragment.length()) {
-							length = fragment.length() - processedLength;
-						}
-						if (content == null || content.length != length) {
-							content = new byte[length];
-						}
-						torrent_.read(fragment.file().getFullPath(), fragment.offset() + processedLength, content);
-						sha1.update(content);
-						processedLength += length;
-					}
-				}
-				//Log.v(LOG_TAG, fragment.file().getRelativePath() + " " + fragment.offset() + " " + fragment.length());
+				FileManager.read(fragment.file().getFullPath(), fragment.offset(), fragment.length(), sha1);
 			}
 			
 			final byte[] hash = SHA1.resultToByte(sha1.digest());

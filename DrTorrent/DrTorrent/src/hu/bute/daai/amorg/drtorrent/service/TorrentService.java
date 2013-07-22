@@ -53,8 +53,8 @@ public class TorrentService extends Service {
 	private final static String LOG_ERROR_SENDING = "Error during sending message.";
 	private final static String STATE_FILE		  = "state.json";
 	
-	public final static String APP_VERSION_NAME = "1.2.5.1";	// TODO: Refresh!
-	public final static int APP_VERSION_CODE = 9;			// TODO: Refresh!
+	public final static String APP_VERSION_NAME = "1.2.6";	// TODO: Refresh!
+	public final static int APP_VERSION_CODE = 10;			// TODO: Refresh!
 	
 	public final static int MSG_OPEN_TORRENT        	 = 101;
 	public final static int MSG_START_TORRENT       	 = 102;
@@ -65,6 +65,7 @@ public class TorrentService extends Service {
 	public final static int MSG_REMOVE_TACKER 			 = 107;
 	public final static int MSG_ADD_PEER 				 = 108;
 	public final static int MSG_REMOVE_PEER 			 = 109;
+	public final static int MSG_OPEN_TORRENT_AND_SEED	 = 110;
 	public final static int MSG_SUBSCRIBE_CLIENT    	 = 201;
 	public final static int MSG_UNSUBSCRIBE_CLIENT  	 = 202;
 	public final static int MSG_UPDATE_TORRENT			 = 203;
@@ -123,6 +124,7 @@ public class TorrentService extends Service {
 	public final static String MSG_KEY_DELETE_FILES			= "w";
 	public final static String MSG_KEY_NAME					= "x";
 	public final static String MSG_KEY_MAGNET_LINK			= "y";
+	public final static String MSG_KEY_DATAPATH				= "z";
 	public final static String MSG_KEY_PORT_CHANGED			= "n1";
 	public final static String MSG_KEY_INCOMING_CHANGED		= "n2";
 	public final static String MSG_KEY_WIFIONLY_CHANGED		= "n3";
@@ -248,6 +250,12 @@ public class TorrentService extends Service {
 				(new SetTorrentThread(torrent, isRemoved, fileList)).start();
 				break;
 				
+			case MSG_OPEN_TORRENT_AND_SEED:
+				String torrentPath = bundleMsg.getString(MSG_KEY_FILEPATH);
+				String dataPath = bundleMsg.getString(MSG_KEY_DATAPATH);
+				(new OpenTorrentThread(torrentPath, dataPath)).start();
+				break;
+				
 			case MSG_SEND_MAGNET_LINK:
 				torrentId = bundleMsg.getInt(MSG_KEY_TORRENT_ID);
 				Torrent t = torrentManager_.getTorrent(torrentId);
@@ -302,8 +310,7 @@ public class TorrentService extends Service {
 										bencoded = null;
 								
 										String filePath = Preferences.getExternalCacheDir() + "/share/" + fTorrent.getInfoHashString() + ".torrent";
-										FileManager fm = new FileManager(null);
-										fm.writeFile(filePath,0, dict.Bencode());
+										FileManager.write(filePath, 0, dict.Bencode());
 										dict = null;
 										
 										
@@ -1014,17 +1021,26 @@ public class TorrentService extends Service {
 	/** Thread for opening and reading a torrent file. */
 	private class OpenTorrentThread extends Thread {
 
-		private Uri torrentUri_;
+		private Uri torrentUri_ = null;
+		private String torrentPath_ = null;
+		private String dataPath_ = null;
 		
 		public OpenTorrentThread(Uri torrentUri) {
 			torrentUri_ = torrentUri;
 		}
 		
+		public OpenTorrentThread(String torrentPath, String dataPath) {
+			torrentPath_ = torrentPath;
+			dataPath_ = dataPath;
+		}
+		
 		@Override
 		public void run() {
-			if (torrentUri_ == null) return;
-			
-			torrentManager_.openTorrent(torrentUri_);
+			if (torrentUri_ != null) {
+				torrentManager_.openTorrent(torrentUri_);
+			} else if (torrentPath_ != null && dataPath_ != null) {
+				torrentManager_.openTorrentAndSeed(torrentPath_, dataPath_);
+			}
 		}
 	}
 	

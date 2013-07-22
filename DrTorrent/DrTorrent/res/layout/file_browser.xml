@@ -21,7 +21,7 @@
         
         <TextView
             android:id="@+id/file_browser_tvPath"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="/mnt/sdcard/download" />
@@ -49,21 +49,8 @@
         android:layout_weight="1" >
     </ListView>
 
-    <LinearLayout android:id="@+id/file_browser_layoutButtons"
-        android:background="@android:color/darker_gray"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content" 
-        android:paddingTop="3dp" >
-        <Button android:id="@+id/file_browser_btnOk" 
-            android:text="@android:string/ok"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-        <Button android:id="@+id/file_browser_btnCancel"
-            android:text="@android:string/cancel"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-    </LinearLayout>
+    <include
+        android:id="@+id/file_browser_layoutButtons"
+        layout="@layout/panel_buttons" />
 
 </LinearLayout>

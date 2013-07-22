@@ -30,8 +30,10 @@ public class FileBrowserActivity extends Activity {
 	public final static String RESULT_KEY_SOURCE   = "source";
 	public final static String RESULT_KEY_FILEPATH = "filepath";
 	public final static String KEY_PATH = "path";
+	public final static String KEY_EXTENSIONS = "extensions";
 	
 	private File currentDir_;									// currently opened folder
+	private String[] fileExtensions_ = null;
 	private FileBrowserAdapter adapter_;
 	private TextView tvPath_;
 	
@@ -52,6 +54,8 @@ public class FileBrowserActivity extends Activity {
 			if (path != null) {
 				currentDir_ = new File(path);
 			}
+			
+			fileExtensions_ = extras.getStringArray(KEY_EXTENSIONS);
 		}
 		
 		tvPath_ = (TextView) findViewById(R.id.file_browser_tvPath);
@@ -64,10 +68,10 @@ public class FileBrowserActivity extends Activity {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View arg1, int position, long arg3) {
 				FileBrowserItem item = adapter_.getItem(position);
-				if (item.getType()==FileBrowserItem.FILE_TYPE_FOLDER) {			// folder
+				if (item.getType() == FileBrowserItem.FILE_TYPE_FOLDER) {			// folder
 					currentDir_ = new File(item.getPath());
 					showContent(currentDir_);
-				} else if (item.getType()==FileBrowserItem.FILE_TYPE_PARENT) {	// parent directory
+				} else if (item.getType() == FileBrowserItem.FILE_TYPE_PARENT) {	// parent directory
 					if (currentDir_.getParentFile() != null) {
 						currentDir_ = currentDir_.getParentFile();
 						showContent(currentDir_);
@@ -100,11 +104,18 @@ public class FileBrowserActivity extends Activity {
 		List<FileBrowserItem> fls = new ArrayList<FileBrowserItem>();
 		try {
 			for (File ff : dirs) {								// Files and folders to separate lists
-				if (ff.isDirectory())
+				if (ff.isDirectory()) {
 					dir.add(new FileBrowserItem(ff.getName(), FileBrowserItem.FILE_TYPE_FOLDER, ff.getAbsolutePath()));
-				else {
-					if (ff.getName().endsWith(".torrent"))
+				} else {
+					if (fileExtensions_ != null && fileExtensions_.length > 0) {
+						for (String fileExtension : fileExtensions_) {
+							if (ff.getName().endsWith(fileExtension)) {
+								fls.add(new FileBrowserItem(ff.getName(), FileBrowserItem.FILE_TYPE_FILE, ff.getAbsolutePath()));
+							}
+						}
+					} else {
 						fls.add(new FileBrowserItem(ff.getName(), FileBrowserItem.FILE_TYPE_FILE, ff.getAbsolutePath()));
+					}
 				}
 			}
 		} catch (Exception e) {

@@ -167,4 +167,13 @@
     <string name="share">Megosztás</string>
     <string name="share_torrent">Megosztás (torrent)</string>
     <string name="share_magnet">Megosztás (mágnes link)</string>
+    <string name="create_torrent">Torrent készítés</string>
+    <string name="private_torrent">Privát torrent</string>
+    <string name="source">Forrás</string>
+    <string name="filename">Fájlnév</string>
+    <string name="save_as">Mentés mint…</string>
+    <string name="start_seeding">Seedelés indítása</string>
+    <string name="creating_torrent">Torrent létrehozása…</string>
+    <string name="creating_torrent_completed">Torrent létrehozása kész.</string>
+    <string name="missing_parameters">Hiányzó paraméterek!</string>
 </resources>

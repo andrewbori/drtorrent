@@ -12,6 +12,12 @@ public class BencodedList extends Bencoded {
 	public BencodedList() {
 		items_ = new Vector<Bencoded>();
 	}
+	
+	/** Creates a new instance of BencodedList which contains the same elements as the other BencodedList. */
+	public BencodedList(BencodedList other) {
+		items_ = new Vector<Bencoded>();
+		items_.addAll(other.items_);
+	}
 
 	public Bencoded item(int index) {
 		return (Bencoded) items_.elementAt(index);
