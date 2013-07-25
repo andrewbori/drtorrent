@@ -110,6 +110,7 @@ public abstract class TorrentHostActivity extends SherlockFragmentActivity imple
 			finish();
 			return;
 		}
+		context_ = this;
 		doBindService();
 	}
 

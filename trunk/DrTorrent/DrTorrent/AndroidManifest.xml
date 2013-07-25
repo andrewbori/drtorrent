@@ -8,11 +8,13 @@
     
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission  android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission  android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:icon="@drawable/icon_app"
-        android:label="@string/app_name" >
+        android:label="@string/app_name"
+        android:hardwareAccelerated="true" >
         <activity
             android:name=".activity.MainActivity"
             android:configChanges="orientation|screenSize"
@@ -88,9 +90,10 @@
         <provider android:name="org.transdroid.search.TorrentSearchProvider"
             	  android:authorities="org.transdroid.search.TorrentSearchProvider"
             	  android:exported="false" />
-        
-        <activity android:name="com.google.ads.AdActivity"
-              android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"/>
+
+		<meta-data android:name="com.mobclix.APPLICATION_ID" android:value="4B7C8605-6787-4A55-9B92-BC7ED9834EE5"/>
+		<activity android:name="com.mobclix.android.sdk.MobclixBrowserActivity"
+				  android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
         
     </application>
     

@@ -170,9 +170,10 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 			intent.setData(Uri.parse("nothing://"));
 			
 			if (data != null) {
-				if (data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http") ||
-															     data.getScheme().equalsIgnoreCase("https") ||
-																 data.getScheme().equalsIgnoreCase("magnet")) {
+				if (data.getScheme() != null && 
+						(data.getScheme().equalsIgnoreCase("file") || data.getScheme().equalsIgnoreCase("http") ||
+							     									  data.getScheme().equalsIgnoreCase("https") ||
+							     									  data.getScheme().equalsIgnoreCase("magnet"))) {
 					fileToOpen_ = data;
 				}
 			}
@@ -247,10 +248,17 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 			
 			case RESULT_TORRENT_CREATOR:
 				if (data != null && resultCode == Activity.RESULT_OK) {
-					String torrentPath = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_TORRENT_PATH);
+					/*String torrentPath = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_TORRENT_PATH);
 					String dataPath = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_DATA_PATH);
 					
-					openTorrent(torrentPath, dataPath);
+					openTorrent(torrentPath, dataPath);*/
+					String filePath = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_FILEPATH);
+					String trackers = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_TRACKERS);
+					boolean isPrivate = data.getBooleanExtra(TorrentCreatorActivity.RESULT_KEY_IS_PRIVATE, false);
+					String filePathSaveAs = data.getStringExtra(TorrentCreatorActivity.RESULT_KEY_FILEPATH_SAVE_AS);
+					boolean shouldStart = data.getBooleanExtra(TorrentCreatorActivity.RESULT_KEY_SHOULD_START, false);
+					
+					createTorrent(filePath, trackers, isPrivate, filePathSaveAs, shouldStart);
 				}
 				
 				break;
@@ -259,21 +267,21 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 		}
 	}
 	
-	/** Sends torrent file open request to the Torrent Service. */
-	protected void openTorrent(String torrentPath, String dataPath) {
-		fileToOpen_ = null;
-		
+	/** Sends a create file request to the Torrent Service.s */
+	protected void createTorrent(String filePath, String trackers, boolean isPrivate, String filePathSaveAs, boolean shouldStart){
 		Message msg = Message.obtain();
 		Bundle b = new Bundle();
-		b.putString(TorrentService.MSG_KEY_FILEPATH, torrentPath);
-		b.putString(TorrentService.MSG_KEY_DATAPATH, dataPath);
-		msg.what = TorrentService.MSG_OPEN_TORRENT_AND_SEED;
+		b.putString(TorrentCreatorActivity.RESULT_KEY_FILEPATH, filePath);
+		b.putString(TorrentCreatorActivity.RESULT_KEY_TRACKERS, trackers);
+		b.putBoolean(TorrentCreatorActivity.RESULT_KEY_IS_PRIVATE, isPrivate);
+		b.putString(TorrentCreatorActivity.RESULT_KEY_FILEPATH_SAVE_AS, filePathSaveAs);
+		b.putBoolean(TorrentCreatorActivity.RESULT_KEY_SHOULD_START, shouldStart);
+		msg.what = TorrentService.MSG_CREATE_TORRENT;
 		msg.setData(b);
 		try {
 			serviceMessenger_.send(msg);
 		} catch (Exception e) {}
 	}
-		
 	
 	/** Sends torrent file open request to the Torrent Service. */
 	@Override

@@ -247,19 +247,21 @@ public class NetworkManager implements NetworkStateListener {
 	/** Called when the network state changes. */
 	@Override
 	public void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
-		if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
-			isWifiConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? WIFI CONNECTION: " + !noConnectivity);
-		} else if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET){
-			isEthernetConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? ETHERNET CONNECTION: " + !noConnectivity);
-		} else if (networkInfo.getType() == ConnectivityManager.TYPE_WIMAX){
-			isWiMaxConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? WIMAX CONNECTION: " + !noConnectivity);
-		} else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
-			isMobileNetConnected_ = !noConnectivity;
-			Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION: " + !noConnectivity);
-		} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION: " + !noConnectivity);
+		if (networkInfo != null) {
+			if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
+				isWifiConnected_ = !noConnectivity;
+				Log.v(LOG_TAG, "Has connection? WIFI CONNECTION: " + !noConnectivity);
+			} else if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET){
+				isEthernetConnected_ = !noConnectivity;
+				Log.v(LOG_TAG, "Has connection? ETHERNET CONNECTION: " + !noConnectivity);
+			} else if (networkInfo.getType() == ConnectivityManager.TYPE_WIMAX){
+				isWiMaxConnected_ = !noConnectivity;
+				Log.v(LOG_TAG, "Has connection? WIMAX CONNECTION: " + !noConnectivity);
+			} else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
+				isMobileNetConnected_ = !noConnectivity;
+				Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION: " + !noConnectivity);
+			} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION: " + !noConnectivity);
+		}
 		
 		connectionSettingsChanged(false, false, false, false, false);
 	}

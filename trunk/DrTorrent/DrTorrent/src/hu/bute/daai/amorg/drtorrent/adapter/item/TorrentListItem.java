@@ -72,11 +72,28 @@ public class TorrentListItem implements Serializable, Comparable<TorrentListItem
 		this.downloadFolder_ = torrent.getDownloadFolder();
 		this.name_ = torrent.getName();
 		this.percent_ = torrent.getProgressPercent();
-		if (((int) this.percent_) == 100 && torrent.getStatus() == R.string.status_stopped) {
-			status_ = R.string.status_finished;
-		} else {
-			this.status_ = torrent.getStatus();
+		switch (torrent.getStatus()) {
+			case Torrent.STATUS_DOWNLOADING: status_ = R.string.status_downloading; break;
+			case Torrent.STATUS_SEEDING: status_ = R.string.status_seeding; break;
+			case Torrent.STATUS_STOPPED:
+				if (((int) this.percent_) == 100) {
+					status_ = R.string.status_finished;
+				} else {
+					status_ = R.string.status_stopped;
+				}
+				break;
+			case Torrent.STATUS_FINISHED: status_ = R.string.status_finished; break;
+			case Torrent.STATUS_STOPPED_CREATING: status_ = R.string.status_stopped; break;
+			case Torrent.STATUS_CHECKING_HASH: status_ = R.string.status_hash_check; break;
+			case Torrent.STATUS_DOWNLOADING_METADATA: status_ = R.string.status_metadata; break;
+			case Torrent.STATUS_CREATING:  status_ = R.string.status_creating; break;
+			case Torrent.STATUS_STARTED: status_ = R.string.status_started; break;
+			case Torrent.STATUS_OPENING: status_ = R.string.status_opening; break;
+			case Torrent.STATUS_WRONG_FILE:
+			default:
+				status_ = R.string.status_wrong_file;
 		}
+		
 		this.peers_ = torrent.getSeeds() + "/" + torrent.getLeechers();
 		
 		this.size_ = new Quantity(torrent.getActiveSize(), Quantity.SIZE);
