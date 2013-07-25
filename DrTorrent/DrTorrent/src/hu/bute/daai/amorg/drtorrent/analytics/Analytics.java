@@ -107,13 +107,21 @@ public class Analytics {
 		@Override
 		public void run() {
 			while (isEnabled_) {
-				while (!operations_.isEmpty() && isEnabled_) {
-					DatabaseOperation operation = operations_.get(0); 
-					operations_.removeElement(operation);
+				while (isEnabled_) {
+					DatabaseOperation operation = null;
+					synchronized (operations_) {
+						if (!operations_.isEmpty()) {
+							operation = operations_.firstElement(); 
+							operations_.removeElement(operation);
+						} else {
+							break;
+						}
+					}
 					
 					if (db_ != null && isEnabled_) {
 						db_.doOperation(operation.torrent, operation.operationId);
 					}
+					
 				}
 				if (isEnabled_) {
 					synchronized (operations_) {

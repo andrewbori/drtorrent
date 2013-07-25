@@ -4,6 +4,7 @@ import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.Quantity;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.activity.MainActivity;
+import hu.bute.daai.amorg.drtorrent.activity.TorrentCreatorActivity;
 import hu.bute.daai.amorg.drtorrent.adapter.item.FileListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.PeerListItem;
 import hu.bute.daai.amorg.drtorrent.adapter.item.TorrentListItem;
@@ -65,7 +66,7 @@ public class TorrentService extends Service {
 	public final static int MSG_REMOVE_TACKER 			 = 107;
 	public final static int MSG_ADD_PEER 				 = 108;
 	public final static int MSG_REMOVE_PEER 			 = 109;
-	public final static int MSG_OPEN_TORRENT_AND_SEED	 = 110;
+	public final static int MSG_CREATE_TORRENT			 = 111;
 	public final static int MSG_SUBSCRIBE_CLIENT    	 = 201;
 	public final static int MSG_UNSUBSCRIBE_CLIENT  	 = 202;
 	public final static int MSG_UPDATE_TORRENT			 = 203;
@@ -124,7 +125,6 @@ public class TorrentService extends Service {
 	public final static String MSG_KEY_DELETE_FILES			= "w";
 	public final static String MSG_KEY_NAME					= "x";
 	public final static String MSG_KEY_MAGNET_LINK			= "y";
-	public final static String MSG_KEY_DATAPATH				= "z";
 	public final static String MSG_KEY_PORT_CHANGED			= "n1";
 	public final static String MSG_KEY_INCOMING_CHANGED		= "n2";
 	public final static String MSG_KEY_WIFIONLY_CHANGED		= "n3";
@@ -250,10 +250,13 @@ public class TorrentService extends Service {
 				(new SetTorrentThread(torrent, isRemoved, fileList)).start();
 				break;
 				
-			case MSG_OPEN_TORRENT_AND_SEED:
-				String torrentPath = bundleMsg.getString(MSG_KEY_FILEPATH);
-				String dataPath = bundleMsg.getString(MSG_KEY_DATAPATH);
-				(new OpenTorrentThread(torrentPath, dataPath)).start();
+			case MSG_CREATE_TORRENT:
+				String filePath = bundleMsg.getString(TorrentCreatorActivity.RESULT_KEY_FILEPATH);
+				String trackers = bundleMsg.getString(TorrentCreatorActivity.RESULT_KEY_TRACKERS);
+				boolean isPrivate = bundleMsg.getBoolean(TorrentCreatorActivity.RESULT_KEY_IS_PRIVATE);
+				String filePathSaveAs = bundleMsg.getString(TorrentCreatorActivity.RESULT_KEY_FILEPATH_SAVE_AS);
+				boolean shouldStart = bundleMsg.getBoolean(TorrentCreatorActivity.RESULT_KEY_SHOULD_START);
+				(new CreateTorrentThread(filePath, trackers, isPrivate, filePathSaveAs, shouldStart)).start();
 				break;
 				
 			case MSG_SEND_MAGNET_LINK:
@@ -990,7 +993,9 @@ public class TorrentService extends Service {
 	
 	/** Sends the actual torrent list to the subscribed client. */
 	private void sendTorrentList(Messenger messenger) {
-		Collections.sort(torrents_);
+		synchronized (torrents_) {
+			Collections.sort(torrents_);
+		}
 		Message msg = Message.obtain();
 		Bundle bundle = new Bundle();
 		bundle.putSerializable(MSG_KEY_TORRENT_LIST, new ArrayList<TorrentListItem>(torrents_));
@@ -1018,28 +1023,44 @@ public class TorrentService extends Service {
 		}
 	}
 	
+	/** Thread for creating a torrent. */
+	private class CreateTorrentThread extends Thread {
+
+		String filePath_ = null;
+		String trackers_ = null;
+		boolean isPrivate_ = false;
+		String filePathSaveAs_ = null;
+		boolean shouldStart_ = false;
+
+		public CreateTorrentThread(String filePath, String trackers, boolean isPrivate, String filePathSaveAs, boolean shouldStart) {
+			this.filePath_ = filePath;
+			this.trackers_ = trackers;
+			this.isPrivate_ = isPrivate;
+			this.filePathSaveAs_ = filePathSaveAs;
+			this.shouldStart_ = shouldStart;
+		}
+
+		@Override
+		public void run() {
+			if (filePath_ != null) {
+				torrentManager_.createTorrent(filePath_, trackers_, isPrivate_, filePathSaveAs_, shouldStart_);
+			}
+		}
+	}
+	
 	/** Thread for opening and reading a torrent file. */
 	private class OpenTorrentThread extends Thread {
 
 		private Uri torrentUri_ = null;
-		private String torrentPath_ = null;
-		private String dataPath_ = null;
 		
 		public OpenTorrentThread(Uri torrentUri) {
 			torrentUri_ = torrentUri;
-		}
-		
-		public OpenTorrentThread(String torrentPath, String dataPath) {
-			torrentPath_ = torrentPath;
-			dataPath_ = dataPath;
 		}
 		
 		@Override
 		public void run() {
 			if (torrentUri_ != null) {
 				torrentManager_.openTorrent(torrentUri_);
-			} else if (torrentPath_ != null && dataPath_ != null) {
-				torrentManager_.openTorrentAndSeed(torrentPath_, dataPath_);
 			}
 		}
 	}

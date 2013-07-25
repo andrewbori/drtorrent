@@ -2,7 +2,6 @@ package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
 import hu.bute.daai.amorg.drtorrent.Quantity;
-import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
@@ -13,6 +12,7 @@ import hu.bute.daai.amorg.drtorrent.coding.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.network.MagnetUri;
+import hu.bute.daai.amorg.drtorrent.service.TorrentService;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,16 +45,28 @@ public class Torrent implements Comparable<Torrent> {
 	public final static int ERROR_TORRENT_NOT_PARSED = -6;
 	public final static int ERROR_NOT_ATTACHED = -7;
 	public final static int ERROR_GENERAL = -8;
-	
+
+	public final static int STATUS_WRONG_FILE 			= 0;
+	public final static int STATUS_STOPPED 				= 10;
+	public final static int STATUS_FINISHED 			= 11;
+	public final static int STATUS_STOPPED_CREATING		= 12;
+	public final static int STATUS_CREATING 			= 20;
+	public final static int STATUS_STARTED 				= 21;
+	public final static int STATUS_OPENING 				= 22;
+	public final static int STATUS_CHECKING_HASH 		= 23;
+	public final static int STATUS_DOWNLOADING_METADATA = 30;
+	public final static int STATUS_DOWNLOADING 			= 31;
+	public final static int STATUS_SEEDING 				= 32;
+
 	private static int ID = 0;
-	final private int id_;
+	final protected int id_;
 
-	final private TorrentManager torrentManager_;
+	final protected TorrentManager torrentManager_;
 	final private FileManager fileManager_;
-	final UploadManager uploadManager_;
-	final DownloadManager downloadManager_;
+	final protected UploadManager uploadManager_;
+	final protected DownloadManager downloadManager_;
 
-	private int status_ = R.string.status_stopped;
+	protected int status_ = STATUS_STOPPED;
 	private boolean isFirstStart_ = true;
 	private boolean valid_ = false;
 
@@ -64,11 +76,11 @@ public class Torrent implements Comparable<Torrent> {
 	
 	private Metadata metadata_ = null;
 	private int metadataSize_ = 0;
-	private boolean shouldStart_ = false;
+	protected boolean shouldStart_ = false;
 
 	private boolean isSingleFile_ = true;
-	private String downloadFolder_;
-	private String name_;
+	protected String downloadFolder_;
+	protected String name_;
 	private String path_; // downloadFolder + name
 	private int pieceLength_;
 
@@ -84,8 +96,8 @@ public class Torrent implements Comparable<Torrent> {
 	private int leechers_ = 0;
 
 	private long fullSize_ = 0; 			// Size of the full torrent
-	private long activeSize_ = 0; 			// Size of the selected files (pieces)
-	private long activeDownloadedSize_ = 0; // Size of the selected downloaded files (pieces)
+	protected long activeSize_ = 0; 			// Size of the selected files (pieces)
+	protected long activeDownloadedSize_ = 0; // Size of the selected downloaded files (pieces)
 	private long checkedSize_ = 0; 			// Size of the checked bytes (during hash check)
 	private long downloadedSize_ = 0; 		// Size of the downloaded bytes
 	private long uploadedSize_ = 0; 		// Size of the uploaded bytes
@@ -146,6 +158,36 @@ public class Torrent implements Comparable<Torrent> {
 
 		id_ = ++ID;
 	}
+	
+	/** Constructor with creating torrent as a parameter. */
+	public Torrent(CreatingTorrent creatingTorrent) {
+		torrentManager_ = creatingTorrent.torrentManager_;
+		uploadManager_ = creatingTorrent.uploadManager_;
+		downloadManager_ = creatingTorrent.downloadManager_;
+		fileManager_ = new FileManager(this);
+		downloadFolder_ = creatingTorrent.downloadFolder_;
+		if (downloadFolder_.equals("/")) {
+			downloadFolder_ = "";
+		}
+
+		files_ = new Vector<File>();
+		pieces_ = new Vector<Piece>();
+		downloadablePieces_ = new Vector<Piece>();
+		rarestPieces_ = new Vector<Piece>();
+		downloadingPieces_ = new Vector<Piece>();
+		requestedBlocks_ = new Vector<Block>();
+		peers_ = new Vector<Peer>();
+		connectedPeers_ = new Vector<Peer>();
+		notConnectedPeers_ = new Vector<Peer>();
+		interestedPeers_ = new Vector<Peer>();
+		trackers_ = new Vector<Tracker>();
+		downloadSpeed_ = new Speed();
+		uploadSpeed_ = new Speed();
+		
+		addedOn_ = System.currentTimeMillis();
+
+		id_ = creatingTorrent.id_;
+	}
 
 	/**
 	 * Processes the bencoded torrent.
@@ -154,7 +196,7 @@ public class Torrent implements Comparable<Torrent> {
 	 * @return Error code.
 	 */
 	public int processBencodedTorrent(Bencoded torrentBencoded) {
-		status_ = R.string.status_opening;
+		status_ = STATUS_OPENING;
 
 		if (torrentBencoded == null || torrentBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
 			return ERROR_WRONG_CONTENT; // bad bencoded torrent
@@ -243,7 +285,7 @@ public class Torrent implements Comparable<Torrent> {
 	
 	/** Processes the Magnet Link. */
 	public int processMagnetTorrent(MagnetUri magnetUri) {
-		status_ = R.string.status_opening;
+		status_ = STATUS_OPENING;
 		
 		infoHashString_ = magnetUri.getInfoHash();
 		if (infoHashString_ == null || infoHashString_.length() != 40) {
@@ -301,7 +343,7 @@ public class Torrent implements Comparable<Torrent> {
 	
 	/** Processes the metadata. */
 	public int processBencodedMetadata(BencodedDictionary info) {
-		status_ = R.string.status_opening;
+		status_ = STATUS_OPENING;
 		
 		Bencoded tempBencoded = null;
 		
@@ -454,8 +496,8 @@ public class Torrent implements Comparable<Torrent> {
 							if (!downloadablePieces_.contains(piece) && !downloadingPieces_.contains(piece)) {
 								downloadablePieces_.addElement(piece);
 
-								if (status_ == R.string.status_seeding) {
-									status_ = R.string.status_downloading;
+								if (status_ == STATUS_SEEDING) {
+									status_ = STATUS_DOWNLOADING;
 								}
 							}
 						}
@@ -476,11 +518,11 @@ public class Torrent implements Comparable<Torrent> {
 		}
 
 		if (isComplete()) {
-			if (status_ == R.string.status_downloading)
-				status_ = R.string.status_seeding;
+			if (status_ == STATUS_DOWNLOADING)
+				status_ = STATUS_SEEDING;
 		} else {
-			if (status_ == R.string.status_seeding)
-				status_ = R.string.status_downloading;
+			if (status_ == STATUS_SEEDING)
+				status_ = STATUS_DOWNLOADING;
 		}
 	}
 	
@@ -535,7 +577,7 @@ public class Torrent implements Comparable<Torrent> {
 
 	/** Checks the pieces of the torrent. */
 	public void checkHash() {
-		status_ = R.string.status_hash_check;
+		status_ = STATUS_CHECKING_HASH;
 
 		for (final File file : files_) {
 			if (file.getPriority() > 0) {
@@ -546,7 +588,7 @@ public class Torrent implements Comparable<Torrent> {
 					file.checkHash(false);
 				}
 			}
-			if (status_ == R.string.status_stopped) {
+			if (status_ == STATUS_STOPPED) {
 				return;
 			}
 		}
@@ -576,6 +618,9 @@ public class Torrent implements Comparable<Torrent> {
 	 * one file then "piece" ~ "file fragment".
 	 */
 	protected void calculateFileFragments() {
+		if (pieces_.isEmpty()) {
+			return;
+		}
 		int pieceIndex = 0;
 		Piece piece = pieces_.elementAt(pieceIndex);
 		int piecePos = 0;
@@ -640,10 +685,16 @@ public class Torrent implements Comparable<Torrent> {
 			}
 			
 			isFirstStart_ = false;
-			status_ = R.string.status_seeding;
+			if (shouldStart_) {
+				status_ = STATUS_SEEDING;
+			} else {
+				status_ = STATUS_STOPPED;
+			}
 		}
 		
-		start();
+		if (shouldStart_) {
+			start();
+		}
 	}
 	
 	/** Starts the torrent. */
@@ -655,7 +706,7 @@ public class Torrent implements Comparable<Torrent> {
 				setTorrentActivePieces();
 				checkHash();
 
-				if (status_ == R.string.status_stopped) {
+				if (status_ == STATUS_STOPPED) {
 					return;
 				}
 				
@@ -687,12 +738,12 @@ public class Torrent implements Comparable<Torrent> {
 
 		if (valid_) {
 			if (isComplete()) {
-				status_ = R.string.status_seeding;
+				status_ = STATUS_SEEDING;
 			} else {
-				status_ = R.string.status_downloading;
+				status_ = STATUS_DOWNLOADING;
 			}
 		} else {
-			status_ = R.string.status_metadata;
+			status_ = STATUS_DOWNLOADING_METADATA;
 		}
 		
 		if (torrentManager_.isEnabled()) {
@@ -744,11 +795,13 @@ public class Torrent implements Comparable<Torrent> {
 			notConnectedPeers_.removeAllElements();
 			interestedPeers_.removeAllElements();
 			
-			peerTPE_.shutdown();
-			peerTPE_ = null;
+			if (peerTPE_ != null) {
+				peerTPE_.shutdown();
+				peerTPE_ = null;
+			}
 		}
 		lastTime_ = 0;
-		status_ = R.string.status_stopped;
+		status_ = STATUS_STOPPED;
 	}
 
 	/** Removes a disconnected peer from the array of connected peers. */
@@ -787,9 +840,9 @@ public class Torrent implements Comparable<Torrent> {
 				int diff = (int) (currentTime - lastTime_);
 			
 				if (downloadingTime_ > -1) {
-					if (status_ == R.string.status_downloading) {
+					if (status_ == STATUS_DOWNLOADING) {
 						downloadingTime_ += diff;
-					} else if (status_ == R.string.status_seeding) {
+					} else if (status_ == STATUS_SEEDING) {
 						seedingTime_ += diff;
 					}
 				}
@@ -838,7 +891,7 @@ public class Torrent implements Comparable<Torrent> {
 			}
 
 			// Connects to peers
-			if (status_ == R.string.status_downloading || status_ == R.string.status_metadata) {
+			if (status_ == STATUS_DOWNLOADING || status_ == STATUS_DOWNLOADING_METADATA) {
 				try {
 					int activeCount = peerTPE_.getActiveCount();
 					Peer peer;
@@ -1373,7 +1426,7 @@ public class Torrent implements Comparable<Torrent> {
 		// if (downloadedPieceCount_ == pieces_.size()) {
 		if (isComplete()) {
 			activeDownloadedSize_ = activeSize_;	// download percent = 100%
-			status_ = R.string.status_seeding;
+			status_ = STATUS_SEEDING;
 
 			if (!calledBySavedTorrent) {
 				Log.v(LOG_TAG, "DOWNLOAD COMPLETE");
@@ -1500,17 +1553,17 @@ public class Torrent implements Comparable<Torrent> {
 
 	/** Returns the percent of the downloaded data. */
 	public double getProgressPercent() {
-		if (status_ == R.string.status_metadata) {
+		if (status_ == STATUS_DOWNLOADING_METADATA) {
 			return 0;
 		}
 		if (activeSize_ == 0) return 100.0;
-		if (status_ != R.string.status_hash_check) {
+		if (status_ != STATUS_CHECKING_HASH) {
 			return activeDownloadedSize_ / (activeSize_ / 100.0);
 		}
 		return checkedSize_ / (activeSize_ / 100.0);
 	}
 
-	/** Returns the id of the torrent. (Only used inside this program.) */
+	/** Returns the id of the torrent. (Only used inside of this program.) */
 	public int getId() {
 		return id_;
 	}
@@ -1552,7 +1605,7 @@ public class Torrent implements Comparable<Torrent> {
 
 	/** Returns the download folder of the torrent. */
 	public String getDownloadFolder() {
-		if (downloadFolder_.equals("")) {
+		if (downloadFolder_ == null || downloadFolder_.equals("")) {
 			return "/";
 		}
 		return downloadFolder_;
@@ -1578,20 +1631,24 @@ public class Torrent implements Comparable<Torrent> {
 		return status_;
 	}
 
+	public boolean isCreating() {
+		return status_ == STATUS_CREATING || status_ == STATUS_STOPPED_CREATING;
+	}
+	
 	/** Returns whether the torrent is working or not (hash checking/downloading/seeding/metadata downloading). */
 	public boolean isWorking() {
-		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || 
-			   status_ == R.string.status_hash_check  || status_ == R.string.status_metadata;
+		return status_ == STATUS_DOWNLOADING || status_ == STATUS_SEEDING || 
+			   status_ == STATUS_CHECKING_HASH  || status_ == STATUS_DOWNLOADING_METADATA;
 	}
 	
 	/** Returns whether the torrent is connected or not. (downloading/seeding/metadata downloading) */
 	public boolean isConnected() {
-		return status_ == R.string.status_downloading || status_ == R.string.status_seeding || status_ == R.string.status_metadata;
+		return status_ == STATUS_DOWNLOADING || status_ == STATUS_SEEDING || status_ == STATUS_DOWNLOADING_METADATA;
 	}
 	
 	/** Returns whether the torrent is downloading data or not. (downloading/metadata downloading) */
 	public boolean isDownloadingData() {
-		return status_ == R.string.status_downloading || status_ == R.string.status_metadata;
+		return status_ == STATUS_DOWNLOADING || status_ == STATUS_DOWNLOADING_METADATA;
 	}
 
 	/** Returns the number of seeds. */
@@ -1814,6 +1871,8 @@ public class Torrent implements Comparable<Torrent> {
 		final JSONObject json = new JSONObject();
 
 		try {
+			json.put("Version", TorrentService.APP_VERSION_CODE);
+			
 			json.put("InfoHash", getInfoHashString());
 			
 			json.put("Name", getName());
@@ -1861,6 +1920,11 @@ public class Torrent implements Comparable<Torrent> {
 	/** Sets the torrent from JSON. */
 	public boolean setStateFromJSON(final JSONObject json) {
 		try {
+			int version = 0;
+			if (json.has("Version")) {
+				version = json.getInt("Version");
+			}
+			
 			if (json.has("Name") && (name_ == null || name_.equals(""))) {
 				name_ = json.getString("Name");
 			}
@@ -1926,7 +1990,7 @@ public class Torrent implements Comparable<Torrent> {
 							Piece piece = pieces_.get(i);
 							pieceDownloaded(piece, true);
 							piece.setComplete();
-							status_ = R.string.status_opening;
+							status_ = STATUS_OPENING;
 						}
 					}
 				}
@@ -1934,15 +1998,24 @@ public class Torrent implements Comparable<Torrent> {
 				isFirstStart_ = json.getBoolean("IsFirstStart");
 			}
 			
+			checkedSize_ = activeDownloadedSize_;
+			
 			downloadedSize_ = json.getLong("Downloaded");
 			latestBytesDownloaded_ = downloadedSize_;
 			uploadedSize_ = json.getLong("Uploaded");
 			latestBytesUploaded_ = uploadedSize_;
 			elapsedTime_ = json.getLong("ElapsedTime");
-			status_ = json.getInt("Status");
 			
-			if (!valid_ && (status_ == R.string.status_downloading || status_ == R.string.status_hash_check || status_ == R.string.status_seeding)) {
-				status_ = R.string.status_metadata;
+			// Before the 10th version status codes were R.string.status_XXX...
+			// They were UI specific therefore I replaced them with final static int variables
+			// For backward compatibility the default status is STOPPED
+			if (version < 10) {
+				status_ = STATUS_STOPPED;
+			} else {
+				status_ = json.getInt("Status");
+				if (!valid_ && (status_ == STATUS_DOWNLOADING || status_ == STATUS_CHECKING_HASH || status_ == STATUS_SEEDING)) {
+					status_ = STATUS_DOWNLOADING_METADATA;
+				}
 			}
 			
 			JSONArray trackers = json.getJSONArray("Trackers");

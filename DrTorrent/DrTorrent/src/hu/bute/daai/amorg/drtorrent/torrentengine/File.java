@@ -1,6 +1,5 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
-import hu.bute.daai.amorg.drtorrent.R;
 
 public class File {    
     public static final int PRIORITY_SKIP 	= 0;
@@ -43,7 +42,7 @@ public class File {
 			} else {
 				break;
 			}
-			if (torrent_.getStatus() == R.string.status_stopped) {
+			if (torrent_.getStatus() == Torrent.STATUS_STOPPED) {
 				return;
 			}
 		}

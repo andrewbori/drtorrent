@@ -1,7 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.torrentengine;
 
 import hu.bute.daai.amorg.drtorrent.Preferences;
-import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.Tools;
 import hu.bute.daai.amorg.drtorrent.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.coding.bencode.Bencoded;
@@ -187,7 +186,7 @@ public class PeerConnection {
 						if (metadataBlockRequested_.isEmpty()) {
 							issueDownload();
 						}
-					} else if (torrent_.getStatus() == R.string.status_downloading && !peer_.hasRequest()) {
+					} else if (torrent_.getStatus() == Torrent.STATUS_DOWNLOADING && !peer_.hasRequest()) {
 						Log.v(LOG_TAG, "onTimer: Peer doesn't have request");
 						if (isInterested()) {
 							Log.v(LOG_TAG, "onTimer: Peer doesn't have request: issueDownload");

@@ -136,7 +136,6 @@
     <string name="filename">文件名</string>
     <string name="save_as">儲存位置…</string>
     <string name="start_seeding">開始做種</string>
-    <string name="creating_torrent">創建Torrent…</string>
-    <string name="creating_torrent_completed">創建Torrent完成。</string>
     <string name="missing_parameters">缺少的參數！</string>
+    <string name="status_creating">創建中</string>
 </resources>
