@@ -1,8 +1,9 @@
 package hu.bute.daai.amorg.drtorrent.network;
 
-import hu.bute.daai.amorg.drtorrent.Preferences;
-import hu.bute.daai.amorg.drtorrent.service.NetworkStateListener;
-import hu.bute.daai.amorg.drtorrent.torrentengine.TorrentManager;
+import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentManager;
+import hu.bute.daai.amorg.drtorrent.ui.service.NetworkStateListener;
+import hu.bute.daai.amorg.drtorrent.util.Log;
+import hu.bute.daai.amorg.drtorrent.util.Preferences;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -14,7 +15,6 @@ import org.bitlet.weupnp.PortMappingEntry;
 
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.util.Log;
 
 /** CLass that handles incoming connections. */
 public class NetworkManager implements NetworkStateListener {

@@ -1,11 +1,11 @@
 package hu.bute.daai.amorg.drtorrent.network;
 
+import hu.bute.daai.amorg.drtorrent.util.Log;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-
-import android.util.Log;
 
 public class UdpConnection {
 	private final static String LOG_TAG = "UdpConnection";
