@@ -1,8 +1,10 @@
 package hu.bute.daai.amorg.drtorrent.file;
 
-import hu.bute.daai.amorg.drtorrent.coding.sha1.SHA1;
-import hu.bute.daai.amorg.drtorrent.torrentengine.Piece;
-import hu.bute.daai.amorg.drtorrent.torrentengine.Torrent;
+import hu.bute.daai.amorg.drtorrent.core.Piece;
+import hu.bute.daai.amorg.drtorrent.core.torrent.Torrent;
+import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentInfo;
+import hu.bute.daai.amorg.drtorrent.util.Log;
+import hu.bute.daai.amorg.drtorrent.util.sha1.SHA1;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -12,26 +14,25 @@ import java.io.RandomAccessFile;
 import java.util.Vector;
 
 import android.os.StatFs;
-import android.util.Log;
 
 /** Class managing the file system. */
 public class FileManager {
 	private final static String LOG_TAG = "FileManager";
 	
-	final private Torrent torrent_;
-	final private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesCreated_;
-	final private Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File> filesToCreate_;
+	final private TorrentInfo torrent_;
+	final private Vector<hu.bute.daai.amorg.drtorrent.core.File> filesCreated_;
+	final private Vector<hu.bute.daai.amorg.drtorrent.core.File> filesToCreate_;
 
 	private boolean isCreating_ = false;
 	
-	public FileManager(final Torrent torrent) {
+	public FileManager(final TorrentInfo torrent) {
 		torrent_ = torrent;
-		filesToCreate_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
-		filesCreated_ = new Vector<hu.bute.daai.amorg.drtorrent.torrentengine.File>();
+		filesToCreate_ = new Vector<hu.bute.daai.amorg.drtorrent.core.File>();
+		filesCreated_ = new Vector<hu.bute.daai.amorg.drtorrent.core.File>();
 	}	
 	
 	/** Adds a new file to create. Returns true if it has not been added yet. */
-	public boolean addFile(final hu.bute.daai.amorg.drtorrent.torrentengine.File file) {
+	public boolean addFile(final hu.bute.daai.amorg.drtorrent.core.File file) {
 		if (!filesCreated_.contains(file) && !filesToCreate_.contains(file)) {
 			filesToCreate_.addElement(file);
 			return true;
@@ -47,7 +48,7 @@ public class FileManager {
 		isCreating_ = true;
 		
 		for (int i = 0; i < filesToCreate_.size() && torrent_.isWorking(); i++) {
-			hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo = filesToCreate_.elementAt(i);
+			hu.bute.daai.amorg.drtorrent.core.File fileInfo = filesToCreate_.elementAt(i);
 			createFile(fileInfo);
 			
 			if (fileInfo.getSize() == fileInfo.getCreatedSize()) {
@@ -61,7 +62,7 @@ public class FileManager {
 		isCreating_ = false;
 	}
 	
-	public void createFile(final hu.bute.daai.amorg.drtorrent.torrentengine.File fileInfo) {
+	public void createFile(final hu.bute.daai.amorg.drtorrent.core.File fileInfo) {
 		final String filePath = fileInfo.getFullPath();
 		long fileSize = fileInfo.getSize();
 		

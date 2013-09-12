@@ -16,7 +16,7 @@
         android:label="@string/app_name"
         android:hardwareAccelerated="true" >
         <activity
-            android:name=".activity.MainActivity"
+            android:name="hu.bute.daai.amorg.drtorrent.ui.activity.MainActivity"
             android:configChanges="orientation|screenSize"
             android:label="@string/app_name" >
             <meta-data android:name="android.app.default_searchable"
@@ -56,21 +56,21 @@
             </intent-filter>
             
         </activity>
-        <activity android:name=".activity.TorrentCreatorActivity"
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.TorrentCreatorActivity"
             	  android:theme="@android:style/Theme.Dialog"
             	  android:configChanges="orientation|screenSize" />
-        <activity android:name=".activity.TorrentDetailsActivity" />
-        <activity android:name=".activity.SettingsActivity" />
-        <activity android:name=".activity.FolderChooserActivity"
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.TorrentDetailsActivity" />
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.SettingsActivity" />
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.FolderChooserActivity"
             	  android:theme="@android:style/Theme.Dialog"
             	  android:configChanges="orientation|screenSize" />
-        <activity android:name=".activity.FileBrowserActivity"
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.FileBrowserActivity"
             	  android:theme="@android:style/Theme.Dialog"
             	  android:configChanges="orientation|screenSize" />
-        <activity android:name=".activity.TorrentSettingsActivity"
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.TorrentSettingsActivity"
             	  android:theme="@android:style/Theme.Dialog"
             	  android:configChanges="orientation|screenSize" />
-        <activity android:name=".activity.SearchActivity"
+        <activity android:name="hu.bute.daai.amorg.drtorrent.ui.activity.SearchActivity"
             	  android:launchMode="singleTop"
             	  android:configChanges="orientation|screenSize"
             	  android:exported="false" >
@@ -81,9 +81,9 @@
 	                   android:resource="@xml/searchable"/>
         </activity>
         
-        <service android:name=".service.TorrentService" />
+        <service android:name="hu.bute.daai.amorg.drtorrent.ui.service.TorrentService" />
         
-        <provider android:name=".provider.TorrentSuggestionProvider"
+        <provider android:name="hu.bute.daai.amorg.drtorrent.ui.provider.TorrentSuggestionProvider"
             	  android:authorities="hu.bute.daai.amorg.drtorrent.provider.TorrentSuggestionProvider"
             	  android:exported="false" />
         

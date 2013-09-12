@@ -1,7 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.test;
 
 import static org.junit.Assert.assertEquals;
-import hu.bute.daai.amorg.drtorrent.Tools;
+import hu.bute.daai.amorg.drtorrent.util.Tools;
 
 import org.junit.Test;
 

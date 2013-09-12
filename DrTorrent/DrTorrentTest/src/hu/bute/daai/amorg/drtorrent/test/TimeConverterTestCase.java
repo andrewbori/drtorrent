@@ -1,6 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.test;
 
-import hu.bute.daai.amorg.drtorrent.Tools;
+import hu.bute.daai.amorg.drtorrent.util.Tools;
 
 import org.junit.Assert;
 import org.junit.Test;

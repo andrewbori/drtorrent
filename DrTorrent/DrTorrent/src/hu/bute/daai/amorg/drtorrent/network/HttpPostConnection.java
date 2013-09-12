@@ -1,5 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.network;
 
+import hu.bute.daai.amorg.drtorrent.util.Log;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,8 +13,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
-
-import android.util.Log;
 
 public class HttpPostConnection {
 	final private static String LOG_TAG = "HttpPostConnection";
