@@ -19,7 +19,7 @@ public class Log {
 	  *  @param msg  The message you would like logged.
 	  */
 	public static void v(final String tag, final String msg) {
-		Log.v(tag, msg);
+		//Log.v(tag, msg);
 	}
 	
 }

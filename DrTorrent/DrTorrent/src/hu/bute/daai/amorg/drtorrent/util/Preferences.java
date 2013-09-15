@@ -25,6 +25,9 @@ public class Preferences {
 		192 * 1024, 256 * 1024, 384 * 1024, 512 * 1024, 768 * 1024, 1024 * 1024, 1536 * 1024, 2048 * 1024, Integer.MAX_VALUE
 	};
 	
+	private static boolean isTesting_ = false;
+	private static int testPort_ = 6881;
+	
 	private static SharedPreferences preferences_ = null;
 	
 	private Preferences() {}
@@ -80,13 +83,27 @@ public class Preferences {
 		return preferences_.getBoolean("upload", true);
 	}
 	
+	/** Sets the P2P port. */
+	public static void setPort(int port) {
+		if (!isTesting_) {
+			SharedPreferences.Editor editor = preferences_.edit();
+			editor.putInt("port", port);
+			editor.commit();
+		} else {
+			testPort_ = port;
+		}
+	}
+	
 	/** Returns the P2P port. */
 	public static int getPort() {
-		try {
-			return Integer.valueOf(preferences_.getString("port", "6886"));
-		} catch (Exception e) {
-			return 6886;
+		if (!isTesting_) {
+			try {
+				return Integer.valueOf(preferences_.getString("port", "6886"));
+			} catch (Exception e) {
+				return 6886;
+			}
 		}
+		return testPort_;
 	}
 	
 	/** Returns the number of the maximum connected peers per torrent. */
@@ -252,5 +269,10 @@ public class Preferences {
 		SharedPreferences.Editor editor = preferences_.edit();
 		editor.putBoolean("analytics", enabled);
 		editor.commit();
+	}
+	
+	/** Sets whether it is a test or not. */
+	public static void setTesting(boolean isTesting) {
+		isTesting_ = isTesting;
 	}
 }

@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.core.tracker;
 
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
 import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentManager;
 import hu.bute.daai.amorg.drtorrent.network.UdpConnection;
 import hu.bute.daai.amorg.drtorrent.util.Log;
@@ -113,9 +114,9 @@ public class TrackerUdp extends Tracker {
 	}
 	
 	/** Processes the response of the tracker */
-	public int processResponse(final byte[] response) {
+	public void processResponse(final byte[] response) throws DrTorrentException {
 		if (response == null || response.length < 8) {
-			return ERROR_WRONG_CONTENT;
+			throw new DrTorrentException("Transaction ID cannot be found. The length of the response is less than 8.");
 		}
 		
 		if ((response[0] == 0 && response[1] == 0 && response[2] == 0 && (response[3] >= 0 && response[3] <= 3)) &&
@@ -124,17 +125,21 @@ public class TrackerUdp extends Tracker {
 		
 			switch (response[3]) {
 				case ACTION_ID_CONNECT:
-					if (response.length < 16) return ERROR_WRONG_CONTENT;
+					if (response.length < 16) {
+						throw new DrTorrentException("Connection ID cannot be found. The length of the response is less than 16. ");
+					}
 					
 					connectionId_ = new byte[8];
 					for (int i = 0; i < 8; i++) {
 						connectionId_[i] = response[8 + i];
 					}
 					transactionId_ = null;
-					return ERROR_NONE;
+					return;
 					
 				case ACTION_ID_ANNOUNCE:
-					if (response.length < 20) return ERROR_WRONG_CONTENT;
+					if (response.length < 20) {
+						throw new DrTorrentException("");
+					}
 					
 					interval_ = Tools.readInt32(response, 8);
 					incomplete_ = Tools.readInt32(response, 12);
@@ -144,7 +149,7 @@ public class TrackerUdp extends Tracker {
 	                    String address = Tools.readIp(response, pos);
 	                    if (address == null) {
 	                    	transactionId_ = null;
-	                    	return ERROR_NONE;
+	                    	return;
 	                    }
 	                    int port = Tools.readInt16(response, pos + 4);
 
@@ -155,31 +160,34 @@ public class TrackerUdp extends Tracker {
 	                        }
 	                    }*/
 
+	                    // Add peer to the torrent
 	                    torrent_.addPeer(address, port, null);
 	                }
 					transactionId_ = null;
-					return ERROR_NONE;
+					return;
 						
 				case ACTION_ID_SCRAPE:
-					return ERROR_WRONG_CONTENT;
+					throw new DrTorrentException("Not supported action: scrape");
 					
 				case ACTION_ID_ERROR:
-					return ERROR_WRONG_CONTENT;
+					throw new DrTorrentException("Not supported action: error");
 			}
 			
 		}
 		
-		return ERROR_WRONG_CONTENT;
+		throw new DrTorrentException("Invalid response. Non-supported action or invalid transaction ID.");
 	}
 	
 	/** Connects to the tracker over UDP protocol. */
 	@Override
-	protected void doConnect() {
+	protected void connect() {
 		byte[] response;
 		if (connectionId_ == null) {
 			response = connecting();
 			if (response != null) {
-				if (processResponse(response) != ERROR_NONE) {
+				try {
+					processResponse(response);
+				} catch (DrTorrentException e) {
 					status_ = STATUS_FAILED;
 					interval_ = ERROR_REQUEST_INTERVAL;
 					return;
@@ -193,7 +201,11 @@ public class TrackerUdp extends Tracker {
 			if (response != null) {
 				status_ = STATUS_WORKING;
 				Log.v(LOG_TAG, "Bencoded response processing...");
-				if (processResponse(response) != ERROR_NONE) failCount_++;
+				try {
+					processResponse(response);
+				} catch(DrTorrentException e) {
+					failCount_++;
+				}
 			} else {
 				status_ = STATUS_FAILED;
 				interval_ = ERROR_REQUEST_INTERVAL;

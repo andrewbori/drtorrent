@@ -1,13 +1,8 @@
 package hu.bute.daai.amorg.drtorrent.core.tracker;
 
-import android.os.SystemClock;
-
 
 /** Class that represents the tracker. */
 public abstract class Tracker implements TrackerInfo {
-
-	public final static int ERROR_NONE = 200;
-	public final static int ERROR_WRONG_CONTENT = 401;
 	
 	protected final static int DEFAULT_REQUEST_INTERVAL = 600;
 	protected final static int ERROR_REQUEST_INTERVAL = 300;
@@ -47,36 +42,24 @@ public abstract class Tracker implements TrackerInfo {
 		id_ = ++ID;
 	}
 	
-	/** Connects to the tracker. */
-	private void connect() {
-		lastRequest_ = SystemClock.elapsedRealtime();
-		status_ = STATUS_UPDATING;
-		(new TrackerConnectionThread()).start();
-	}
-	
 	/** Changes the event and notifies the tracker by connecting to it. */
 	public void changeEvent(int event) {
 		event_ = event;
+		lastRequest_ = System.nanoTime();
+		status_ = STATUS_UPDATING;
 		connect();
 	}
 	
-	/** onTimer */
-	public void onTimer() {
+	/** Returns whether the tracker should be updated or not. */
+	public boolean shouldUpdate() {
 		if (status_ != STATUS_UPDATING && getRemainingTime() < 0) {
-			changeEvent(EVENT_NOT_SPECIFIED);
+			return true;
 		}
+		return false;
 	}
 	
 	/** Does the connection stuff. This is a protocol specific method. */
-	protected abstract void doConnect();
-	
-	/** Thread that is connecting to the tracker. */ 
-	private class TrackerConnectionThread extends Thread {
-		@Override
-		public void run() {
-			doConnect();
-		}
-	}
+	protected abstract void connect();
 	
 	/** Returns the interval (in seconds) of the tracker. */ 
 	public int getInterval() {
@@ -134,6 +117,6 @@ public abstract class Tracker implements TrackerInfo {
 	/** Returns the remaining time (in seconds) until the next announce. */
 	@Override
 	public int getRemainingTime() {
-		return interval_ - (int) (SystemClock.elapsedRealtime() - lastRequest_) / 1000;
+		return interval_ - (int) (System.nanoTime() - lastRequest_) / 1000;
 	}
 }
