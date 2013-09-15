@@ -20,6 +20,10 @@
         <servlet-name>DatabaseTest</servlet-name>
         <servlet-class>hu.bute.daai.amorg.drtorrent.analytics.servlet.DatabaseTest</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>AnnounceServlet</servlet-name>
+        <servlet-class>hu.bute.daai.amorg.drtorrent.tracker.servlet.AnnounceServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>TestServlet</servlet-name>
         <url-pattern>/Test</url-pattern>
@@ -39,6 +43,10 @@
     <servlet-mapping>
         <servlet-name>DatabaseTest</servlet-name>
         <url-pattern>/DatabaseTest</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>AnnounceServlet</servlet-name>
+        <url-pattern>/announce</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

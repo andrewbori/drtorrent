@@ -54,6 +54,10 @@ public class TorrentManager {
 	private long latestSaveTime_;
 	private long latestReportTime_;
 
+	static {
+		generatePeerId();
+	}
+	
 	/** Thread that schedules the torrents. */
 	class TorrentSchedulerThread extends Thread {
 		@Override
@@ -757,7 +761,7 @@ public class TorrentManager {
 	}
 	
 	/**Generates the ID and the key of the peer. */
-	private void generatePeerId() {
+	private static void generatePeerId() {
 		Date d = new Date();
         long seed = d.getTime();   
         Random r = new Random();

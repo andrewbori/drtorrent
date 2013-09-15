@@ -762,11 +762,15 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		}
 		
 		if (torrentManager_.isEnabled()) {
-			Tracker tracker;
 			for (int i = 0; i < trackers_.size(); i++) {
-				tracker = trackers_.elementAt(i);
+				final Tracker tracker = trackers_.elementAt(i);
 				if (tracker.getStatus() == Tracker.STATUS_FAILED || tracker.getStatus() == Tracker.STATUS_UNKNOWN) {
-					tracker.changeEvent(Tracker.EVENT_STARTED);
+					new Thread() {
+						@Override
+						public void run() {
+							tracker.changeEvent(Tracker.EVENT_STARTED);
+						}
+					}.start();
 				}
 			}
 		}
@@ -799,7 +803,13 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		if (isConnected()) {
 			if (torrentManager_.isEnabled()) {
 				for (int i = 0; i < trackers_.size(); i++) {
-					trackers_.elementAt(i).changeEvent(Tracker.EVENT_STOPPED);
+					final Tracker tracker = trackers_.elementAt(i);
+					new Thread() {
+						@Override
+						public void run() {
+							tracker.changeEvent(Tracker.EVENT_STOPPED);
+						}
+					}.start();
 				}
 			}
 
@@ -902,7 +912,15 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 
 			// Updates the trackers
 			for (int i = 0; i < trackers_.size(); i++) {
-				trackers_.elementAt(i).onTimer();
+				final Tracker tracker = trackers_.elementAt(i);
+				if (tracker.shouldUpdate()) {
+					new Thread() {
+						@Override
+						public void run() {
+							tracker.changeEvent(Tracker.EVENT_NOT_SPECIFIED);
+						}
+					}.start();
+				}
 			}
 
 			// Connects to peers
@@ -1461,7 +1479,13 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 				torrentManager_.showCompletedNotification(this);
 				if (bitfield_.isFull()) {
 					for (int i = 0; i < trackers_.size(); i++) {
-						trackers_.elementAt(i).changeEvent(Tracker.EVENT_COMPLETED);
+						final Tracker tracker = trackers_.elementAt(i);
+						new Thread() {
+							@Override
+							public void run() {
+								tracker.changeEvent(Tracker.EVENT_COMPLETED);
+							}
+						}.start();
 					}
 				}
 			}

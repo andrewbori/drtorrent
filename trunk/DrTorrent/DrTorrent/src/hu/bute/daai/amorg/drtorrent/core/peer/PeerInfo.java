@@ -6,6 +6,9 @@ public interface PeerInfo {
 	/** Returns the peers ID. Only used inside this program... */
 	public int getId();
 	
+	/** Returns the ID of the peer. */
+	public String getPeerId();
+	
 	/** Returns the client's name. */
 	public String getClientName();
 	

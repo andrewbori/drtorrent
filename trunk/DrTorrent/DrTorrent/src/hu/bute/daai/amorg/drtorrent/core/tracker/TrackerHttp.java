@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.core.tracker;
 
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
 import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentManager;
 import hu.bute.daai.amorg.drtorrent.network.HttpConnection;
 import hu.bute.daai.amorg.drtorrent.network.UrlEncoder;
@@ -22,9 +23,9 @@ public class TrackerHttp extends Tracker {
 	}
 	
 	/** Processes the response of the tracker */
-	public int processResponse(Bencoded responseBencoded) { 
+	public void processResponse(Bencoded responseBencoded) throws DrTorrentException { 
         if (responseBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
-        	return Tracker.ERROR_WRONG_CONTENT;
+        	throw new DrTorrentException("The response of the tracker is not a becoded dictionary.");
         }
 
         final BencodedDictionary response = (BencodedDictionary) responseBencoded;  
@@ -33,8 +34,8 @@ public class TrackerHttp extends Tracker {
         // failure reason
         value = response.entryValue("failure reason");
         if (value != null && (value.type() == Bencoded.BENCODED_STRING)) {
-            Log.v(LOG_TAG, "[Tracker] Request failed, reason: " + ((BencodedString) value).getStringValue());
-            return Tracker.ERROR_WRONG_CONTENT;
+        	final String reason = ((BencodedString) value).getStringValue();
+            throw new DrTorrentException("The tracker failed. Reason: " + reason);
         }
         
         // interval
@@ -67,8 +68,6 @@ public class TrackerHttp extends Tracker {
         }
 
         // peers
-        Log.v(LOG_TAG, "Local peer id: " + TorrentManager.getPeerID());
-
         value = response.entryValue("peers");
         // Normal tracker response
         if (value != null && (value.type() == Bencoded.BENCODED_LIST)) {
@@ -80,7 +79,8 @@ public class TrackerHttp extends Tracker {
                 value = bencodedPeers.item(i);
 
                 if (value.type() != Bencoded.BENCODED_DICTIONARY) {
-                    return Tracker.ERROR_WRONG_CONTENT;
+                	continue;
+                	//throw new DrTorrentException("An item of the peer list is not a bencoded dictionary.");
                 }
 
                 final BencodedDictionary bencodedPeer = (BencodedDictionary) value;
@@ -88,8 +88,8 @@ public class TrackerHttp extends Tracker {
                 String peerId = null;
                 // peer id
                 value = bencodedPeer.entryValue("peer id");
-                if (value==null || (value.type() != Bencoded.BENCODED_STRING))
-                {} else {
+                if (value != null && (value.type() == Bencoded.BENCODED_STRING))
+                {
 	                peerId = ((BencodedString) value).getStringValue();
 	
 	                Log.v(LOG_TAG, "Processing peer id: " + peerId);
@@ -123,6 +123,7 @@ public class TrackerHttp extends Tracker {
                     }
                 }*/
 
+                // Add peer to torrent
                 torrent_.addPeer(ip, port, peerId);
             }
         }
@@ -150,15 +151,13 @@ public class TrackerHttp extends Tracker {
                     torrent_.addPeer(address, port, null);
                 }        
             } else {
-                Log.v(LOG_TAG, "[Tracker] Compact response invalid (length cannot be devided by 6 without remainder)");
+            	throw new DrTorrentException("The compact response is invalid, its length cannot be divided by 6 without remainder.");
             }
         } else {
-        	Log.v(LOG_TAG, "[Tracker] No peers list / peers list invalid");
+        	throw new DrTorrentException("Peer list cannot be found or peer list is invalid.");
         }
         
         // Log.v(LOG_TAG, "Response procesed, peers: " + peers_.size());
-        
-        return Tracker.ERROR_NONE;
     }
 	
 	/** Creates the query string from the current state of the tracker. */
@@ -207,7 +206,7 @@ public class TrackerHttp extends Tracker {
 	
 	/** Connects to the tracker over HTTP protocol. */
 	@Override
-	protected void doConnect() {
+	protected void connect() {
 		final String fullUrl = url_ + createUri();
 		
 		final HttpConnection conn = new HttpConnection(fullUrl);
@@ -220,12 +219,14 @@ public class TrackerHttp extends Tracker {
 				if (bencoded == null) {
 					status_ = STATUS_FAILED;
 					failCount_++;
-					Log.v(LOG_TAG, "Faild to bencode the response of the tracker.");
+					Log.v(LOG_TAG, "Failed to bencode the response of the tracker.");
 					return;
 				}
 				status_ = STATUS_WORKING;
 				Log.v(LOG_TAG, "Bencoded response processing...");
-				if (processResponse(bencoded) != ERROR_NONE) {
+				try {
+					processResponse(bencoded);
+				} catch (DrTorrentException e) {
 					failCount_++;
 				}
 			} else {
