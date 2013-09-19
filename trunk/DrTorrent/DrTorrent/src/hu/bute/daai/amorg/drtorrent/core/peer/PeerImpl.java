@@ -4,6 +4,7 @@ import hu.bute.daai.amorg.drtorrent.core.Bitfield;
 import hu.bute.daai.amorg.drtorrent.core.Block;
 import hu.bute.daai.amorg.drtorrent.core.Piece;
 import hu.bute.daai.amorg.drtorrent.core.Speed;
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
 import hu.bute.daai.amorg.drtorrent.core.torrent.Torrent;
 import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentManager;
 import hu.bute.daai.amorg.drtorrent.util.Log;
@@ -97,7 +98,7 @@ public class PeerImpl implements Peer, PeerConnectionObserver {
 	@Override
 	public void disconnect() {
 		if (connection_ != null) {
-			connection_.close(PeerConnectionImpl.ERROR_PEER_STOPPED, "Peer has been disconnected...");
+			connection_.close("Peer has been disconnected...", true);
 		}
 	}
 	
@@ -186,16 +187,16 @@ public class PeerImpl implements Peer, PeerConnectionObserver {
 		}
 
 		if (piece != null) {
-			int appendResult = piece.appendBlock(data, block, this);
-			
-			blocksDownloading_.removeElement(block);
-			
-			block.setDownloaded();	// GOOD SET
-			torrent_.onBlockDownloaded(block);
-			
-			if (appendResult != Torrent.ERROR_NONE) {
-				Log.v(LOG_TAG, "Writing file failed!!!!");
+			try {
+				piece.appendBlock(data, block, this);
+			} catch (DrTorrentException e) {
+				Log.v(LOG_TAG, "Writing file failed!");
 				return;
+			} finally {
+				// TODO: Re-think failed writing...
+				blocksDownloading_.removeElement(block);
+				block.setDownloaded();	// GOOD SET
+				torrent_.onBlockDownloaded(block);
 			}
 		} else {
 			Log.v(LOG_TAG, "Warning: Unexpected block.");

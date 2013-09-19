@@ -11,6 +11,7 @@ import hu.bute.daai.amorg.drtorrent.util.Preferences;
 import hu.bute.daai.amorg.drtorrent.util.Tools;
 import hu.bute.daai.amorg.drtorrent.util.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedDictionary;
+import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedException;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedInteger;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedString;
 import hu.bute.daai.amorg.drtorrent.util.sha1.SHA1;
@@ -109,7 +110,7 @@ public class PeerConnectionImpl implements PeerConnection {
 	public void connect() {
 		isIncomingConnection_ = false;
 		
-		String destination = peer_.getAddress() + ":" + peer_.getPort();
+		String destination = peer_.getAddressPort();
 		connect(destination);
 	}
 	
@@ -117,11 +118,11 @@ public class PeerConnectionImpl implements PeerConnection {
 	@Override
 	public void connect(Socket socket) {
 		socket_ = socket;
-		String destination = peer_.getAddress() + ":" + peer_.getPort();
+		String destination = peer_.getAddressPort();
 		connect(destination);
 	}
 	
-	/** Connects to the peer. */
+	/** Connects to the peer and opens streams. */
 	protected void connect(String destination) {
 		isReadEnabled_ = true;
 		changeState(STATE_TCP_CONNECTING);
@@ -132,44 +133,120 @@ public class PeerConnectionImpl implements PeerConnection {
 				Log.v(LOG_TAG, "Connected to: " + destination);
 			}
 			socket_.setSoTimeout(TIMEOUT_REQUEST);
-		} catch (IOException e) {
-			if (socket_ != null) {
-				try {
-					socket_.close();
-				} catch (IOException e1) {}
-				socket_ = null;
-			}
-			peer_.incTcpTimeoutCount();
-			close("Timeout: Failed to connect to " + destination);
-		}
+			
+			Log.v(LOG_TAG, "Opening streams on: " + peer_.getAddressPort());
+			inputStream_ = new DataInputStream(socket_.getInputStream());
+            outputStream_ = new DataOutputStream(socket_.getOutputStream());
+            
+            if (!isIncomingConnection_) {
+            	sendHandshakeMessage();
+            } else {
+            	changeState(STATE_PW_HANDSHAKING);
+            }
+            peer_.resetTcpTimeoutCount();
+            
+            read();
 		
-		if (socket_ != null) {
-			startDownloading();
-		}
+		} catch (InterruptedIOException e) {
+			close("Interrupted.");
+        } catch (IOException e) {
+			peer_.incTcpTimeoutCount();
+			close("Connection error. Failed to connect or timed out.");
+		}  catch (Exception e) {
+        	close("Unexpected error");
+        }
 	}
 	
-	/** Opens the streams, sends a handshake and starts reading the incoming messages. */
-	protected void startDownloading() {
-		Log.v(LOG_TAG, "Opening streams on: " + peer_.getAddress());
+	/** Reads data from the inputStream_. */
+	protected void read() throws InterruptedException, IOException, Exception {
+		while (isReadEnabled_ && (!peer_.hasTorrent() || peer_.isTorrentConnected())) {
+			switch (state_) {
+            	
+                case STATE_PW_HANDSHAKING: {
+                	calculateElapsedTime();
+					latestMessageReceivedTime_ = elapsedTime_;
+                	
+                	Log.v(LOG_TAG, "Reading handshake message from: " + peer_.getAddress());
+                    readHandshakeMessage();
+                    break;
+                }
+                
+				case STATE_PW_CONNECTED: {
 
-        try {
-            inputStream_ = new DataInputStream(socket_.getInputStream());
-            outputStream_ = new DataOutputStream(socket_.getOutputStream());
-        } catch(IOException ex) {
-        	peer_.incTcpTimeoutCount();
-            close(ERROR_INCREASE_ERROR_COUNTER, "Opening streams failed on: " + peer_.getAddress() + " | " + ex.getMessage());
-            return;
-        }
-        
-        if (!isIncomingConnection_) {
-        	sendHandshakeMessage();
-        } else {
-        	changeState(STATE_PW_HANDSHAKING);
-        }
-        peer_.resetTcpTimeoutCount();
-        
-        read();
-	}
+					final int messageLength = readInt();				// length prefix
+					if (messageLength == -1) {
+						continue;
+					}
+					
+					calculateElapsedTime();
+					latestMessageReceivedTime_ = elapsedTime_;
+					if (messageLength == 0) {
+						// keep-alive
+						Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
+						// issueDownload();
+					} else {
+						final int id = readByte();				// message ID
+						switch (id) {
+							
+							case MESSAGE_ID_CHOKE:
+								Log.v(LOG_TAG, "Reading choke message from: " + peer_.getAddress());
+								readChokeMessage();
+								break;
+
+							case MESSAGE_ID_UNCHOKE:
+								Log.v(LOG_TAG, "Reading unchoke message from: " + peer_.getAddress());
+								readUnchokeMessage();
+								break;
+
+							case MESSAGE_ID_INTERESTED:
+								Log.v(LOG_TAG, "Reading interested message from: " + peer_.getAddress());
+								readInterestedMessage();
+								break;
+							case MESSAGE_ID_NOT_INTERESTED:
+								Log.v(LOG_TAG, "Reading not interested message from: " + peer_.getAddress());
+								readNotInterestedMessage();
+								break;
+							
+							case MESSAGE_ID_BITFIELD:
+								Log.v(LOG_TAG, "Reading bitfield message from: " + peer_.getAddress());
+								readBitfieldMessage(messageLength);
+								break;
+
+							case MESSAGE_ID_HAVE:
+								Log.v(LOG_TAG, "Reading have message from: " + peer_.getAddress());
+								readHaveMessage();
+								break;
+
+							case MESSAGE_ID_PIECE:
+								Log.v(LOG_TAG, "Reading piece message from: " + peer_.getAddress());
+								readPieceMessage(messageLength);
+								break;
+
+							case MESSAGE_ID_REQUEST:
+								Log.v(LOG_TAG, "Reading request message from: " + peer_.getAddress());
+								readRequestMessage(messageLength);
+								break;
+
+							case MESSAGE_ID_CANCEL:
+								Log.v(LOG_TAG, "Reading cancel message from: " + peer_.getAddress());
+								readCancelMessage(messageLength);
+								break;
+								
+							case MESSAGE_ID_EXTENDED:
+								Log.v(LOG_TAG, "Reading extended message from: " + peer_.getAddress());
+								readExtendedMessage(messageLength);
+								break;
+								
+							default:
+								Log.v(LOG_TAG, "UNKNOWN MESSAGE " + messageLength + " " + id + " from: " + peer_.getAddress());
+								break;
+						}
+					}
+					break;
+				}
+            }
+		}
+    }
 	
 	/** Schedules the connection. Mainly for checking timeouts. */
 	@Override
@@ -188,14 +265,14 @@ public class PeerConnectionImpl implements PeerConnection {
 			case STATE_TCP_CONNECTING:
 				if (elapsedTime_ > TIMEOUT_TCP_CONNECTION) {
 					peer_.incTcpTimeoutCount();
-					close(ERROR_INCREASE_ERROR_COUNTER, "Timeout while trying to connect.");
+					close("Timeout while trying to connect.");
 				}
 				break;
 
 			case STATE_PW_HANDSHAKING:
 				if (elapsedTime_ > TIMEOUT_HANDSHAKE) {
 					//PWConnectionTimeoutCount_++;
-					close(ERROR_INCREASE_ERROR_COUNTER, "Handshake timeout.");
+					close("Handshake timeout.");
 				}
 				break;
 
@@ -205,7 +282,7 @@ public class PeerConnectionImpl implements PeerConnection {
 				// Timeout: Because no messages have been received in the recent time
 				if ((elapsedTime_ - latestMessageReceivedTime_) > TIMEOUT_PW_CONNECTION) {
 					//PWConnectionTimeoutCount_++;
-					close(ERROR_INCREASE_ERROR_COUNTER, "General timeout (no data received)");
+					close("General timeout (no data received)");
 					break;
 				}
 
@@ -216,7 +293,7 @@ public class PeerConnectionImpl implements PeerConnection {
 					 close(EIncreaseErrorCounter, "Request timeout"); break; }
 					 */
 					//PWConnectionTimeoutCount_++;
-					close(ERROR_INCREASE_ERROR_COUNTER, "Request timeout");
+					close("Request timeout");
 					break;
 					
 				}
@@ -339,7 +416,7 @@ public class PeerConnectionImpl implements PeerConnection {
 		try {
 			return inputStream_.read();
 		} catch (Exception ex) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "ReadByte error " + ex.getMessage());
+			close("ReadByte error " + ex.getMessage());
 			return -1;
 		}
 	}
@@ -349,118 +426,16 @@ public class PeerConnectionImpl implements PeerConnection {
 		try {
 			return inputStream_.readInt();
 		} catch (Exception ex) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "ReadInt error " + ex.getMessage());
+			close("ReadInt error " + ex.getMessage());
 			return -1;
 		}
 	}
-	
-    /** Reads data from the inputStream_. */
-	protected void read() {
-		try {
-			while (isReadEnabled_ && (!peer_.hasTorrent() || peer_.isTorrentConnected())) {
-				switch (state_) {
-                	
-                    case STATE_PW_HANDSHAKING: {
-                    	calculateElapsedTime();
-						latestMessageReceivedTime_ = elapsedTime_;
-                    	
-                    	Log.v(LOG_TAG, "Reading handshake message from: " + peer_.getAddress());
-                        readHandshakeMessage();
-                        break;
-                    }
-                    
-					case STATE_PW_CONNECTED: {
-
-						final int messageLength = readInt();				// length prefix
-						if (messageLength == -1) {
-							continue;
-						}
-						
-						calculateElapsedTime();
-						latestMessageReceivedTime_ = elapsedTime_;
-						if (messageLength == 0) {
-							// keep-alive
-							Log.v(LOG_TAG, "Reading keep alive message from: " + peer_.getAddress());
-							// issueDownload();
-						} else {
-							final int id = readByte();				// message ID
-							switch (id) {
-								
-								case MESSAGE_ID_CHOKE:
-									Log.v(LOG_TAG, "Reading choke message from: " + peer_.getAddress());
-									readChokeMessage();
-									break;
-
-								case MESSAGE_ID_UNCHOKE:
-									Log.v(LOG_TAG, "Reading unchoke message from: " + peer_.getAddress());
-									readUnchokeMessage();
-									break;
-
-								case MESSAGE_ID_INTERESTED:
-									Log.v(LOG_TAG, "Reading interested message from: " + peer_.getAddress());
-									readInterestedMessage();
-									break;
-								case MESSAGE_ID_NOT_INTERESTED:
-									Log.v(LOG_TAG, "Reading not interested message from: " + peer_.getAddress());
-									readNotInterestedMessage();
-									break;
-								
-								case MESSAGE_ID_BITFIELD:
-									Log.v(LOG_TAG, "Reading bitfield message from: " + peer_.getAddress());
-									readBitfieldMessage(messageLength);
-									break;
-
-								case MESSAGE_ID_HAVE:
-									Log.v(LOG_TAG, "Reading have message from: " + peer_.getAddress());
-									readHaveMessage();
-									break;
-
-								case MESSAGE_ID_PIECE:
-									Log.v(LOG_TAG, "Reading piece message from: " + peer_.getAddress());
-									readPieceMessage(messageLength);
-									break;
-
-								case MESSAGE_ID_REQUEST:
-									Log.v(LOG_TAG, "Reading request message from: " + peer_.getAddress());
-									readRequestMessage(messageLength);
-									break;
-
-								case MESSAGE_ID_CANCEL:
-									Log.v(LOG_TAG, "Reading cancel message from: " + peer_.getAddress());
-									readCancelMessage(messageLength);
-									break;
-									
-								case MESSAGE_ID_EXTENDED:
-									Log.v(LOG_TAG, "Reading extended message from: " + peer_.getAddress());
-									readExtendedMessage(messageLength);
-									break;
-									
-								default:
-									Log.v(LOG_TAG, "UNKNOWN MESSAGE " + messageLength + " " + id + " from: " + peer_.getAddress());
-									break;
-							}
-						}
-						break;
-					}
-                }
-			}
-		} catch (InterruptedIOException e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Read error");
-            Log.v(LOG_TAG, "Interrupted IO exception: " + e.getMessage());
-        } catch (IOException e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Read error");
-            Log.v(LOG_TAG, "IO exception: " + e.getMessage());
-        } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Read error (???)");
-            Log.v(LOG_TAG, "Read exception: " + e.getMessage());
-        }
-    }
 	
 	/** Reading message: handshake. */
 	protected void readHandshakeMessage() throws InterruptedIOException, IOException, Exception {
 		final int protLength = readByte(); 					// pstrlen (19 if "BitTorrent protocol")
 		if (protLength == -1) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Peer disconnected!");
+			close("Peer disconnected!");
 			return;
 		}
 		
@@ -474,7 +449,7 @@ public class PeerConnectionImpl implements PeerConnection {
 	
 			if (!MESSAGE_PROTOCOL_ID.equals(new String(protocolId))) {
 				Log.v(LOG_TAG, new String(protocolId));
-				close(ERROR_DELETE_PEER, "Protocol identifier doesn't match!");
+				close("Protocol identifier doesn't match!");
 				return;
 			}
 		}
@@ -494,7 +469,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			
 			if (!isIncomingConnection_) {
 				if (!Tools.byteArrayEqual(peer_.getTorrentInfoHashByteArray(), infoHash)) {
-					close(ERROR_DELETE_PEER, "Torrent infohash doesn't match!");
+					close("Torrent infohash doesn't match!");
 					return;
 				}
 			} else { // if torrent is null then we should attach peer to torrent (most likely it is an incoming connection)
@@ -503,7 +478,7 @@ public class PeerConnectionImpl implements PeerConnection {
 				if (result) {
 					sendHandshakeMessage();
 				} else {
-					close(ERROR_DELETE_PEER, "Invalid infohash or peer is already connected or too many peers!");
+					close("Invalid infohash or peer is already connected or too many peers!");
 					return;
 				}
 			}
@@ -520,10 +495,10 @@ public class PeerConnectionImpl implements PeerConnection {
 			if (peer_.getPeerId() != null) {
 				if (!peer_.getPeerId().equals(tempPeerId)) {
 					peer_.setPeerId(tempPeerId);
-					//close(ERROR_INCREASE_ERROR_COUNTER, "Peer ID doesn't match!");
+					//close("Peer ID doesn't match!");
 					return;
 				} else if (tempPeerId.equals(TorrentManager.getPeerID())) {
-					close(ERROR_DELETE_PEER, "Connected to ourselves!");
+					close("Connected to ourselves!");
 					return;
 				}
 			} else {
@@ -579,7 +554,7 @@ public class PeerConnectionImpl implements PeerConnection {
 	protected void readBitfieldMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
 		int bitFieldLength = messageLength - 1; // bitfield length
 		if (peer_.isTorrentValid() && bitFieldLength != peer_.getTorrentBitfield().getLengthInBytes()) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Received bitfield length doesn't match! " + bitFieldLength + " instead of " + peer_.getBitfield().getLengthInBytes());
+			close("Received bitfield length doesn't match! " + bitFieldLength + " instead of " + peer_.getBitfield().getLengthInBytes());
 		} else {
 			final byte[] bitfield = new byte[bitFieldLength];
 			final boolean dataReaded = readData(bitfield);
@@ -597,7 +572,7 @@ public class PeerConnectionImpl implements PeerConnection {
 					setInterested(true);
 				}
 			} else {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Could not read bitfield!");
+				close("Could not read bitfield!");
 			}
 		}
 	}
@@ -632,7 +607,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			final byte[] pieceBlock = new byte[pieceBlockSize];	// read the unexpected block
 			final boolean successfullRead = readData(pieceBlock);
 			if (!successfullRead) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Reading piece failed!");
+				close("Reading piece failed!");
 				return;
 			}
 			
@@ -644,7 +619,7 @@ public class PeerConnectionImpl implements PeerConnection {
 	protected void readRequestMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
 		peer_.resetErrorCounter();
 		if (messageLength < 13) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Received request message length is smaller than 13!");
+			close("Received request message length is smaller than 13!");
 		} else {
 			final int pieceIndex = readInt();
 			final int begin = readInt();
@@ -668,7 +643,7 @@ public class PeerConnectionImpl implements PeerConnection {
 	protected void readCancelMessage(int messageLength) throws InterruptedIOException, IOException, Exception {
 		peer_.resetErrorCounter();
 		if (messageLength < 13) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Received CANCEL message length is smaller than 13!");
+			close("Received CANCEL message length is smaller than 13!");
 		} else {
 			final int pieceIndex = readInt();
 			final int begin = readInt();
@@ -714,7 +689,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			final byte[] payload = new byte[messageLength - 2];
 			boolean successfullRead = readData(payload);
 			if (!successfullRead) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Reading piece failed!");
+				close("Reading piece failed!");
 				return;
 			}
 			
@@ -722,7 +697,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			
 			try {
 				bencoded = Bencoded.parse(payload);
-			} catch (Exception e) {
+			} catch (BencodedException e) {
 				Log.v(LOG_TAG, "Error occured while processing the payload of the extension message: " + e.getMessage());
 				return;
 			}
@@ -775,7 +750,7 @@ public class PeerConnectionImpl implements PeerConnection {
 		final byte[] payload = new byte[messageLength - 2];
 		boolean successfullRead = readData(payload);
 		if (!successfullRead) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Reading piece failed!");
+			close("Reading piece failed!");
 			return;
 		}
 		
@@ -785,7 +760,7 @@ public class PeerConnectionImpl implements PeerConnection {
 		Bencoded bencoded = null;
 		try {
 			bencoded = Bencoded.parse(payload);
-		} catch (Exception e) {
+		} catch (BencodedException e) {
 			Log.v(LOG_TAG, "Error occured while processing the payload of the extension message: " + e.getMessage());
 			return;
 		}
@@ -889,13 +864,13 @@ public class PeerConnectionImpl implements PeerConnection {
                 baos.write((byte) MESSAGE_PROTOCOL_ID.length());	// pstrlen:   string length of <pstr>, as a single raw byte 
                 baos.write(MESSAGE_PROTOCOL_ID.getBytes());			// pstr:      string identifier of the protocol 
                 baos.write(reserved);								// reserved:  eight (8) reserved bytes. EXTENSION PROTOCOL (bit 20 from the right / reserved[5]=0x10)
-                baos.write(peer_.getTorrentInfoHashByteArray());		// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
+                baos.write(peer_.getTorrentInfoHashByteArray());	// info_hash: 20-byte SHA1 hash of the info key in the metainfo file.
                 baos.write(TorrentManager.getPeerID().getBytes());	// peer_id:   20-byte string used as a unique ID for the client.
                 write(baos.toByteArray());
 
                 Log.v(LOG_TAG, "Handshake sent to: " + peer_.getAddress());
             } catch (Exception e) {
-                close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending handshake: " + e.getMessage());
+                close("Error while sending handshake: " + e.getMessage());
             } finally {
             	try {
 					if (baos != null) {
@@ -903,7 +878,9 @@ public class PeerConnectionImpl implements PeerConnection {
 					}
 				} catch (IOException e) {}
             }
-        } else Log.v(LOG_TAG, "Error: Torrent is not specified, cannot send handshake.");
+        } else {
+        	Log.v(LOG_TAG, "Error: Torrent is not specified, cannot send handshake.");
+        }
     }
 	
 	/** Sending message: keep-alive. */
@@ -914,7 +891,7 @@ public class PeerConnectionImpl implements PeerConnection {
             
             writeInt(0);
         } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending keepalive: " + e.getMessage());
+            close("Error while sending keepalive: " + e.getMessage());
         }
     }
 	
@@ -931,7 +908,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
             write(baos.toByteArray());
         } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending choke: " + e.getMessage());
+            close("Error while sending choke: " + e.getMessage());
         } finally {
         	try {
 				if (baos != null) {
@@ -954,7 +931,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
             write(baos.toByteArray());
         } catch (Exception e) {
-            close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending unchoke: " + e.getMessage());
+            close("Error while sending unchoke: " + e.getMessage());
         } finally {
         	try {
 				if (baos != null) {
@@ -980,7 +957,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			
 			Log.v(LOG_TAG, "Interested sent to: " + peer_.getAddress());
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending interested: " + e.getMessage());
+			close("Error while sending interested: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1003,7 +980,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
 			write(baos.toByteArray());
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending notinterested: " + e.getMessage());
+			close("Error while sending notinterested: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1028,7 +1005,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
 			write(baos.toByteArray());
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending have: " + e.getMessage());
+			close("Error while sending have: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1054,7 +1031,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
             write(baos.toByteArray());
 	    } catch (Exception e) {
-	        close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending bitfield: " + e.getMessage());
+	        close("Error while sending bitfield: " + e.getMessage());
 	    } finally {
 	    	try {
 				if (baos != null) {
@@ -1092,7 +1069,7 @@ public class PeerConnectionImpl implements PeerConnection {
 				write(baos.toByteArray());
 				Log.v(LOG_TAG, blocks.size() + " REQUESTS HAVE BEEN SENT.");
 			} catch (Exception e) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending request: " + e.getMessage());
+				close("Error while sending request: " + e.getMessage());
 			} finally {
 	        	try {
 					if (baos != null) {
@@ -1144,7 +1121,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
 				// Log.v(LOG_TAG, "Piece sent to " + peer_.getAddress());
 			} catch (Exception e) {
-				close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending piece: " + e.getMessage());
+				close("Error while sending piece: " + e.getMessage());
 			} finally {
 	        	try {
 					if (baos != null) {
@@ -1176,7 +1153,7 @@ public class PeerConnectionImpl implements PeerConnection {
 
 			Log.v(LOG_TAG, "Cancel block index: " + block.pieceIndex() + " begin: " + block.begin() + " length: " + block.length());		
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending cancel message: " + e.getMessage());
+			close("Error while sending cancel message: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1217,7 +1194,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			write(baos.toByteArray());
 			
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending extended handshake message: " + e.getMessage());
+			close("Error while sending extended handshake message: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1251,7 +1228,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			
 			Log.v(LOG_TAG, "Extended message sent metadata request");
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending extended metadata request message: " + e.getMessage());
+			close("Error while sending extended metadata request message: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1292,7 +1269,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			
 			Log.v(LOG_TAG, "Extended message sent metadata data");
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending extended metadata data message: " + e.getMessage());
+			close("Error while sending extended metadata data message: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1326,7 +1303,7 @@ public class PeerConnectionImpl implements PeerConnection {
 			
 			Log.v(LOG_TAG, "Extended message sent metadata reject");
 		} catch (Exception e) {
-			close(ERROR_INCREASE_ERROR_COUNTER, "Error while sending extended metadata reject message: " + e.getMessage());
+			close("Error while sending extended metadata reject message: " + e.getMessage());
 		} finally {
         	try {
 				if (baos != null) {
@@ -1339,25 +1316,25 @@ public class PeerConnectionImpl implements PeerConnection {
 	/** Closes the socket connection. */
 	@Override
 	public void close(String reason) {
-        close(ERROR_NOT_SPECIFIED, reason);
+        close(reason, false);
     }
 	
     /** Closes the socket connection. */
 	@Override
-	public void close(int errorCode, String reason) {
+	public void close(String reason, boolean isStopped) {
 		if (state_ != STATE_CLOSING && state_ != STATE_NOT_CONNECTED) {
 			Log.v(LOG_TAG, "Closing connection. Reason: " + reason);
 			
 			switch (state_) {
 				case STATE_TCP_CONNECTING:
-					if (peer_.isTorrentDownloadingData() && errorCode != ERROR_PEER_STOPPED) {
+					if (peer_.isTorrentDownloadingData() && !isStopped) {
 						peer_.analyticsNewFailedConnection();
 					}
 					break;
 					
 				case STATE_TCP_CONNECTED:
 				case STATE_PW_HANDSHAKING:
-					if (peer_.isTorrentDownloadingData() && errorCode != ERROR_PEER_STOPPED) {
+					if (peer_.isTorrentDownloadingData() && !isStopped) {
 						peer_.analyticsNewTcpConnection();
 					}
 					break;

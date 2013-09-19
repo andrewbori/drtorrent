@@ -1,7 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.file;
 
 import hu.bute.daai.amorg.drtorrent.core.Piece;
-import hu.bute.daai.amorg.drtorrent.core.torrent.Torrent;
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
 import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentInfo;
 import hu.bute.daai.amorg.drtorrent.util.Log;
 import hu.bute.daai.amorg.drtorrent.util.sha1.SHA1;
@@ -171,16 +171,16 @@ public class FileManager {
 		}
 	}
 	
-	/** Writes a block to the file in the given position. */
-	public static int write(final String filePath, final long filePosition, final byte[] block) {
-		return write(filePath, filePosition, block, 0, block.length);
+	/** Writes a block to the file in the given position.  */
+	public static void write(final String filePath, final long filePosition, final byte[] block) throws DrTorrentException {
+		write(filePath, filePosition, block, 0, block.length);
 	}
 
 	/** 
 	 * Writes a block to the file in the given position.
 	 * The offset and length within the block is also given. 
 	 */
-	public static int write(final String filePath, final long filePosition, final byte[] block, final int offset, final int length) {
+	public static void write(final String filePath, final long filePosition, final byte[] block, final int offset, final int length) throws DrTorrentException {
 		RandomAccessFile file = null;
 		try {
 			if (!fileExists(filePath)) {
@@ -192,10 +192,9 @@ public class FileManager {
 			file = new RandomAccessFile(filePath, "rw");
 			file.seek(filePosition);
 			file.write(block, offset, length);
-			return Torrent.ERROR_NONE;
 		} catch (IOException e) {
 			Log.v(LOG_TAG, e.getMessage());
-			return Torrent.ERROR_GENERAL;
+			throw new DrTorrentException("Could not write the file.", e);
 		} finally {
 			try {
 				file.close();

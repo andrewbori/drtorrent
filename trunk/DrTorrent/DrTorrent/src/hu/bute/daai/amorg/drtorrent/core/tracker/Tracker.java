@@ -117,6 +117,6 @@ public abstract class Tracker implements TrackerInfo {
 	/** Returns the remaining time (in seconds) until the next announce. */
 	@Override
 	public int getRemainingTime() {
-		return interval_ - (int) (System.nanoTime() - lastRequest_) / 1000;
+		return interval_ - (int) ((System.nanoTime() - lastRequest_) / 1000000000L);
 	}
 }

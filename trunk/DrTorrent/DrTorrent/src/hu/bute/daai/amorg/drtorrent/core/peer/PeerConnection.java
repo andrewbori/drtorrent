@@ -12,11 +12,6 @@ public interface PeerConnection {
     public final static int STATE_PW_HANDSHAKING = 3;
     public final static int STATE_PW_CONNECTED   = 4;
     public final static int STATE_CLOSING        = 5;
-    
-    public final static int ERROR_DELETE_PEER = 0;
-    public final static int ERROR_INCREASE_ERROR_COUNTER = 1;
-    public final static int ERROR_NOT_SPECIFIED = 2;
-    public final static int ERROR_PEER_STOPPED = 3;
 	
 	/** Connects to the peer (establishes the peer wire connection). */
 	public void connect();
@@ -28,7 +23,7 @@ public interface PeerConnection {
 	public void close(String reason);
 	
 	/** Closes the socket connection. */
-	public void close(int errorCode, String reason);
+	public void close(String reason, boolean isStopped);
 	
 	/** Schedules the connection. Mainly for checking timeouts. */
 	public void onTimer();

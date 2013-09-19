@@ -5,7 +5,7 @@ public interface TrackerObserver {
 
 	/** Adds a new peer to the list of the peers of the torrent. <br> 
 	 * (Used by the Torrent Manager & trackers.) */
-	public int addPeer(final String address, final int port, final String peerId);
+	public void addPeer(final String address, final int port, final String peerId);
 	
 	/** Refreshes the count of leechers & seeds. */
 	public void refreshSeedsAndLeechersCount();
