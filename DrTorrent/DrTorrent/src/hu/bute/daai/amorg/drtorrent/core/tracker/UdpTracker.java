@@ -12,7 +12,7 @@ import java.net.URI;
 import java.util.Random;
 
 /** Class that represents UDP trackers. */
-public class TrackerUdp extends Tracker {
+public class UdpTracker extends Tracker {
 	private static final String LOG_TAG = "TrackerUdp";
 	
 	private final static int ACTION_ID_CONNECT	= 0;
@@ -27,7 +27,7 @@ public class TrackerUdp extends Tracker {
 	private byte[] transactionId_ = null;	// length: 4 (32 bit)
 	
 	/** Constructor of the tracker with its URL and running torrent. */
-	public TrackerUdp(String url, TrackerObserver torrent) {
+	public UdpTracker(String url, TrackerObserver torrent) {
 		super(url, torrent);
 		
 		try {

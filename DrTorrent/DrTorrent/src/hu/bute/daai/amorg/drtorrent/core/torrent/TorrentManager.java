@@ -3,6 +3,10 @@ package hu.bute.daai.amorg.drtorrent.core.torrent;
 import hu.bute.daai.amorg.drtorrent.core.DownloadManager;
 import hu.bute.daai.amorg.drtorrent.core.File;
 import hu.bute.daai.amorg.drtorrent.core.UploadManager;
+import hu.bute.daai.amorg.drtorrent.core.exception.AlreadyExistsException;
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
+import hu.bute.daai.amorg.drtorrent.core.exception.InvalidContentException;
+import hu.bute.daai.amorg.drtorrent.core.exception.NotEnoughFreeSpaceException;
 import hu.bute.daai.amorg.drtorrent.core.peer.Peer;
 import hu.bute.daai.amorg.drtorrent.core.peer.PeerImpl;
 import hu.bute.daai.amorg.drtorrent.core.tracker.TrackerInfo;
@@ -14,6 +18,7 @@ import hu.bute.daai.amorg.drtorrent.util.Log;
 import hu.bute.daai.amorg.drtorrent.util.Preferences;
 import hu.bute.daai.amorg.drtorrent.util.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.util.bencode.Bencoded;
+import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedException;
 
 import java.net.Socket;
 import java.util.ArrayList;
@@ -270,21 +275,17 @@ public class TorrentManager {
 		}
 		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, infoHash, downloadFolder);
 		
-		int result = Torrent.ERROR_NONE;
-		if (torrentContent != null) {
-			Log.v(LOG_TAG, "Bencoding saved torrent: " + infoHash);
-			Bencoded bencoded = null;
-			try {
-				bencoded = Bencoded.parse(torrentContent);
-			} catch (Exception e) {
-				Log.v(LOG_TAG, "Error occured while processing the saved torrent file: " + e.getMessage());
-				return;
-			}
-			
-			result = newTorrent.processBencodedTorrent(bencoded);
+		if (torrentContent == null) {
+			Log.v(LOG_TAG, "Error occured while processing the saved torrent file");
+			return;
 		}
 		
-		if (result == Torrent.ERROR_NONE) {								// No error.
+		Log.v(LOG_TAG, "Bencoding saved torrent: " + infoHash);
+		try {
+			Bencoded bencoded = Bencoded.parse(torrentContent);
+			
+			newTorrent.processBencodedTorrent(bencoded);
+			
 			if (newTorrent.setStateFromJSON(json)) {
 				addTorrent(newTorrent);
 				torrentService_.updateTorrentItem(newTorrent);
@@ -296,7 +297,9 @@ public class TorrentManager {
 					}.start();
 				}
 			}
-		} else {
+		} catch (BencodedException e) {
+			Log.v(LOG_TAG, "Error occured while processing the saved torrent file: " + e.getMessage());
+		} catch (DrTorrentException e) {
 			Log.v(LOG_TAG, "Error occured while processing the saved torrent file");
 		}
 	}
@@ -323,7 +326,7 @@ public class TorrentManager {
 		Bencoded bencoded = null;
 		try {
 			bencoded = Bencoded.parse(torrentContent);
-		} catch (Exception e) {
+		} catch (BencodedException e) {
 			torrentService_.hideProgress();
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_NOT_A_TORRENT_FILE);
 			return;
@@ -336,9 +339,9 @@ public class TorrentManager {
 		}
 		
 		final Torrent newTorrent = new Torrent(creatingTorrent);
-		int result = newTorrent.processBencodedTorrent(bencoded);
-		torrentService_.hideProgress();
-		if (result == Torrent.ERROR_NONE) {									// No error.
+		try {
+			newTorrent.processBencodedTorrent(bencoded);
+			
 			torrentService_.saveTorrentContent(newTorrent.getInfoHashString(), torrentContent);
 			
 			// addTorrent(newTorrent); // already added with this id
@@ -360,12 +363,12 @@ public class TorrentManager {
 			//showTorrentSettings(newTorrent);
 			//newTorrent.start();
 			
-		} else if (result == Torrent.ERROR_WRONG_CONTENT) {					// Error.
+		} catch (InvalidContentException e) {
 			torrents_.removeElement(creatingTorrent);
 			torrentService_.removeTorrentItem(creatingTorrent);
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_WRONG_FILE);
 			
-		} else if (result == Torrent.ERROR_ALREADY_EXISTS) {
+		} catch (AlreadyExistsException e) {
 			torrents_.removeElement(creatingTorrent);
 			torrentService_.removeTorrentItem(creatingTorrent);
 			final ArrayList<TrackerInfo> newTrackers = newTorrent.getTrackers();
@@ -381,11 +384,12 @@ public class TorrentManager {
 				torrentService_.showDialog(TorrentManagerObserver.MESSAGE_THE_TORRENT_IS_ALREADY_OPENED);
 			}
 			
-		} else {
+		} catch (Exception e)  {
 			torrents_.removeElement(creatingTorrent);
 			torrentService_.removeTorrentItem(creatingTorrent);
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_ERROR);
 		}
+		torrentService_.hideProgress();
 	}
 	
 	/** Opens a new Torrent file with the given file path. */
@@ -455,7 +459,7 @@ public class TorrentManager {
 		Bencoded bencoded = null;
 		try {
 			bencoded = Bencoded.parse(torrentContent);
-		} catch (Exception e) {
+		} catch (BencodedException e) {
 			torrentService_.hideProgress();
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_NOT_A_TORRENT_FILE);
 			return;
@@ -468,18 +472,19 @@ public class TorrentManager {
 		}
 		
 		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, path, downloadPath);
-		int result = newTorrent.processBencodedTorrent(bencoded);
-		torrentService_.hideProgress();
-		if (result == Torrent.ERROR_NONE) {									// No error.
+		
+		try {
+			newTorrent.processBencodedTorrent(bencoded);
+			
 			torrentService_.saveTorrentContent(newTorrent.getInfoHashString(), torrentContent);
 			openingTorrents_.add(newTorrent);
 			showTorrentSettings(newTorrent);
 			//newTorrent.start();
 			
-		} else if (result == Torrent.ERROR_WRONG_CONTENT) {					// Error.
+		} catch(InvalidContentException e) {
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_WRONG_FILE);
 			
-		} else if (result == Torrent.ERROR_ALREADY_EXISTS) {
+		} catch(AlreadyExistsException e) {
 			final ArrayList<TrackerInfo> newTrackers = newTorrent.getTrackers();
 			if (newTrackers != null && !newTrackers.isEmpty()) {
 				final ArrayList<String> newTrackerUrls = new ArrayList<String>();
@@ -493,12 +498,14 @@ public class TorrentManager {
 				torrentService_.showDialog(TorrentManagerObserver.MESSAGE_THE_TORRENT_IS_ALREADY_OPENED);
 			}
 			
-		} else if (result == Torrent.ERROR_NO_FREE_SIZE) {
+		} catch(NotEnoughFreeSpaceException e) {
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_NOT_ENOUGH_FREE_SPACE);
 			
-		} else {
+		} catch(Exception e) {
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_ERROR);
 		}
+		
+		torrentService_.hideProgress();
 	}
 	
 	/**
@@ -507,36 +514,34 @@ public class TorrentManager {
 	 */
 	public void openTorrent(final MagnetUri magnetUri, final String downloadPath) {
 		final Torrent newTorrent = new Torrent(this, uploadManager_, downloadManager_, magnetUri.toString(), downloadPath);
-		int result = newTorrent.processMagnetTorrent(magnetUri);
 		
-		torrentService_.hideProgress();
-		
-		if (result == Torrent.ERROR_NONE) {
+		try {
+			newTorrent.processMagnetTorrent(magnetUri);
+			
 			openingTorrents_.add(newTorrent);
 			showTorrentSettings(newTorrent);
 			newTorrent.start();
 			
-		} else if (result == Torrent.ERROR_WRONG_CONTENT) {
+		} catch(InvalidContentException e) {
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_WRONG_MAGNET_LINK);
 			
-		} else if (result == Torrent.ERROR_ALREADY_EXISTS) {
+		} catch(AlreadyExistsException e) {
 			final ArrayList<TrackerInfo> newTrackers = newTorrent.getTrackers();
 			if (newTrackers != null && !newTrackers.isEmpty()) {
 				final ArrayList<String> newTrackerUrls = new ArrayList<String>();
 				for (TrackerInfo newTracker : newTrackers) {
 					newTrackerUrls.add(newTracker.getUrl());
 				}
-				
 				torrentService_.showAlreadyOpenedDialog(newTorrent.getInfoHash(), newTrackerUrls);
-				
 			} else {
 				torrentService_.showDialog(TorrentManagerObserver.MESSAGE_THE_TORRENT_IS_ALREADY_OPENED);
 			}
 			
-		} else {
+		} catch(Exception e) {
 			torrentService_.showDialog(TorrentManagerObserver.MESSAGE_ERROR);
 		}
 		
+		torrentService_.hideProgress();
 	}
 	
 	/** Shows the settings dialog of the torrent (file list). */

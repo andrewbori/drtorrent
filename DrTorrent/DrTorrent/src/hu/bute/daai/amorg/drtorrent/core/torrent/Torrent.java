@@ -8,14 +8,18 @@ import hu.bute.daai.amorg.drtorrent.core.Metadata;
 import hu.bute.daai.amorg.drtorrent.core.Piece;
 import hu.bute.daai.amorg.drtorrent.core.Speed;
 import hu.bute.daai.amorg.drtorrent.core.UploadManager;
+import hu.bute.daai.amorg.drtorrent.core.exception.AlreadyExistsException;
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
+import hu.bute.daai.amorg.drtorrent.core.exception.InvalidContentException;
+import hu.bute.daai.amorg.drtorrent.core.exception.NotEnoughFreeSpaceException;
 import hu.bute.daai.amorg.drtorrent.core.peer.Peer;
 import hu.bute.daai.amorg.drtorrent.core.peer.PeerImpl;
 import hu.bute.daai.amorg.drtorrent.core.peer.PeerInfo;
+import hu.bute.daai.amorg.drtorrent.core.tracker.HttpTracker;
 import hu.bute.daai.amorg.drtorrent.core.tracker.Tracker;
-import hu.bute.daai.amorg.drtorrent.core.tracker.TrackerHttp;
 import hu.bute.daai.amorg.drtorrent.core.tracker.TrackerInfo;
 import hu.bute.daai.amorg.drtorrent.core.tracker.TrackerObserver;
-import hu.bute.daai.amorg.drtorrent.core.tracker.TrackerUdp;
+import hu.bute.daai.amorg.drtorrent.core.tracker.UdpTracker;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.network.MagnetUri;
 import hu.bute.daai.amorg.drtorrent.util.Log;
@@ -25,6 +29,7 @@ import hu.bute.daai.amorg.drtorrent.util.Tools;
 import hu.bute.daai.amorg.drtorrent.util.analytics.Analytics;
 import hu.bute.daai.amorg.drtorrent.util.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedDictionary;
+import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedException;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedInteger;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedList;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedString;
@@ -51,7 +56,7 @@ import android.webkit.URLUtil;
 public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserver {
 	private final static String LOG_TAG = "Torrent";
 
-	public final static int ERROR_NONE = 0;
+	/*public final static int ERROR_NONE = 0;
 	public final static int ERROR_WRONG_CONTENT = -1;
 	public final static int ERROR_NO_FREE_SIZE = -2;
 	public final static int ERROR_ALREADY_EXISTS = -3;
@@ -59,7 +64,7 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 	public final static int ERROR_OVERFLOW = -5;
 	public final static int ERROR_TORRENT_NOT_PARSED = -6;
 	public final static int ERROR_NOT_ATTACHED = -7;
-	public final static int ERROR_GENERAL = -8;
+	public final static int ERROR_GENERAL = -8;*/
 
 	public final static int STATUS_WRONG_FILE 			= 0;
 	public final static int STATUS_STOPPED 				= 10;
@@ -210,11 +215,11 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 	 * @param torrentBencoded The torrent file's bencoded content.
 	 * @return Error code.
 	 */
-	public int processBencodedTorrent(Bencoded torrentBencoded) {
+	public void processBencodedTorrent(Bencoded torrentBencoded) throws DrTorrentException {
 		status_ = STATUS_OPENING;
 
 		if (torrentBencoded == null || torrentBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
-			return ERROR_WRONG_CONTENT; // bad bencoded torrent
+			throw new InvalidContentException("The torrent does not have a bencoded dictionary!");
 		}
 
 		BencodedDictionary torrent = (BencodedDictionary) torrentBencoded;
@@ -272,7 +277,7 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		// info
 		tempBencoded = torrent.entryValue("info");
 		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
-			return ERROR_WRONG_CONTENT;
+			throw new InvalidContentException("The torrent does not have meta info!");
 		}
 
 		BencodedDictionary info = (BencodedDictionary) tempBencoded;
@@ -291,20 +296,20 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		hashResult = null;
 		
 		if (torrentManager_.hasTorrent(infoHash_)) {
-			return ERROR_ALREADY_EXISTS;
+			throw new AlreadyExistsException("Torrent is already opened!");
 		}
 		
-		return processBencodedMetadata(info);
+		processBencodedMetadata(info);
 	}
 	
 	
 	/** Processes the Magnet Link. */
-	public int processMagnetTorrent(MagnetUri magnetUri) {
+	public void processMagnetTorrent(MagnetUri magnetUri) throws InvalidContentException, AlreadyExistsException {
 		status_ = STATUS_OPENING;
 		
 		infoHashString_ = magnetUri.getInfoHash();
 		if (infoHashString_ == null || infoHashString_.length() != 40) {
-			return ERROR_WRONG_CONTENT;
+			throw new InvalidContentException("Invalid info hash!");
 		}
 		
 		int[] hashResult = SHA1.stringToIntArray(infoHashString_);
@@ -332,40 +337,39 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		}
 		
 		if (torrentManager_.hasTorrent(infoHash_)) {
-			return ERROR_ALREADY_EXISTS;
+			throw new AlreadyExistsException("Torrent is already opened!");
 		}
-		
-		return ERROR_NONE;
 	}
 	
 	/** Processes the metadata from external source. */
-	public int processMetadata(byte[] metadata) {
+	public void processMetadata(byte[] metadata) throws InvalidContentException {
 		metadataSize_ = metadata.length;
 		Bencoded info = null;
 		try {
 			info = Bencoded.parse(metadata);
-		} catch (Exception e) {
+		} catch (BencodedException e) {
 			Log.v(LOG_TAG, "Error occured while processing metadata " + e.getMessage());
-			return ERROR_WRONG_CONTENT;
+			throw new InvalidContentException("Could not bencode the meta info!");
 		}
 		
 		if (info == null || info.type() != Bencoded.BENCODED_DICTIONARY) {
-			return ERROR_WRONG_CONTENT;
+			throw new InvalidContentException("Invalid meta info!");
 		}
 		
-		return processBencodedMetadata((BencodedDictionary) info);
+		processBencodedMetadata((BencodedDictionary) info);
 	}
 	
 	/** Processes the metadata. */
-	public int processBencodedMetadata(BencodedDictionary info) {
+	public void processBencodedMetadata(BencodedDictionary info) throws InvalidContentException {
 		status_ = STATUS_OPENING;
 		
 		Bencoded tempBencoded = null;
 		
 		// info/piece lenght
 		tempBencoded = info.entryValue("piece length");
-		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER)
-			return ERROR_WRONG_CONTENT;
+		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER) {
+			throw new InvalidContentException("Cannot find 'piece length' within the meta info!");
+		}
 
 		pieceLength_ = (int) ((BencodedInteger) tempBencoded).getValue();
 
@@ -374,16 +378,18 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		tempBencoded = info.entryValue("files");
 		if (tempBencoded != null) {
 			// multi-file torrent
-			if (tempBencoded.type() != Bencoded.BENCODED_LIST)
-				return ERROR_WRONG_CONTENT;
+			if (tempBencoded.type() != Bencoded.BENCODED_LIST) {
+				throw new InvalidContentException("Cannot find the list of 'files' within the meta info!");
+			}
 
 			BencodedList files = (BencodedList) tempBencoded;
 
 			// info/name
 
 			tempBencoded = info.entryValue("name");
-			if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING)
-				return ERROR_WRONG_CONTENT;
+			if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING) {
+				throw new InvalidContentException("Cannot find the 'name' within the files!");
+			}
 
 			isSingleFile_ = false;
 			name_ = ((BencodedString) tempBencoded).getStringValue();
@@ -392,14 +398,16 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 			long fileBegin = 0;
 			for (int i = 0; i < files.count(); i++) {
 				tempBencoded = files.item(i);
-				if (tempBencoded.type() != Bencoded.BENCODED_DICTIONARY)
-					return ERROR_WRONG_CONTENT;
+				if (tempBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
+					throw new InvalidContentException("Invalid file item, not a bencoded dictionary!");
+				}
 
 				BencodedDictionary file = (BencodedDictionary) tempBencoded;
 
 				tempBencoded = file.entryValue("path");
-				if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_LIST)
-					return ERROR_WRONG_CONTENT;
+				if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_LIST) {
+					throw new InvalidContentException("Cannot find the list of 'path' items!");
+				}
 
 				BencodedList inPath = (BencodedList) tempBencoded;
 
@@ -407,8 +415,9 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 
 				for (int j = 0; j < inPath.count(); j++) {
 					tempBencoded = inPath.item(j);
-					if (tempBencoded.type() != Bencoded.BENCODED_STRING)
-						return ERROR_WRONG_CONTENT;
+					if (tempBencoded.type() != Bencoded.BENCODED_STRING) {
+						throw new InvalidContentException("Invalid 'path' item, not a bencoded string!");
+					}
 
 					pathBuf = pathBuf + ((BencodedString) tempBencoded).getStringValue();
 
@@ -417,8 +426,9 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 				}
 
 				tempBencoded = file.entryValue("length");
-				if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER)
-					return ERROR_WRONG_CONTENT;
+				if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER) {
+					throw new InvalidContentException("Invalid 'length', not a bencoded integer!");
+				}
 
 				long length = ((BencodedInteger) tempBencoded).getValue();
 				fullSize_ += length;
@@ -431,16 +441,18 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 
 			// info/length
 			tempBencoded = info.entryValue("length");
-			if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER)
-				return ERROR_WRONG_CONTENT;
+			if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_INTEGER) {
+				throw new InvalidContentException("Cannot find the 'length' of the torrent!");
+			}
 
 			long length = ((BencodedInteger) tempBencoded).getValue();
 			fullSize_ = length;
 
 			// info/name
 			tempBencoded = info.entryValue("name");
-			if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING)
-				return ERROR_WRONG_CONTENT;
+			if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING) {
+				throw new InvalidContentException("Cannot find the name of the torrent!");
+			}
 
 			name_ = ((BencodedString) tempBencoded).getStringValue();
 			path_ = downloadFolder_ + "/";
@@ -452,13 +464,15 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 
 		tempBencoded = info.entryValue("pieces");
 
-		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING)
-			return ERROR_WRONG_CONTENT;
+		if (tempBencoded == null || tempBencoded.type() != Bencoded.BENCODED_STRING) {
+			throw new InvalidContentException("Cannot find the hash of 'pieces'!");
+		}
 
 		byte[] piecesArray = ((BencodedString) tempBencoded).getValue();
 
-		if ((piecesArray.length % 20) != 0)
-			return ERROR_WRONG_CONTENT;
+		if ((piecesArray.length % 20) != 0) {
+			throw new InvalidContentException("Wrong format of the hash of 'pieces'!");
+		}
 
 		int processedLength = 0;
 		int pieceCount = piecesArray.length / 20;
@@ -488,8 +502,6 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 
 		calculateFileFragments();
 		valid_ = true;
-
-		return ERROR_NONE;
 	}
 
 	/** Sets the active pieces according to the selected file list of the torrent. */
@@ -596,14 +608,16 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 
 		for (final File file : files_) {
 			if (file.getPriority() > 0) {
-				int result = createFile(file);
-				if (result == ERROR_ALREADY_EXISTS) {
-					file.checkHash(true);
-				} else {
+				try {
+					createFile(file);
 					file.checkHash(false);
+				} catch (AlreadyExistsException e) {
+					file.checkHash(true);
+				} catch (DrTorrentException e) {
 				}
 			}
 			if (status_ == STATUS_STOPPED) {
+				// Stop processing
 				return;
 			}
 		}
@@ -1214,31 +1228,30 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 	}
 
 	/** Creates a new file in the file system and reserves space for it as well. */
-	private int createFile(final File file) {
+	private void createFile(final File file) throws InvalidContentException, NotEnoughFreeSpaceException, AlreadyExistsException {
 		final String filePath = file.getFullPath();
 		final long size = file.getSize();
 
 		// Creating the file
-		if (path_ != null && !path_.equals("")) {
-
-			boolean existed = false;
-			if (FileManager.fileExists(filePath))
-				existed = true;
-			
-			if (FileManager.freeSize(path_) < size) {
-				Log.v(LOG_TAG, "Not enough free space");
-				return ERROR_NO_FREE_SIZE;
-			}
-
-			addFileToFileManager(file);
-			
-			if (existed) {
-				return ERROR_ALREADY_EXISTS;
-			}
-			return ERROR_NONE;
+		if (path_ == null || path_.isEmpty()) {
+			throw new InvalidContentException("File path is empty!");
 		}
 
-		return ERROR_WRONG_CONTENT;
+		boolean existed = false;
+		if (FileManager.fileExists(filePath)) {
+			existed = true;
+		}
+		
+		if (FileManager.freeSize(path_) < size) {
+			Log.v(LOG_TAG, "Not enough free space");
+			throw new NotEnoughFreeSpaceException("Not enough free space to download torrent!");
+		}
+
+		addFileToFileManager(file);
+		
+		if (existed) {
+			throw new AlreadyExistsException("File already exists!");
+		}
 	}
 	
 	/** Returns the metadata block at the given position. */
@@ -1268,18 +1281,18 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 	/** Adds a new peer to the list of the peers of the torrent. <br> 
 	 * (Used by the Torrent Manager & trackers.) */
 	@Override
-	public int addPeer(final String address, final int port, final String peerId) {
+	public void addPeer(final String address, final int port, final String peerId) {
 		// if (peers_.size() >= Preferences.getMaxConnections()) return
 		// ERROR_OVERFLOW;
-		if (hasPeer(address, port))
-			return ERROR_ALREADY_EXISTS;
+		if (hasPeer(address, port)) {
+			// Ignore peer if already has it
+			return;
+		}
 
 		Peer peer = new PeerImpl(address, port, peerId, pieces_.size());
 		peers_.addElement(peer);
 		notConnectedPeers_.addElement(peer);
 		// Log.v(LOG_TAG, "Number of peers: " + peers_.size());
-
-		return ERROR_NONE;
 	}
 	
 	/** Adds a new tracker to the list of the trackers. */
@@ -1287,11 +1300,11 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 		if (!hasTracker(url)) {
 			if (url.startsWith("http://")) {
 				if (URLUtil.isValidUrl(url)) {
-					trackers_.addElement(new TrackerHttp(url, this));
+					trackers_.addElement(new HttpTracker(url, this));
 				}
 			} else if (url.startsWith("udp://")) {
 				if (URLUtil.isValidUrl("http" + url.substring(3))) {
-					trackers_.addElement(new TrackerUdp(url, this));
+					trackers_.addElement(new UdpTracker(url, this));
 				}
 			}
 		}
@@ -1603,7 +1616,11 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 	public void addBlockToMetadata(final int index, final byte[] data) {
 		synchronized (metadata_) {
 			String filePath = Preferences.getExternalFilesDir() + "/" + infoHashString_ + ".dat";
-			FileManager.write(filePath, index * Metadata.BLOCK_SIZE, data);
+			try {
+				FileManager.write(filePath, index * Metadata.BLOCK_SIZE, data);
+			} catch (DrTorrentException e) {
+				// TODO
+			}
 			metadata_.add(index/*, data*/);
 			if (metadata_.isComplete()) {
 				final SHA1 sha1 = new SHA1();
@@ -1624,6 +1641,7 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 				final String infoHash = SHA1.resultToByteString(sha1.digest());
 				metadataSize_ = metadata_.getSize();
 	
+				// Reset metadata if wrong content was recieved
 				if (!infoHash.equals(infoHash_)) {
 					metadata_ = new Metadata(metadata_.getSize());
 					return;
@@ -1631,10 +1649,18 @@ public class Torrent implements TorrentInfo, Comparable<Torrent>, TrackerObserve
 				
 				content = new byte[metadata_.getSize()];
 				FileManager.read(filePath, 0, content);
-				final Bencoded bencoded = Bencoded.parse(content);
+				Bencoded bencoded = null;
+				try {
+					bencoded = Bencoded.parse(content);
+				} catch (BencodedException e) {
+				}
 				if (bencoded != null && bencoded.type() == Bencoded.BENCODED_DICTIONARY) {
 					final BencodedDictionary info = (BencodedDictionary) bencoded;
-					processBencodedMetadata(info);
+					try {
+						processBencodedMetadata(info);
+					} catch (InvalidContentException e) {
+						// TODO
+					}
 					if (shouldStart_) {
 						Analytics.changeTorrent(this);
 						start();

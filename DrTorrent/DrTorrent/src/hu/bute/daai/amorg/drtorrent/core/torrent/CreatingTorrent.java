@@ -3,6 +3,7 @@ package hu.bute.daai.amorg.drtorrent.core.torrent;
 import hu.bute.daai.amorg.drtorrent.R;
 import hu.bute.daai.amorg.drtorrent.core.DownloadManager;
 import hu.bute.daai.amorg.drtorrent.core.UploadManager;
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
 import hu.bute.daai.amorg.drtorrent.file.FileComparator;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
 import hu.bute.daai.amorg.drtorrent.util.Preferences;
@@ -165,7 +166,11 @@ public class CreatingTorrent extends Torrent {
 		torrent.addEntry("info", info);
 		
 		FileManager.removeFile(filePathSaveAs);
-		FileManager.write(filePathSaveAs, 0, torrent.Bencode());
+		try {
+			FileManager.write(filePathSaveAs, 0, torrent.Bencode());
+		} catch (DrTorrentException e) {
+			// TODO
+		}
 		
 		// Open torrent
 		torrentManager_.openCreatedTorrent(this);

@@ -6,6 +6,7 @@ import hu.bute.daai.amorg.drtorrent.core.tracker.TrackerObserver;
 
 import java.util.ArrayList;
 
+/** Class for mocking TrackerObserver in tests. */
 public class TrackerObserverMock implements TrackerObserver {
 
 	private String infoHash_;
@@ -17,9 +18,8 @@ public class TrackerObserverMock implements TrackerObserver {
 	}
 	
 	@Override
-	public int addPeer(String address, int port, String peerId) {
+	public void addPeer(String address, int port, String peerId) {
 		peers_.add(new PeerImpl(address, port, peerId, 0));
-		return 0;
 	}
 
 	@Override
@@ -34,7 +34,7 @@ public class TrackerObserverMock implements TrackerObserver {
 
 	@Override
 	public byte[] getInfoHashByteArray() {
-		// TODO Auto-generated method stub
+		// TODO
 		return null;
 	}
 

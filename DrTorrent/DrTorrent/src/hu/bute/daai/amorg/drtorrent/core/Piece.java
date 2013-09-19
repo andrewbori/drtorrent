@@ -1,5 +1,6 @@
 package hu.bute.daai.amorg.drtorrent.core;
 
+import hu.bute.daai.amorg.drtorrent.core.exception.DrTorrentException;
 import hu.bute.daai.amorg.drtorrent.core.peer.Peer;
 import hu.bute.daai.amorg.drtorrent.core.torrent.Torrent;
 import hu.bute.daai.amorg.drtorrent.file.FileManager;
@@ -88,13 +89,13 @@ public class Piece {
 	 * @param data  The block that has to be appended.
 	 * @param offset The position of the block within the piece.
 	 * @param peer   The peer which the block was received from.
-	 * @return Torrent error code.
+	 * @throws DrTorrentException 
 	 */
-	public int appendBlock(final byte[] data, final Block block, final Peer peer) {
+	public void appendBlock(final byte[] data, final Block block, final Peer peer) throws DrTorrentException {
 		// If received an already received part.
 		if (downloadingBlocks_ == null || !downloadingBlocks_.contains(block)) {
 			Log.v(LOG_TAG, "Wrong block has been received: " + block.begin());
-			return Torrent.ERROR_NONE;
+			return;
 		}
 		downloadingBlocks_.removeElement(block);
 
@@ -117,32 +118,30 @@ public class Piece {
 					pos += fragment.length();
 				}
 			}
-
-			if (file != null) {
-				int res = Torrent.ERROR_NONE;
-				long fileRemainingLength = file.getSize() - filePosition; // Remaining length from the position
-
-				Log.v(LOG_TAG, "Appending block to " + file.getFullPath());
-
-				int rightSize;
-				// If the file is not finished yet
-				if (fileRemainingLength > (data.length - blockPosition)) {
-					rightSize = data.length - blockPosition;
-				}
-				// If the end of a file was reached...
-				else {
-					rightSize = (int) fileRemainingLength;
-				}
-
-				res = FileManager.write(file.getFullPath(), filePosition, data, blockPosition, rightSize);
-				if (res != Torrent.ERROR_NONE) return res;
-				
-				file.addDownloadedBytes(rightSize);
-
-				blockPosition += rightSize;
-			} else {
-				return Torrent.ERROR_GENERAL;
+			
+			if (file == null) {
+				throw new DrTorrentException("Could not find the file that the block belongs to.");
 			}
+			
+			long fileRemainingLength = file.getSize() - filePosition; // Remaining length from the position
+
+			Log.v(LOG_TAG, "Appending block to " + file.getFullPath());
+
+			int rightSize;
+			// If the file is not finished yet
+			if (fileRemainingLength > (data.length - blockPosition)) {
+				rightSize = data.length - blockPosition;
+			}
+			// If the end of a file was reached...
+			else {
+				rightSize = (int) fileRemainingLength;
+			}
+
+			FileManager.write(file.getFullPath(), filePosition, data, blockPosition, rightSize);
+			
+			file.addDownloadedBytes(rightSize);
+
+			blockPosition += rightSize;
 		}
 		
 		addPeer(peer);
@@ -182,8 +181,6 @@ public class Piece {
 				peers_ = null;
 			}
 		}
-			
-		return Torrent.ERROR_NONE;
 	}
 	
 	/** Reads a block from its file(s). */

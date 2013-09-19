@@ -9,21 +9,22 @@ import hu.bute.daai.amorg.drtorrent.util.Preferences;
 import hu.bute.daai.amorg.drtorrent.util.Tools;
 import hu.bute.daai.amorg.drtorrent.util.bencode.Bencoded;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedDictionary;
+import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedException;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedInteger;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedList;
 import hu.bute.daai.amorg.drtorrent.util.bencode.BencodedString;
 
 /** Class that represents HTTP trackers. */
-public class TrackerHttp extends Tracker {
+public class HttpTracker extends Tracker {
 	private static final String LOG_TAG = "TrackerHttp";
 	
 	/** Constructor of the tracker with its URL and running torrent. */
-	public TrackerHttp(String url, TrackerObserver torrent) {
+	public HttpTracker(String url, TrackerObserver torrent) {
 		super(url, torrent);
 	}
 	
 	/** Processes the response of the tracker */
-	public void processResponse(Bencoded responseBencoded) throws DrTorrentException { 
+	protected void processResponse(Bencoded responseBencoded) throws DrTorrentException { 
         if (responseBencoded.type() != Bencoded.BENCODED_DICTIONARY) {
         	throw new DrTorrentException("The response of the tracker is not a becoded dictionary.");
         }
@@ -161,7 +162,7 @@ public class TrackerHttp extends Tracker {
     }
 	
 	/** Creates the query string from the current state of the tracker. */
-	private String createUri() {
+	protected String createUri() {
         //String localAddress = NetTools.getLocalAddress(torrent.getAnnounce());
 		final StringBuilder uriB = new StringBuilder("?");
 		uriB.append("info_hash=").append(UrlEncoder.encode(torrent_.getInfoHash()))        
@@ -214,24 +215,30 @@ public class TrackerHttp extends Tracker {
 		
 		if (event_ != EVENT_STOPPED) {
 			if (response != null) {
-				final Bencoded bencoded = Bencoded.parse(response);
-			
-				if (bencoded == null) {
+				Bencoded bencoded;
+				try {
+					bencoded = Bencoded.parse(response);
+				} catch (BencodedException e) {
 					status_ = STATUS_FAILED;
 					failCount_++;
 					Log.v(LOG_TAG, "Failed to bencode the response of the tracker.");
 					return;
 				}
+				
 				status_ = STATUS_WORKING;
 				Log.v(LOG_TAG, "Bencoded response processing...");
 				try {
 					processResponse(bencoded);
 				} catch (DrTorrentException e) {
+					status_ = STATUS_FAILED;
 					failCount_++;
+					return;
 				}
 			} else {
 				status_ = STATUS_FAILED;
+				failCount_++;
 				interval_ = ERROR_REQUEST_INTERVAL;
+				return;
 			}
 		} else {
 			status_ = STATUS_UNKNOWN;
