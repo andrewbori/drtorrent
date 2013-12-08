@@ -15,7 +15,7 @@
 	        android:summary="@string/preferences_streaming_sum"
 	        android:title="@string/preferences_streaming" />
 	    
-	    <hu.bute.daai.amorg.drtorrent.SeekBarPreference
+	    <hu.bute.daai.amorg.drtorrent.ui.preference.SeekBarPreference
             android:key="download_speed"
             android:title="@string/download_speed_limit"
             android:dialogTitle="@string/download_speed_limit"
@@ -31,7 +31,7 @@
 	        android:summary="@string/enable_upload"
 	        android:title="@string/upload" />
         
-        <hu.bute.daai.amorg.drtorrent.SeekBarPreference
+        <hu.bute.daai.amorg.drtorrent.ui.preference.SeekBarPreference
             android:key="upload_speed"
             android:title="@string/upload_speed_limit"
             android:dialogTitle="@string/upload_speed_limit"
