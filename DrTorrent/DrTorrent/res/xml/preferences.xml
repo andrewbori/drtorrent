@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    			  xmlns:sbp="http://schemas.android.com/apk/src/hu.bute.daai.amorg.drtorrent.seekbarpreference" >
+    			  xmlns:sbp="http://schemas.android.com/apk/src/hu.bute.daai.amorg.drtorrent.ui.preference.seekbarpreference" >
 
     <PreferenceCategory android:title="@string/download">
 	    <Preference

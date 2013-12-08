@@ -84,7 +84,7 @@
         <service android:name="hu.bute.daai.amorg.drtorrent.ui.service.TorrentService" />
         
         <provider android:name="hu.bute.daai.amorg.drtorrent.ui.provider.TorrentSuggestionProvider"
-            	  android:authorities="hu.bute.daai.amorg.drtorrent.provider.TorrentSuggestionProvider"
+            	  android:authorities="hu.bute.daai.amorg.drtorrent.ui.provider.TorrentSuggestionProvider"
             	  android:exported="false" />
         
         <provider android:name="org.transdroid.search.TorrentSearchProvider"

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <declare-styleable name="hu.bute.daai.amorg.drtorrent.SeekBarPreference">
+    <declare-styleable name="hu.bute.daai.amorg.drtorrent.ui.provider.SeekBarPreference">
         <attr name="entries" format="reference" />
     </declare-styleable>
 </resources>

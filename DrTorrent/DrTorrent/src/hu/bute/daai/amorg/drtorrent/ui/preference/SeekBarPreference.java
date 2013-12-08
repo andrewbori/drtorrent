@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 public class SeekBarPreference extends DialogPreference implements SeekBar.OnSeekBarChangeListener {
 
-	private static final String PREFERENCE_NS = "http://schemas.android.com/apk/src/hu.bute.daai.amorg.drtorrent.seekbarpreference";
+	private static final String PREFERENCE_NS = "http://schemas.android.com/apk/src/hu.bute.daai.amorg.drtorrent.ui.preference.seekbarpreference";
 	private static final String ANDROID_NS = "http://schemas.android.com/apk/res/android";
 	
 	private final int defaultValue_;
