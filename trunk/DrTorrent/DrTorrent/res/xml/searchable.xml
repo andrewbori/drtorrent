@@ -3,6 +3,6 @@
     android:label="@string/app_name"
     android:hint="@string/search"
     android:voiceSearchMode="showVoiceSearchButton|launchRecognizer"
-    android:searchSuggestAuthority="hu.bute.daai.amorg.drtorrent.provider.TorrentSuggestionProvider"
+    android:searchSuggestAuthority="hu.bute.daai.amorg.drtorrent.ui.provider.TorrentSuggestionProvider"
     android:searchSuggestSelection=" ?" >
 </searchable>
