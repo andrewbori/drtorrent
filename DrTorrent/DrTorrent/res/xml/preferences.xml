@@ -77,7 +77,7 @@
 
 	    <EditTextPreference
 	        android:key="connections"
-	        android:defaultValue="10"
+	        android:defaultValue="20"
 	        android:inputType="number" 
 	        android:dialogTitle="@string/preferences_connections"
 	        android:title="@string/preferences_connections" />

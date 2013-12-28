@@ -18,6 +18,7 @@
  */
 package org.transdroid.search.RssFeedSearch;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 import org.ifies.android.sax.Item;
@@ -47,7 +48,11 @@ public class KickassTorrentsAdapter extends RssFeedSearchAdapter {
 
 	@Override
 	protected String getUrl(String query, SortOrder order) {
-		return "http://www.kickasstorrents.com/search/" + URLEncoder.encode(query) + "/?rss=1" + (order == SortOrder.BySeeders? "&field=seeders&sorder=desc": "");
+		try {
+			return "http://kickass.to/search/" + URLEncoder.encode(query, "UTF-8").replace("+", "%20") + "/?rss=1" + (order == SortOrder.BySeeders? "&field=seeders&sorder=desc": "");
+		} catch (UnsupportedEncodingException e) {
+			throw new AssertionError("UTF-8 not supported");
+		}
 	}
 
 	@Override
@@ -91,13 +96,13 @@ public class KickassTorrentsAdapter extends RssFeedSearchAdapter {
 	    	if (localName.equalsIgnoreCase("torrentLink")) {
 	    		theItem.setTorrentLink(text.trim());
 	    	}
-	    	if (localName.equalsIgnoreCase("size")) {
+	    	if (localName.equalsIgnoreCase("contentLength")) {
 	    		theItem.setSize(Long.parseLong(text.trim()));
 	    	}
 	    	if (localName.equalsIgnoreCase("seeds")) {
 	    		theItem.setSeeders(Integer.parseInt(text.trim()));
 	    	}
-	    	if (localName.equalsIgnoreCase("leechs")) {
+	    	if (localName.equalsIgnoreCase("peers")) {
 	    		theItem.setLeechers(Integer.parseInt(text.trim()));
 	    	}
 	    }

@@ -109,7 +109,7 @@ public class Preferences {
 	/** Returns the number of the maximum connected peers per torrent. */
 	public static int getMaxConnectedPeers() {
 		try {
-			return Integer.valueOf(preferences_.getString("connections", "10"));
+			return Integer.valueOf(preferences_.getString("connections", "20"));
 		} catch (Exception e) {
 			return 10;
 		}
@@ -160,12 +160,15 @@ public class Preferences {
 			
 		} else if (searchEngine.equals("ExtraTorrent")) {
 			return "http://extratorrent.com/search/?search=%1$s";
+		
+		} else if (searchEngine.equals("Fenopy")) {
+			return "http://fenopy.se/?keyword=%1$s";
 			
 		} else if (searchEngine.equals("Isohunt")) {
-			return "http://isohunt.com/torrents/?ihq=%1$s";
+			return "http://isohunt.to/torrents/?ihq=%1$s";
 			
 		} else if (searchEngine.equals("KickassTorents")) {
-			return "http://kat.ph/usearch/%1$s/";
+			return "http://kickass.to/usearch/%1$s/";
 			
 		} else if (searchEngine.equals("LimeTorrents")) {
 			return "http://www.limetorrents.com/search/all/%1$s/";
@@ -178,7 +181,10 @@ public class Preferences {
 			
 		} else if (searchEngine.equals("ThePirateBay")) {
 			return "http://thepiratebay.se/search/%1$s";
-					
+			
+		} else if (searchEngine.equals("ThePirateBayMirror")) {
+			return "http://pirateproxy.net/search/%1$s";
+			
 		} else if (searchEngine.equals("TorrentDownloads")) {
 			return "http://www.torrentdownloads.me/search/?search=%1$s";
 					

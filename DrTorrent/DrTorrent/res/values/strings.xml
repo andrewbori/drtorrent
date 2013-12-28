@@ -3,12 +3,14 @@
     <string-array name="search_engine_names">
 		<item>BitSnoop</item>
 		<item>Extra Torrent</item>
+		<item>Fenopy</item>
 		<item>isoHunt</item>
 		<item>Kickass Torrents</item>
 		<item>Lime Torrents</item>
 		<item>Mininova</item>
 		<item>Monova</item>
 		<item>The Pirate Bay</item>
+		<item>The Pirate Bay (mirror)</item>
 		<item>Torrent Downloads</item>
 		<item>Torrent Reactor</item>
 		<item>Vertor</item>
@@ -16,12 +18,14 @@
    	<string-array name="search_engine_values">
 		<item>BitSnoop</item>
 		<item>ExtraTorrent</item>
+		<item>Fenopy</item>
 		<item>Isohunt</item>
 		<item>KickassTorents</item>
 		<item>LimeTorrents</item>
 		<item>Mininova</item>
 		<item>Monova</item>
 		<item>ThePirateBay</item>
+		<item>ThePirateBayMirror</item>
 		<item>TorrentDownloads</item>
 		<item>TorrentReactor</item>
 		<item>Vertor</item>
