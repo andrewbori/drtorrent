@@ -1,5 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 
 /*
  *	This file is part of Transdroid Torrent Search 
  *	<http://code.google.com/p/transdroid-search/>
@@ -18,13 +16,26 @@
  *	You should have received a copy of the GNU Lesser General Public 
  *	License along with Transdroid.  If not, see <http://www.gnu.org/licenses/>.
  */
- -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:tools="http://schemas.android.com/tools"
-	package="org.transdroid.search"
-	android:versionName="1.14"
-	android:versionCode="16">
-	
-	<uses-sdk android:minSdkVersion="3" android:targetSdkVersion="13" />
+package org.transdroid.search.ThePirateBay;
 
-</manifest> 
+
+/**
+ * An adapter that provides access to The Pirate Bay via a mirror site,
+ *  
+ * @author Eric Kok
+ */
+public class ThePirateBayMirrorAdapter extends ThePirateBayAdapter {
+
+	private static final String QUERYURL = "http://pirateproxy.net/search/%s/%s/%s/100,200,300,400,600/";
+
+	@Override
+	public String getSiteName() {
+		return "The Pirate Bay (mirror)";
+	}
+	
+	@Override
+	protected String getQueryUrl() {
+		return QUERYURL;
+	}
+	
+}

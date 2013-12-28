@@ -467,11 +467,15 @@ public class PeerImpl implements Peer, PeerConnectionObserver {
 	//
 	@Override
 	public int getPercent() {
-		if (torrent_.getBitfield() == null || torrent_.pieceCount() == 0) {
+		try {
+			if (torrent_.getBitfield() == null || torrent_.pieceCount() == 0) {
+				return 0;
+			}
+			
+			return bitfield_.countOfSet() * 100 / torrent_.pieceCount();
+		} catch (Exception ex) {
 			return 0;
 		}
-		
-		return bitfield_.countOfSet() * 100 / torrent_.pieceCount();
 	}
 	
 	/** Returns whether we can reconnect to the previously disconnected peer or not. */

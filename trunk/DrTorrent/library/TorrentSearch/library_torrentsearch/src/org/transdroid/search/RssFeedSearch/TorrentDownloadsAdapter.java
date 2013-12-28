@@ -37,6 +37,11 @@ public class TorrentDownloadsAdapter extends RssFeedSearchAdapter {
 		// Direct .torrent file download in style http://www.torrentdownloads.net/torrent/<id>/<title>
 		// Web links (as appearing in the RSS item) in style http://www.torrentdownloads.net/download/<id>/<title>
 		TorrentDownloadsItem theItem = (TorrentDownloadsItem) item;
+		
+		if (!item.getLink().startsWith("http")) {
+			item.setLink("http://www.torrentdownloads.net/" + item.getLink());
+		}
+		
 		return new SearchResult(
 				item.getTitle(), 
 				item.getLink().replace("/torrent/", "/download/"),

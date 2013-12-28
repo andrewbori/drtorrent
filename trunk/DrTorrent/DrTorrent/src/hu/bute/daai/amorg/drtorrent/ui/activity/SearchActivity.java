@@ -100,10 +100,12 @@ public class SearchActivity extends SherlockActivity {
 					public void onClick(DialogInterface dialog, int which) {
 						switch (which) {
 							case 0:
-								Uri uri = Uri.parse(item.getDetailUrl());
-								Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-								intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-								startActivity(intent);
+								try {
+									Uri uri = Uri.parse(item.getDetailUrl());
+									Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+									intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+									startActivity(intent);
+								} catch (Exception ex) { }
 								break;
 								
 							case 1:
