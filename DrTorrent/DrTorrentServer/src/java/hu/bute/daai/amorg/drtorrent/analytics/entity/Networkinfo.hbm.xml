@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 2013.12.29. 20:16:51 by Hibernate Tools 3.2.1.GA -->
+<hibernate-mapping>
+    <class name="hu.bute.daai.amorg.drtorrent.analytics.entity.Networkinfo" table="networkinfo" catalog="drtorrent">
+        <id name="id" type="java.lang.Long">
+            <column name="Id" />
+            <generator class="identity" />
+        </id>
+        <many-to-one name="peer" class="hu.bute.daai.amorg.drtorrent.analytics.entity.Peer" fetch="select">
+            <column name="PeerId" not-null="true" />
+        </many-to-one>
+        <property name="fromDate" type="long">
+            <column name="FromDate" not-null="true" />
+        </property>
+        <property name="toDate" type="long">
+            <column name="ToDate" not-null="true" />
+        </property>
+        <property name="networkType" type="int">
+            <column name="NetworkType" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

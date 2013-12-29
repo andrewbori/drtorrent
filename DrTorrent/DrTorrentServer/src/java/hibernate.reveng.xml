@@ -2,7 +2,9 @@
 <!DOCTYPE hibernate-reverse-engineering PUBLIC "-//Hibernate/Hibernate Reverse Engineering DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-reverse-engineering-3.0.dtd">
 <hibernate-reverse-engineering>
   <schema-selection match-catalog="drtorrent"/>
+  <table-filter match-name="powerinfo"/>
+  <table-filter match-name="torrent"/>
   <table-filter match-name="process"/>
   <table-filter match-name="peer"/>
-  <table-filter match-name="torrent"/>
+  <table-filter match-name="networkinfo"/>
 </hibernate-reverse-engineering>

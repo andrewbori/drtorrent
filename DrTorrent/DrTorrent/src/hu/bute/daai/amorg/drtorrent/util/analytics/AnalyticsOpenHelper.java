@@ -1,6 +1,7 @@
 package hu.bute.daai.amorg.drtorrent.util.analytics;
 
 import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentInfo;
+import hu.bute.daai.amorg.drtorrent.util.analytics.Analytics.ClientInfo;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -13,7 +14,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 
-	private static final int DATABASE_VERSION = 2;
+	private static final int DATABASE_VERSION = 3;
 	private static final String DATABASE_NAME = "DrTorrentAnalyticsDB";
 
 	AnalyticsOpenHelper(Context context) {
@@ -49,6 +50,18 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
             	db.execSQL("ALTER TABLE Torrent ADD SeedingTime INTEGER DEFAULT -1");
             	db.execSQL("ALTER TABLE Torrent ADD CompletedOn INTEGER DEFAULT -1");
             	db.execSQL("ALTER TABLE Torrent ADD RemovedOn INTEGER DEFAULT -1");
+            	
+            case 2:
+            	db.execSQL(
+        			"CREATE TABLE NetworkInfo (Id INTEGER PRIMARY KEY, " + 
+        									  "FromTicks INTEGER, " +
+        									  "ToTicks INTEGER, " +
+        									  "Type INTEGER)");
+            	db.execSQL(
+        			"CREATE TABLE PowerInfo (Id INTEGER PRIMARY KEY, " + 
+        									"FromTicks INTEGER, " +
+        									"ToTicks INTEGER, " +
+        									"IsPlugged INTEGER)");
             	
             default:
         }
@@ -197,6 +210,98 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 		} catch (Exception e) {}
 	}
 	
+	/** Inserts a new network info to the Database. */
+	private synchronized void insertNetworkInfo(final ClientInfo clientInfo) {
+		ContentValues values = new ContentValues();
+		values.put("FromTicks", clientInfo.from);
+		values.put("ToTicks", clientInfo.to);
+		values.put("Type", clientInfo.networkType);
+		
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.insert("NetworkInfo", null, values);
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
+	/** Updates a network info. */
+	private synchronized void updateNetworkInfo(final ClientInfo clientInfo) {
+		ContentValues values = new ContentValues();
+		values.put("ToTicks", clientInfo.to);
+
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.update("NetworkInfo", values, "FromTicks = ? AND Type = ?", new String[] { Long.toString(clientInfo.from), Long.toString(clientInfo.networkType) });
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
+	public synchronized void removeNetworkInfo(long from, int networkType) {
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.delete("NetworkInfo", "FromTicks < ? AND Type = ?", new String[] { Long.toString(from), Long.toString(networkType) });
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
+	/** Inserts a new network info to the Database. */
+	private synchronized void insertPowerInfo(final ClientInfo clientInfo) {
+		ContentValues values = new ContentValues();
+		values.put("FromTicks", clientInfo.from);
+		values.put("ToTicks", clientInfo.to);
+		values.put("IsPlugged", clientInfo.isChargerPlugged ? 1 : 0);
+		
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.insert("PowerInfo", null, values);
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
+	/** Updates a network info. */
+	private synchronized void updatePowerInfo(final ClientInfo clientInfo) {
+		ContentValues values = new ContentValues();
+		values.put("ToTicks", clientInfo.to);
+
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.update("PowerInfo", values, "FromTicks = ? AND IsPlugged = ?", new String[] { Long.toString(clientInfo.from), Integer.toString(clientInfo.isChargerPlugged ? 1 : 0) });
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+
+	public synchronized void removePowerInfo(long from) {
+		SQLiteDatabase db = null;
+		try {
+			db = this.getWritableDatabase();
+			db.delete("PowerInfo", "FromTicks < ?", new String[] { Long.toString(from) });
+		} catch (Exception e) {
+		}
+		try {
+			db.close();
+		} catch (Exception e) {}
+	}
+	
 	public final static int TORRENT 		  = 1;
 	public final static int TORRENT_UPDATE    = 2;
 	public final static int BAD_PIECE 		  = 3;
@@ -207,10 +312,14 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 	public final static int TORRENT_SIZE_AND_TIME_UPDATE = 8;
 	public final static int COMPLETED_ON	  = 9;
 	public final static int REMOVED_ON	  	  = 10;
+	public final static int NEW_NETWORK_CONNECTION = 11;
+	public final static int SET_NETWORK_CONNECTION = 12;
+	public final static int NEW_POWER_CONNECTION   = 13;
+	public final static int SET_POWER_CONNECTION   = 14;
 	public final static int REMOVE_TORRENT	  = 666;
 	
 	/** Increments the value of an optional column. */
-	public synchronized void doOperation(final TorrentInfo torrent, final int operationId) {
+	public synchronized void doOperation(final TorrentInfo torrent, final ClientInfo clientInfo, final int operationId) {
 		String column = null;
 		switch (operationId) {
 			case TORRENT:
@@ -257,6 +366,22 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 				
 			case REMOVE_TORRENT:
 				removeTorrent(torrent.getInfoHashString());
+				return;
+			
+			case NEW_NETWORK_CONNECTION:
+				insertNetworkInfo(clientInfo);
+				return;
+				
+			case SET_NETWORK_CONNECTION:
+				updateNetworkInfo(clientInfo);
+				return;
+				
+			case NEW_POWER_CONNECTION:
+				insertPowerInfo(clientInfo);
+				return;
+				
+			case SET_POWER_CONNECTION:
+				updatePowerInfo(clientInfo);
 				return;
 				
 			default:
@@ -335,5 +460,83 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 		} catch (Exception e) {}
 		
 		return torrents;
+	}
+	
+	/** Returns the torrents in a JSONArray. */
+	public synchronized JSONArray getNetworkInfoInJSON() {
+		JSONArray networkInfoArray = new JSONArray();
+		SQLiteDatabase db = null;
+		Cursor cursor = null;
+		try {
+			db = this.getReadableDatabase();
+			cursor = db.query("NetworkInfo", null, null, null, null, null, null);
+			
+			JSONObject networkInfo;
+			if (cursor.moveToFirst()) {
+				do {
+					try {
+						networkInfo = new JSONObject();
+						networkInfo.put("from", cursor.getLong(1));
+						networkInfo.put("to", cursor.getLong(2));
+						networkInfo.put("type", cursor.getInt(3));
+							
+						networkInfoArray.put(networkInfo);
+					} catch (Exception e) {
+						//Log.v("DB", e.toString());
+					}
+				} while (cursor.moveToNext());
+			}
+
+		} catch (Exception e) {
+			//Log.v("DB2", e.toString());
+		}
+		
+		try {
+			cursor.close();
+		} catch (Exception e) {}
+		try {
+			db.close();
+		} catch (Exception e) {}
+		
+		return networkInfoArray;
+	}
+	
+	/** Returns the torrents in a JSONArray. */
+	public synchronized JSONArray getPowerInfoInJSON() {
+		JSONArray powerInfoArray = new JSONArray();
+		SQLiteDatabase db = null;
+		Cursor cursor = null;
+		try {
+			db = this.getReadableDatabase();
+			cursor = db.query("PowerInfo", null, null, null, null, null, null);
+			
+			JSONObject powerInfo;
+			if (cursor.moveToFirst()) {
+				do {
+					try {
+						powerInfo = new JSONObject();
+						powerInfo.put("from", cursor.getLong(1));
+						powerInfo.put("to", cursor.getLong(2));
+						powerInfo.put("isPlugged", (cursor.getInt(3) != 0));
+							
+						powerInfoArray.put(powerInfo);
+					} catch (Exception e) {
+						//Log.v("DB", e.toString());
+					}
+				} while (cursor.moveToNext());
+			}
+
+		} catch (Exception e) {
+			//Log.v("DB2", e.toString());
+		}
+		
+		try {
+			cursor.close();
+		} catch (Exception e) {}
+		try {
+			db.close();
+		} catch (Exception e) {}
+		
+		return powerInfoArray;
 	}
 }

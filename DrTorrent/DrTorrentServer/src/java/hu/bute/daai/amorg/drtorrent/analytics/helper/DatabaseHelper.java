@@ -5,7 +5,9 @@
 package hu.bute.daai.amorg.drtorrent.analytics.helper;
 
 import hu.bute.daai.amorg.drtorrent.analytics.HibernateUtil;
+import hu.bute.daai.amorg.drtorrent.analytics.entity.Networkinfo;
 import hu.bute.daai.amorg.drtorrent.analytics.entity.Peer;
+import hu.bute.daai.amorg.drtorrent.analytics.entity.Powerinfo;
 import hu.bute.daai.amorg.drtorrent.analytics.entity.Process;
 import hu.bute.daai.amorg.drtorrent.analytics.entity.Torrent;
 import java.util.ArrayList;
@@ -122,6 +124,56 @@ public class DatabaseHelper {
             session_.getTransaction().commit();
             
             return process;
+        } catch (Exception e) {
+        }
+        
+        return null;
+    }
+    
+    public Networkinfo saveOrUpdateNetworkInfo(Peer peer, long fromDate, long toDate, int networkType) {
+        try {
+            session_.beginTransaction();
+            
+            Networkinfo networkInfo = (Networkinfo) session_.createQuery("from Networkinfo where peerId = :peerId and fromDate = :fromDate and networkType = :networkType")
+                    .setLong("peerId", peer.getId())
+                    .setLong("fromDate", fromDate)
+                    .setInteger("networkType", networkType)
+                    .uniqueResult();
+            
+            if (networkInfo == null) {
+                networkInfo = new Networkinfo(peer, fromDate, toDate, networkType);
+            } else {
+                networkInfo.setToDate(toDate);
+            }
+            session_.saveOrUpdate(networkInfo);
+            session_.getTransaction().commit();
+            
+            return networkInfo;
+        } catch (Exception e) {
+        }
+        
+        return null;
+    }
+    
+    public Powerinfo saveOrUpdatePowerInfo(Peer peer, long fromDate, long toDate, boolean isPlugged) {
+        try {
+            session_.beginTransaction();
+            
+            Powerinfo powerinfo = (Powerinfo) session_.createQuery("from Powerinfo where peerId = :peerId and fromDate = :fromDate and isPlugged = :isPlugged")
+                    .setLong("peerId", peer.getId())
+                    .setLong("fromDate", fromDate)
+                    .setBoolean("isPlugged", isPlugged)
+                    .uniqueResult();
+            
+            if (powerinfo == null) {
+                powerinfo = new Powerinfo(peer, fromDate, toDate, isPlugged);
+            } else {
+                powerinfo.setToDate(toDate);
+            }
+            session_.saveOrUpdate(powerinfo);
+            session_.getTransaction().commit();
+            
+            return powerinfo;
         } catch (Exception e) {
         }
         
