@@ -2,6 +2,7 @@ package hu.bute.daai.amorg.drtorrent.network;
 
 import hu.bute.daai.amorg.drtorrent.core.torrent.TorrentManager;
 import hu.bute.daai.amorg.drtorrent.ui.service.NetworkStateListener;
+import hu.bute.daai.amorg.drtorrent.ui.service.PowerConnectionStateListener;
 import hu.bute.daai.amorg.drtorrent.util.Log;
 import hu.bute.daai.amorg.drtorrent.util.Preferences;
 
@@ -17,7 +18,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 /** CLass that handles incoming connections. */
-public class NetworkManager implements NetworkStateListener {
+public class NetworkManager implements NetworkStateListener, PowerConnectionStateListener {
 	private static final String LOG_TAG = "NetworkManager";
 	
 	private TorrentManager torrentManager_ = null;
@@ -30,6 +31,8 @@ public class NetworkManager implements NetworkStateListener {
 	private boolean isEthernetConnected_  = false;
 	private boolean isMobileNetConnected_ = false;
 	private boolean isWiMaxConnected_ 	  = false;
+	
+	private boolean isChargerPlugged_ 	  = false;
 	
 	public void setTorrentManager(TorrentManager torrentManager) {
 		this.torrentManager_ = torrentManager;
@@ -192,7 +195,7 @@ public class NetworkManager implements NetworkStateListener {
 	}
 	
 	/** Called when the connection settings are changed. */
-	public void connectionSettingsChanged(boolean isChangeSpecified, boolean isPortChanged, boolean isIncomingChanged, boolean isWifiOnlyChanged, boolean isUpnpChanged) {
+	public synchronized void connectionSettingsChanged(boolean isChangeSpecified, boolean isPortChanged, boolean isIncomingChanged, boolean isWifiOnlyChanged, boolean isUpnpChanged) {
 		boolean hasNewConnection = hasConnection();
 		
 		if (hasConnection_ != hasNewConnection) {
@@ -246,7 +249,7 @@ public class NetworkManager implements NetworkStateListener {
 	
 	/** Called when the network state changes. */
 	@Override
-	public void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
+	public synchronized void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
 		if (networkInfo != null) {
 			if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
 				isWifiConnected_ = !noConnectivity;
@@ -266,8 +269,20 @@ public class NetworkManager implements NetworkStateListener {
 		connectionSettingsChanged(false, false, false, false, false);
 	}
 	
+	/** Called when power connection state changes. */
+	@Override
+	public synchronized void onPowerConnectionStateChanged(boolean isPlugged) {
+		if (isChargerPlugged_ == isPlugged) {
+			return;
+		}
+		isChargerPlugged_ = isPlugged;
+		
+		connectionSettingsChanged(false, false, false, false, false);
+	}
+	
 	/** Returns whether has connection or not. */
 	public boolean hasConnection() {
-		return (isWifiConnected_ || isEthernetConnected_ || ((isWiMaxConnected_ || isMobileNetConnected_) && !Preferences.isWiFiOnly()));
+		return ((isWifiConnected_ || isEthernetConnected_ || ((isWiMaxConnected_ || isMobileNetConnected_) && !Preferences.isWiFiOnly())) &&
+				(!Preferences.isChargerPluggedOnly() || (Preferences.isChargerPluggedOnly() && isChargerPlugged_)));
 	}
 }

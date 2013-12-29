@@ -128,6 +128,7 @@ public class TorrentService extends Service implements TorrentManagerObserver {
 	private TorrentManager torrentManager_;
 	private NetworkManager networkManager_;
 	private NetworkStateReceiver networkStateReceiver_;
+	private PowerConnectionStateReceiver batteryStateReceiver_;
 	
 	private TorrentClient client_ = null;
 
@@ -151,6 +152,12 @@ public class TorrentService extends Service implements TorrentManagerObserver {
 		networkStateReceiver_ = new NetworkStateReceiver();
 		networkStateReceiver_.setOnNetworkStateListener(networkManager_);
 		registerReceiver(networkStateReceiver_, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+		
+		batteryStateReceiver_ = new PowerConnectionStateReceiver();
+		batteryStateReceiver_.setOnPowerConnectionStateListener(networkManager_);
+		registerReceiver(batteryStateReceiver_, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+		registerReceiver(batteryStateReceiver_, new IntentFilter(Intent.ACTION_POWER_CONNECTED));
+		registerReceiver(batteryStateReceiver_, new IntentFilter(Intent.ACTION_POWER_DISCONNECTED));
 	}
 
 	@Override
@@ -167,6 +174,7 @@ public class TorrentService extends Service implements TorrentManagerObserver {
 	public void onDestroy() {
 		Analytics.shutDown();
 		unregisterReceiver(networkStateReceiver_);
+		unregisterReceiver(batteryStateReceiver_);
 		hideNotification();
 		
 		super.onDestroy();

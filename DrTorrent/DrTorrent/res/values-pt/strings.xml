@@ -127,4 +127,6 @@
     <string name="start_seeding">Iniciar semeio</string>
     <string name="missing_parameters">Falta de parâmetros!</string>
     <string name="status_creating">A criar</string>
+    <string name="only_charger">Em carga unicamente</string>
+    <string name="only_charger_sum">Descarregar unicamente quando estiver em carga</string>
 </resources>

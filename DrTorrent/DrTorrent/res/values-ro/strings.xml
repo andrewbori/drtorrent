@@ -127,4 +127,6 @@
     <string name="start_seeding">Pornește automat donarea</string>
     <string name="missing_parameters">Lipsește parametrii!</string>
     <string name="status_creating">Crearea</string>
+    <string name="only_charger">Doar cu sursă externă de alimentare</string>
+    <string name="only_charger_sum">Descarcă doar dacă este conectată o sursă externă de alimentare</string>
 </resources>

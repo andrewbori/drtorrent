@@ -138,4 +138,6 @@
     <string name="start_seeding">开始做种</string>
     <string name="missing_parameters">缺少的参数！</string>
     <string name="status_creating">创建中</string>
+    <string name="only_charger">仅外接电源</string>
+    <string name="only_charger_sum">仅在外接电源时下载</string>
 </resources>
