@@ -243,7 +243,7 @@ public class SearchActivity extends SherlockActivity {
 			.setIcon(R.drawable.ic_menu_delete)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
-		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, R.string.settings)
+		menu.add(Menu.NONE, MENU_SETTINGS, Menu.NONE, R.string.search_engine)
 			.setIcon(R.drawable.ic_menu_settings)
 			.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
 		
@@ -264,16 +264,43 @@ public class SearchActivity extends SherlockActivity {
 		super.onMenuItemSelected(featureId, item);
 		
 		switch (item.getItemId()) {
+			
 			case MENU_SETTINGS:
-				Intent intent = new Intent(this, SettingsActivity.class);
-				startActivity(intent);
+				// Strings to Show In Dialog with Radio Buttons
+				final String[] items = getResources().getStringArray(R.array.search_engine_names);
+				final String[] values = getResources().getStringArray(R.array.search_engine_values);
+				final String selected = Preferences.getSearchEngine(this);
+				
+				int selectedIndex = -1; 
+				for (int i = 0; i < values.length; i++ ) {
+					if (values[i].equals(selected)) {
+						selectedIndex = i;
+						break;
+					}
+				}
+				
+                // Creating and Building the Dialog
+                AlertDialog.Builder builder = new AlertDialog.Builder(SearchActivity.this);
+                builder.setTitle(R.string.search_engine);
+                builder.setSingleChoiceItems(items, selectedIndex, new DialogInterface.OnClickListener() {
+	                public void onClick(DialogInterface dialog, int item) {
+	                	if (item < values.length) {
+	                		String selectedValue = values[item];
+	                		Preferences.setSearchEngine(selectedValue);
+	                	}
+	                	
+	                    dialog_.dismiss();
+	                }});
+                dialog_ = builder.create();
+				dialog_.show();
 				break;
+				
 			case MENU_SEARCH_TORRENT:
 				onSearchRequested();
 				break;
 				
 			case MENU_CLEAR_HISTORY:
-				AlertDialog.Builder builder = new AlertDialog.Builder(SearchActivity.this);
+				builder = new AlertDialog.Builder(SearchActivity.this);
 				builder.setTitle(R.string.clear_history)
 				.setMessage(R.string.clear_history_message)
 				.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
@@ -301,7 +328,7 @@ public class SearchActivity extends SherlockActivity {
 					try {
 						String url = String.format(Preferences.getSearchEngineUrl(this), query_);
 						Uri uri = Uri.parse(url);
-						intent = new Intent(Intent.ACTION_VIEW, uri);
+						Intent intent = new Intent(Intent.ACTION_VIEW, uri);
 						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 						startActivity(intent);
 					} catch (Exception e) {

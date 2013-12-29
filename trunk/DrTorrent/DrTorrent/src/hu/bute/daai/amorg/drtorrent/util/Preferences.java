@@ -10,8 +10,8 @@ import android.preference.PreferenceManager;
 
 public class Preferences {
 	
-	public final static String APP_VERSION_NAME = "1.2.6";	// TODO: Refresh!
-	public final static int APP_VERSION_CODE = 10;			// TODO: Refresh!
+	public final static String APP_VERSION_NAME = "1.3";	// TODO: Refresh!
+	public final static int APP_VERSION_CODE = 11;			// TODO: Refresh!
 	
 	public static final String MY_AD_UNIT_ID = "a150b0b5a8dc405";
 	
@@ -66,6 +66,11 @@ public class Preferences {
 	/** Returns whether the download is enabled only over WiFi or not. */
 	public static boolean isWiFiOnly() {
 		return preferences_.getBoolean("wifi_only", true);
+	}
+	
+	/** Returns whether the download is enabled only when charger is plugged or not. */
+	public static boolean isChargerPluggedOnly() {
+		return preferences_.getBoolean("charger_only", true);
 	}
 	
 	/** Returns whether incoming connections are enabled or not. */
@@ -135,6 +140,13 @@ public class Preferences {
 		}
 	}
 
+	/** Sets the siteCode of the search engine. */
+	public static void setSearchEngine(String searchEngine) {
+		SharedPreferences.Editor editor = preferences_.edit();
+		editor.putString("search_engine", searchEngine);
+		editor.commit();
+	}
+	
 	/** Returns the siteCode of the search engine. */
 	public static String getSearchEngine(Context context) {
 		try {

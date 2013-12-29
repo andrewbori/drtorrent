@@ -51,6 +51,12 @@
     
     <PreferenceCategory android:title="@string/connection">
         <CheckBoxPreference
+	        android:key="charger_only"
+	        android:defaultValue="false"
+	        android:summary="@string/only_charger_sum"
+	        android:title="@string/only_charger" />
+        
+        <CheckBoxPreference
 	        android:key="wifi_only"
 	        android:defaultValue="true"
 	        android:summary="@string/only_wifi_sum"

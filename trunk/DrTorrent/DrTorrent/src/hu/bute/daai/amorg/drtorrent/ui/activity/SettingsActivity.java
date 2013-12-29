@@ -29,6 +29,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 	private boolean isIncomingConnectionsEnabled_;
 	private boolean isUpnpEnabled_;
 	private boolean isWifiOnly_;
+	private boolean isChargerPluggedOnly_;
 	
 	
 	@Override
@@ -59,6 +60,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		isIncomingConnectionsEnabled_ = Preferences.isIncomingConnectionsEnabled();
 		isUpnpEnabled_ = Preferences.isUpnpEnabled();
 		isWifiOnly_ = Preferences.isWiFiOnly();
+		isChargerPluggedOnly_ = Preferences.isChargerPluggedOnly();
 		
 		findPreference("download_folder").setSummary(Preferences.getDownloadFolder());
 		findPreference("port").setSummary(Integer.toString(Preferences.getPort()));
@@ -93,7 +95,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 		getPreferenceScreen().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
 		
 		if (port_ != Preferences.getPort() || isIncomingConnectionsEnabled_ != Preferences.isIncomingConnectionsEnabled() ||
-				  isWifiOnly_ != Preferences.isWiFiOnly() || isUpnpEnabled_ != Preferences.isUpnpEnabled()) {
+				  isWifiOnly_ != Preferences.isWiFiOnly() || isUpnpEnabled_ != Preferences.isUpnpEnabled() || isChargerPluggedOnly_ != Preferences.isChargerPluggedOnly()) {
 			
 			if (serviceMessenger_ != null) {
 				Message msg = Message.obtain();
@@ -113,6 +115,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 				isIncomingConnectionsEnabled_ = Preferences.isIncomingConnectionsEnabled();
 				isWifiOnly_ = Preferences.isWiFiOnly();
 				isUpnpEnabled_ = Preferences.isUpnpEnabled();
+				isChargerPluggedOnly_ = Preferences.isChargerPluggedOnly();
 			}
 		}
 		

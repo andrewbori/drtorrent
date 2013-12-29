@@ -127,4 +127,6 @@
     <string name="start_seeding">Rozpocznij udostępnianie</string>
     <string name="missing_parameters">Brakujące parametry!</string>
     <string name="status_creating">Tworzenie</string>
+    <string name="only_charger">Tylko z zasilaniem</string>
+    <string name="only_charger_sum">Pobieraj tylko wtedy, gdy zasilanie zewnętrzne jest podłączone</string>
 </resources>

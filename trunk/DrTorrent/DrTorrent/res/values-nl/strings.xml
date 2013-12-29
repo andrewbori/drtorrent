@@ -127,4 +127,6 @@
     <string name="start_seeding">Start seeden</string>
     <string name="missing_parameters">Ontbrekende parameters!</string>
     <string name="status_creating">Creëren</string>
+    <string name="only_charger">Alleen netstroom</string>
+    <string name="only_charger_sum">Download alleen als netstroom is aangesloten</string>
 </resources>
