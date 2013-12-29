@@ -110,7 +110,7 @@ public class TorrentManager {
 							final ArrayList<TorrentInfo> analyticsTorrents = new ArrayList<TorrentInfo>();
 							analyticsTorrents.addAll(torrents_);
 							analyticsTorrents.addAll(openingTorrents_);
-							Analytics.onTimer(analyticsTorrents);
+							Analytics.onTimer(analyticsTorrents, networkManager_.getLastTimestamps());
 						}
 						
 						if (Preferences.isIncomingConnectionsEnabled() && Preferences.isUpnpEnabled()) {
@@ -239,6 +239,8 @@ public class TorrentManager {
 			
 			Analytics.saveSizeAndTimeInfo(torrent);
 		}
+		
+		networkManager_.updateClientInfo();
 		torrentService_.saveState(jsonArray.toString());
 	}
 	

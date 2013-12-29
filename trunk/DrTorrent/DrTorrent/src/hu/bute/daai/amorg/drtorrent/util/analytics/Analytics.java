@@ -16,8 +16,8 @@ import android.content.Context;
 
 public class Analytics {
 	
-	private final static String SERVER_URL = "http://drtorrent-andrewbori.rhcloud.com/DrTorrent/AnalyticsV2";
-	//private final static String SERVER_URL = "http://192.168.0.4:8080/DrTorrent/AnalyticsV2";
+	private final static String SERVER_URL = "http://drtorrent-andrewbori.rhcloud.com/DrTorrent/AnalyticsV3";
+	//private final static String SERVER_URL = "http://192.168.0.3:8084/DrTorrent/AnalyticsV3";
 	
 	private static AnalyticsOpenHelper db_;
 	private final static Vector<DatabaseOperation> operations_ = new Vector<DatabaseOperation>();
@@ -91,6 +91,30 @@ public class Analytics {
 		startAnalyticsThread();
 	}
 	
+	public static void newNetworkConnection(long from, long to, int networkType) {
+		ClientInfo clientInfo = new ClientInfo(from, to, networkType);
+		operations_.addElement(new DatabaseOperation(clientInfo, AnalyticsOpenHelper.NEW_NETWORK_CONNECTION));
+		startAnalyticsThread();
+	}
+	
+	public static void updateNetworkConnection(long from, long to, int networkType) {
+		ClientInfo clientInfo = new ClientInfo(from, to, networkType);
+		operations_.addElement(new DatabaseOperation(clientInfo, AnalyticsOpenHelper.SET_NETWORK_CONNECTION));
+		startAnalyticsThread();
+	}
+	
+	public static void newPowerConnection(long from, long to, boolean isChargerPlugged) {
+		ClientInfo clientInfo = new ClientInfo(from, to, isChargerPlugged);
+		operations_.addElement(new DatabaseOperation(clientInfo, AnalyticsOpenHelper.NEW_POWER_CONNECTION));
+		startAnalyticsThread();
+	}
+	
+	public static void updatePowerConnection(long from, long to, boolean isChargerPlugged) {
+		ClientInfo clientInfo = new ClientInfo(from, to, isChargerPlugged);
+		operations_.addElement(new DatabaseOperation(clientInfo, AnalyticsOpenHelper.SET_POWER_CONNECTION));
+		startAnalyticsThread();
+	}
+	
 	private static void startAnalyticsThread() {
 		if (analyticsThread_ == null) {
 			analyticsThread_ = new AnalyticsThread();
@@ -119,7 +143,7 @@ public class Analytics {
 					}
 					
 					if (db_ != null && isEnabled_) {
-						db_.doOperation(operation.torrent, operation.operationId);
+						db_.doOperation(operation.torrent, operation.clientInfo, operation.operationId);
 					}
 					
 				}
@@ -142,15 +166,17 @@ public class Analytics {
 		}
 	}
 	
-	public static void onTimer(ArrayList<TorrentInfo> openedTorrents) {
-		(new ReportThread(openedTorrents)).start();
+	public static void onTimer(ArrayList<TorrentInfo> openedTorrents, long[] lastTimestamps) {
+		(new ReportThread(openedTorrents, lastTimestamps)).start();
 	}
 	
 	private static class ReportThread extends Thread {
-		ArrayList<TorrentInfo> openedTorrents_ = null;
+		final ArrayList<TorrentInfo> openedTorrents_;
+		final long[] lastTimestamps_;
 		
-		public ReportThread(ArrayList<TorrentInfo> openedTorrents) {
+		public ReportThread(ArrayList<TorrentInfo> openedTorrents, long[] lastTimestamps) {
 			openedTorrents_ = openedTorrents;
+			lastTimestamps_ = lastTimestamps;
 		}
 		
 		@Override
@@ -160,11 +186,15 @@ public class Analytics {
 				
 				String clientIdentifier = Preferences.getClientIdentifier();
 				JSONArray torrents = db_.getTorentsInJSON();
+				JSONArray networkInfo = db_.getNetworkInfoInJSON();
+				JSONArray powerInfo = db_.getPowerInfoInJSON();
 				
 				if (torrents.length() > 0) {
 					
 						json.put("clientIdentifier", clientIdentifier);
 						json.put("torrents", torrents);
+						json.put("networkInfo", networkInfo);
+						json.put("powerInfo", powerInfo);
 						
 						String message = json.toString();
 						Log.v("Analytics", "Sending report");
@@ -195,6 +225,12 @@ public class Analytics {
 										db_.removeTorrent(infoHash);
 									}
 								}
+								
+								db_.removePowerInfo(lastTimestamps_[0]);
+								db_.removeNetworkInfo(lastTimestamps_[1], 1);
+								db_.removeNetworkInfo(lastTimestamps_[2], 2);
+								db_.removeNetworkInfo(lastTimestamps_[3], 3);
+								db_.removeNetworkInfo(lastTimestamps_[4], 4);
 							}
 						}
 				}
@@ -206,12 +242,37 @@ public class Analytics {
 	
 	/** Class for representing the db operations. */
 	private static class DatabaseOperation {
-		TorrentInfo torrent;
+		TorrentInfo torrent = null;
+		ClientInfo clientInfo = null;
 		int operationId; 
 		
 		DatabaseOperation(TorrentInfo torrent, int operationId) {
 			this.torrent = torrent;
 			this.operationId = operationId;
+		}
+		
+		DatabaseOperation(ClientInfo clientInfo, int operationId) {
+			this.clientInfo = clientInfo;
+			this.operationId = operationId;
+		}
+	}
+	
+	static class ClientInfo {
+		long from;
+		long to;
+		int networkType;
+		boolean isChargerPlugged;
+		
+		ClientInfo(long from, long to, int networkType) {
+			this.from = from;
+			this.to = to;
+			this.networkType = networkType;
+		}
+		
+		ClientInfo(long from, long to, boolean isChargerPlugged) {
+			this.from = from;
+			this.to = to;
+			this.isChargerPlugged = isChargerPlugged;
 		}
 	}
 }

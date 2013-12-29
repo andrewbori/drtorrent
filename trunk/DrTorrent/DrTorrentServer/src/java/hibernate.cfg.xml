@@ -4,14 +4,13 @@
   <session-factory>
     <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
     <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
-    <!--<property name="hibernate.connection.url">jdbc:mysql://localhost:3306/drtorrent?zeroDateTimeBehavior=convertToNull</property>
-    <property name="hibernate.connection.username">drtorrent</property>
-    <property name="hibernate.connection.password">drtorrent1492</property>-->
-    <property name="hibernate.connection.url">jdbc:mysql://127.8.29.1:3306/drtorrent?zeroDateTimeBehavior=convertToNull</property>
-    <property name="hibernate.connection.username">adminX3pA9VT</property>
-    <property name="hibernate.connection.password">KyresPW4s_Dx</property>
+    <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/drtorrent?zeroDateTimeBehavior=convertToNull</property>
+    <property name="hibernate.connection.username">root</property>
+    <property name="hibernate.connection.password">password</property>
     <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Torrent.hbm.xml"/>
     <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Process.hbm.xml"/>
     <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Peer.hbm.xml"/>
+    <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Powerinfo.hbm.xml"/>
+    <mapping resource="hu/bute/daai/amorg/drtorrent/analytics/entity/Networkinfo.hbm.xml"/>
   </session-factory>
 </hibernate-configuration>

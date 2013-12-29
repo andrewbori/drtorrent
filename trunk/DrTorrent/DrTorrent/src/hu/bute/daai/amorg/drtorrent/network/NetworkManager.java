@@ -5,6 +5,7 @@ import hu.bute.daai.amorg.drtorrent.ui.service.NetworkStateListener;
 import hu.bute.daai.amorg.drtorrent.ui.service.PowerConnectionStateListener;
 import hu.bute.daai.amorg.drtorrent.util.Log;
 import hu.bute.daai.amorg.drtorrent.util.Preferences;
+import hu.bute.daai.amorg.drtorrent.util.analytics.Analytics;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -20,6 +21,10 @@ import android.net.NetworkInfo;
 /** CLass that handles incoming connections. */
 public class NetworkManager implements NetworkStateListener, PowerConnectionStateListener {
 	private static final String LOG_TAG = "NetworkManager";
+	public static final int NETWORK_TYPE_WIFI 		= 1;
+	public static final int NETWORK_TYPE_ETHERNET 	= 2;
+	public static final int NETWORK_TYPE_WIMAX 		= 3;
+	public static final int NETWORK_TYPE_MOBILE 	= 4;
 	
 	private TorrentManager torrentManager_ = null;
 	private AcceptConnections acceptConnectionsThread_ = null;
@@ -33,6 +38,13 @@ public class NetworkManager implements NetworkStateListener, PowerConnectionStat
 	private boolean isWiMaxConnected_ 	  = false;
 	
 	private boolean isChargerPlugged_ 	  = false;
+	
+	private long wifiConnectedOn_ = -1;
+	private long ethernetConnectedOn_ = -1;
+	private long mobileNetConnectedOn_ = -1;
+	private long wiMaxConnectedOn_ = -1;
+	
+	private long powerChangedOn_ = -1;
 	
 	public void setTorrentManager(TorrentManager torrentManager) {
 		this.torrentManager_ = torrentManager;
@@ -251,19 +263,57 @@ public class NetworkManager implements NetworkStateListener, PowerConnectionStat
 	@Override
 	public synchronized void onNetworkStateChanged(boolean noConnectivity, NetworkInfo networkInfo) {
 		if (networkInfo != null) {
+			int networkType = -1;
+			boolean isConnected = false;
+			long connectedOn = -1;
 			if (networkInfo.getType() == ConnectivityManager.TYPE_WIFI){
-				isWifiConnected_ = !noConnectivity;
+				isWifiConnected_ = isConnected = !noConnectivity;
+				networkType = NETWORK_TYPE_WIFI;
+				if (isConnected && wifiConnectedOn_ == -1) wifiConnectedOn_ = System.currentTimeMillis();
+				connectedOn = wifiConnectedOn_;
 				Log.v(LOG_TAG, "Has connection? WIFI CONNECTION: " + !noConnectivity);
+				
 			} else if (networkInfo.getType() == ConnectivityManager.TYPE_ETHERNET){
-				isEthernetConnected_ = !noConnectivity;
+				isEthernetConnected_ = isConnected = !noConnectivity;
+				networkType = NETWORK_TYPE_ETHERNET;
+				if (isConnected && ethernetConnectedOn_ == -1) ethernetConnectedOn_ = System.currentTimeMillis();
+				connectedOn = ethernetConnectedOn_;
 				Log.v(LOG_TAG, "Has connection? ETHERNET CONNECTION: " + !noConnectivity);
+				
 			} else if (networkInfo.getType() == ConnectivityManager.TYPE_WIMAX){
-				isWiMaxConnected_ = !noConnectivity;
+				isWiMaxConnected_ = isConnected = !noConnectivity;
+				networkType = NETWORK_TYPE_WIMAX;
+				if (isConnected && wiMaxConnectedOn_ == -1) wiMaxConnectedOn_ = System.currentTimeMillis();
+				connectedOn = wiMaxConnectedOn_;
 				Log.v(LOG_TAG, "Has connection? WIMAX CONNECTION: " + !noConnectivity);
+				
 			} else if (networkInfo.getType() == ConnectivityManager.TYPE_MOBILE) {
-				isMobileNetConnected_ = !noConnectivity;
+				isMobileNetConnected_ = isConnected = !noConnectivity;
+				networkType = NETWORK_TYPE_MOBILE;
+				if (isConnected && mobileNetConnectedOn_ == -1) mobileNetConnectedOn_ = System.currentTimeMillis();
+				connectedOn = mobileNetConnectedOn_;
 				Log.v(LOG_TAG, "Has connection? MOBILE INTERNET CONNECTION: " + !noConnectivity);
+				
 			} else Log.v(LOG_TAG, "Has connection? OTHER CONNECTION: " + !noConnectivity);
+			
+			if (networkType > 0) {
+				if  (isConnected) {
+					// Insert new network connection
+					Analytics.newNetworkConnection(connectedOn, connectedOn, networkType);
+				
+				} else {
+					// Update network connection
+					Analytics.updateNetworkConnection(connectedOn, System.currentTimeMillis(), networkType);
+					
+					switch (networkType) {
+						case NETWORK_TYPE_WIFI: wifiConnectedOn_ = -1; break;
+						case NETWORK_TYPE_ETHERNET: ethernetConnectedOn_ = -1; break;
+						case NETWORK_TYPE_WIMAX: wiMaxConnectedOn_ = -1; break;
+						case NETWORK_TYPE_MOBILE: mobileNetConnectedOn_ = -1; break;
+						default: break;
+					}
+				}
+			}
 		}
 		
 		connectionSettingsChanged(false, false, false, false, false);
@@ -275,7 +325,17 @@ public class NetworkManager implements NetworkStateListener, PowerConnectionStat
 		if (isChargerPlugged_ == isPlugged) {
 			return;
 		}
+		
+		long powerChangedOn = System.currentTimeMillis();
+		if (powerChangedOn_ != -1) {
+			// Update old
+			Analytics.updatePowerConnection(powerChangedOn_, powerChangedOn, isChargerPlugged_);
+		}
+		powerChangedOn_ = powerChangedOn;
 		isChargerPlugged_ = isPlugged;
+		
+		// Create new
+		Analytics.newPowerConnection(powerChangedOn_, powerChangedOn, isChargerPlugged_);
 		
 		connectionSettingsChanged(false, false, false, false, false);
 	}
@@ -284,5 +344,45 @@ public class NetworkManager implements NetworkStateListener, PowerConnectionStat
 	public boolean hasConnection() {
 		return ((isWifiConnected_ || isEthernetConnected_ || ((isWiMaxConnected_ || isMobileNetConnected_) && !Preferences.isWiFiOnly())) &&
 				(!Preferences.isChargerPluggedOnly() || (Preferences.isChargerPluggedOnly() && isChargerPlugged_)));
+	}
+	
+	public void updateClientInfo() {
+		if (wifiConnectedOn_ > -1) {
+			Analytics.updateNetworkConnection(wifiConnectedOn_, System.currentTimeMillis(), NETWORK_TYPE_WIFI);
+		}
+		
+		if (ethernetConnectedOn_ > -1) {
+			Analytics.updateNetworkConnection(ethernetConnectedOn_, System.currentTimeMillis(), NETWORK_TYPE_ETHERNET);
+		}
+		
+		if (wiMaxConnectedOn_ > -1) {
+			Analytics.updateNetworkConnection(wiMaxConnectedOn_, System.currentTimeMillis(), NETWORK_TYPE_WIMAX);
+		}
+		
+		if (mobileNetConnectedOn_ > -1) {
+			Analytics.updateNetworkConnection(mobileNetConnectedOn_, System.currentTimeMillis(), NETWORK_TYPE_MOBILE);
+		}
+		
+		if (powerChangedOn_ > -1) {
+			Analytics.updatePowerConnection(powerChangedOn_, System.currentTimeMillis(), isChargerPlugged_);
+		}
+	}
+
+	public long[] getLastTimestamps() {
+		long[] result = new long[] {
+			powerChangedOn_,
+			wifiConnectedOn_,
+			ethernetConnectedOn_,
+			wiMaxConnectedOn_,
+			mobileNetConnectedOn_
+		};
+		
+		for (int i = 1; i < result.length; i++) {
+			if (result[i] == -1) {
+				result[i] = System.currentTimeMillis();
+			}
+		}
+		
+		return result;
 	}
 }
