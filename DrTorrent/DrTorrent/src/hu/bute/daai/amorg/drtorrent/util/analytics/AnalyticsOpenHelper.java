@@ -37,6 +37,16 @@ public class AnalyticsOpenHelper extends SQLiteOpenHelper {
 					        	  "CompletedOn INTEGER DEFAULT -1, " +
 					        	  "RemovedOn INTEGER DEFAULT -1);"	
 		);
+		db.execSQL(
+			"CREATE TABLE NetworkInfo (Id INTEGER PRIMARY KEY, " + 
+									  "FromTicks INTEGER, " +
+									  "ToTicks INTEGER, " +
+									  "Type INTEGER)");
+    	db.execSQL(
+			"CREATE TABLE PowerInfo (Id INTEGER PRIMARY KEY, " + 
+									"FromTicks INTEGER, " +
+									"ToTicks INTEGER, " +
+									"IsPlugged INTEGER)");
 	}
 
 	@Override

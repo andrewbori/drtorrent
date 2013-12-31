@@ -50,6 +50,7 @@ import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.ActionBar.OnNavigationListener;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
+import com.startapp.android.publish.StartAppAd;
 
 public class MainActivity extends TorrentHostActivity implements OnNavigationListener, TorrentItemInteractionListener {
 	
@@ -76,6 +77,8 @@ public class MainActivity extends TorrentHostActivity implements OnNavigationLis
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		StartAppAd.init(this, "112505565", "212348556");
 		
 		list_ = torrents_ = new ArrayList<TorrentListItem>();
 		completedTorrents_ = new ArrayList<TorrentListItem>();

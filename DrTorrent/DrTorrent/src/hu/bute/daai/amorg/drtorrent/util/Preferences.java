@@ -70,7 +70,7 @@ public class Preferences {
 	
 	/** Returns whether the download is enabled only when charger is plugged or not. */
 	public static boolean isChargerPluggedOnly() {
-		return preferences_.getBoolean("charger_only", true);
+		return preferences_.getBoolean("charger_only", false);
 	}
 	
 	/** Returns whether incoming connections are enabled or not. */

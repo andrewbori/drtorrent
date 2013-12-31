@@ -10,9 +10,9 @@
         android:layout_width="match_parent"
         android:layout_weight="1" />
 
-    <com.mobclix.android.sdk.MobclixMMABannerXLAdView
-		android:id="@+id/banner_adview"
-		android:layout_height="50dip"
-		android:layout_width="320dip"
-		android:layout_gravity="center" />
+    <com.startapp.android.publish.banner.bannerstandard.BannerStandard
+		android:id="@+id/startAppStandardBanner"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content" 
+		android:layout_gravity="center"/>
 </LinearLayout>
